@@ -776,5 +776,42 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
+<!-- フッター（プライバシーポリシー・利用規約・お問い合わせ） -->
+<footer style="text-align: center; margin-top: 24px; padding-bottom: 24px; font-size: 0.8rem; color: var(--text-sub);">
+    <a href="javascript:void(0)" onclick="openModal('privacyModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;">プライバシーポリシー</a>
+    <a href="javascript:void(0)" onclick="openModal('termsModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;">利用規約</a>
+    <a href="https://x.com/shizuo_lcesp" target="_blank" rel="noopener noreferrer" style="color: var(--text-sub); text-decoration: underline;">お問い合わせ (𝕏)</a>
+</footer>
+
+<!-- プライバシーポリシー モーダル -->
+<div class="modal-overlay" id="privacyModal">
+    <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+        <h3 style="margin-bottom:12px;">プライバシーポリシー</h3>
+        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
+            <p style="margin-bottom:8px;"><strong>1. 個人情報の収集</strong><br>当サイトでは、ユーザー登録時にメールアドレスおよびユーザー名を取得します。</p>
+            <p style="margin-bottom:8px;"><strong>2. 利用目的</strong><br>取得した情報は、ログイン認証および個人データの保存管理のためにのみ使用します。</p>
+            <p style="margin-bottom:8px;"><strong>3. 広告について</strong><br>当サイトでは第三者配信の広告サービス（Google AdSense等）を利用する場合があります。Cookieを使用することでユーザーのアクセス情報に基づいた広告を配信します。</p>
+        </div>
+        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('privacyModal')">閉じる</button>
+    </div>
+</div>
+
+<!-- 利用規約 モーダル -->
+<div class="modal-overlay" id="termsModal">
+    <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+        <h3 style="margin-bottom:12px;">利用規約</h3>
+        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
+            <p style="margin-bottom:8px;"><strong>1. サービスの目的</strong><br>本ツールはゲームの感度計算を行う補助ツールであり、ゲーム内での成果を保証するものではありません。</p>
+            <p style="margin-bottom:8px;"><strong>2. 免責事項</strong><br>本ツールの利用により生じた直接的・間接的な損害について、一切の責任を負いかねます。</p>
+        </div>
+        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('termsModal')">閉じる</button>
+    </div>
+</div>
+
+<script>
+function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+</script> 
+    
 </body>
 </html>
