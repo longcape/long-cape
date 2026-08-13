@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
     <link rel="icon" href="/icon-192.png?v=3">
-<link rel="apple-touch-icon" href="/icon-192.png?v=3">
-<link rel="manifest" href="/manifest.json?v=3">
+    <link rel="apple-touch-icon" href="/icon-192.png?v=3">
+    <link rel="manifest" href="/manifest.json?v=3">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ロングケープの定理 | 最適インゲーム感度診断ツール</title>
@@ -353,7 +353,7 @@ const translations = {
         tabDiag: "감도 진단", tabCustom: "감도 메모", tabAdmin: "👑 개발자 패널", labelGame: "1. 타겟 게임 타이틀", labelDpi: "2-A. 마우스 DPI", labelDpiOpt: "(미입력 시 800 DPI)",
         labelSens: "2-B. 현재 인게임 감도", labelSensOpt: "(선택)", labelHeight: "3. 신장 / 키 (cm)", labelNeuro: "4. 손재주·신경학적 특성",
         neuro1: "1단계: 극도로 섬세함", neuro2: "2단계: 약간 섬세함", neuro3: "3단계: 보통", neuro4: "4단계: 약간 서툶", neuro5: "5단계: 많이 서툶",
-        labelPsych: "5. 플레이 스타일 지향성", psych1: "직관형", psych2: "직관 지향", psych3: "정밀 지향", psych4: "정밀형",
+        psych1: "직관형", psych2: "직관 지향", psych3: "정밀 지향", psych4: "정밀형",
         labelWeight: "6. 현재 사용하는 마우스 무게", weightUltra: "초경량 (40g~55g)", weightStandard: "표준 경량 (58g~65g)", weightMid: "미디엄 헤비 (70g~85g)", weightHeavy: "헤비웨이트 (90g~105g)", weightUltraheavy: "울트라 헤비 (110g 이상)",
         labelPivot: "7. 메인 에임 조작 부위", pivotArm: "팔꿈치·팔 전체", pivotWrist: "손목 축 + 팔 병용", pivotFinger: "손가락·손목 중심",
         calcBtn: "최적 인게임 감도 계산하기", resultSubtitle: "당신의 이론상 최적 감도", saveBtn: "💾 이 진단 결과를 마이페이지에 저장하기", shareBtn: "𝕏 포스트로 연구에 협력하기",
@@ -600,6 +600,37 @@ function calculateEDPI() {
 
     document.getElementById('xShareBtn').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
     document.getElementById('resultBox').style.display = 'block';
+
+    // ----------------------------------------------------
+    // 【自動収集機能】現在の感度が入力されている場合、裏側でSupabaseに匿名データ送信
+    // ----------------------------------------------------
+    const rawCurrentSensInput = document.getElementById('currentSens').value;
+    if (rawCurrentSensInput && rawCurrentSensInput.trim() !== '') {
+        supabaseClient
+            .from('calc_logs')
+            .insert([
+                {
+                    user_id: null, // 完全匿名のため null
+                    game: gameVal,
+                    dpi: currentDpi,
+                    final_sens: parseFloat(rawCurrentSensInput), // 入力された「現在の感度」を保存
+                    height: height,
+                    is_custom: false,
+                    memo: '自動収集データ',
+                    rating: 'good'
+                }
+            ])
+            .then(response => {
+                if (response.error) {
+                    console.error('匿名データの自動送信エラー:', response.error.message);
+                } else {
+                    console.log('匿名データを自動送信しました');
+                }
+            })
+            .catch(err => {
+                console.error('通信エラー:', err);
+            });
+    }
 }
 
 function handleSaveClick() {
@@ -792,9 +823,20 @@ if ('serviceWorker' in navigator) {
             <p style="margin-bottom:8px;"><strong>2. 利用目的</strong><br>取得した情報は、ログイン認証および個人データの保存管理のためにのみ使用します。</p>
             <p style="margin-bottom:8px;"><strong>3. 広告について</strong><br>当サイトでは第三者配信の広告サービス（Google AdSense等）を利用する場合があります。Cookieを使用することでユーザーのアクセス情報に基づいた広告を配信します。</p>
             <p style="margin-bottom:8px;"><strong>4. データの自動収集について</strong><br>当サービスでは、機能向上および統計データ（平均値等）作成のため、入力された感度・デバイス・体格等のデータを個人が特定できない完全な匿名形式で自動的に収集・記録する場合があります。</p>
-            
         </div>
         <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('privacyModal')">閉じる</button>
+    </div>
+</div>
+
+<!-- 利用規約 モーダル -->
+<div class="modal-overlay" id="termsModal">
+    <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+        <h3 style="margin-bottom:12px;">利用規約</h3>
+        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
+            <p style="margin-bottom:8px;"><strong>1. サービスの目的</strong><br>本ツールはゲームの感度計算を行う補助ツールであり、ゲーム内での成果を保証するものではありません。</p>
+            <p style="margin-bottom:8px;"><strong>2. 免責事項</strong><br>本ツールの利用により生じた直接的・間接的な損害について、一切の責任を負いかねます。</p>
+        </div>
+        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('termsModal')">閉じる</button>
     </div>
 </div>
 
