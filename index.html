@@ -613,8 +613,7 @@ function calculateEDPI() {
                     user_id: null, // 完全匿名のため null
                     game: gameVal,
                     dpi: currentDpi,
-                    final_sens: parseFloat(rawCurrentSensInput), // 入力された「現在の感度」を保存
-                    height: height,
+                    final_sens: rawCurrentSensInput.trim(), // 現在の感度を文字列形式で保存
                     is_custom: false,
                     memo: '自動収集データ',
                     rating: 'good'
