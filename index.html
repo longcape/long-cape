@@ -388,6 +388,7 @@ function changeLanguage(lang) {
 
     updateUserStatusUI();
     loadLogs();
+    if (currentDiagResult) { calculateEDPI(); }
 }
 
 // --- 1. Supabase Client & Dynamic Config ---
