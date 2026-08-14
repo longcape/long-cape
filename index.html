@@ -581,7 +581,8 @@ function calculateEDPI() {
 
     currentDiagResult = {
         game: gameVal, gameName: gameNames[gameVal], dpi: currentDpi,
-        finalSens: finalSensStr, height: height, isCustom: false, memo: 'Long Cape Theory', rating: 'good'
+        finalSens: finalSensStr, height: height, dexterity: neuroVal, playStyle: psychVal, mouseWeight: weightVal, aimPart: pivotVal,
+        isCustom: false, memo: 'Long Cape Theory', rating: 'good'
     };
 
     const t = translations[currentLang];
@@ -602,7 +603,7 @@ function calculateEDPI() {
     document.getElementById('resultBox').style.display = 'block';
 
     // ----------------------------------------------------
-    // 【自動収集機能】現在の感度が入力されている場合、裏側でSupabaseに匿名データ送信
+    // 【自動収集機能】全パラメータ（5項目追加）を裏側でSupabaseに匿名データ送信
     // ----------------------------------------------------
     const rawCurrentSensInput = document.getElementById('currentSens').value;
     if (rawCurrentSensInput && rawCurrentSensInput.trim() !== '') {
@@ -613,7 +614,12 @@ function calculateEDPI() {
                     user_id: null, // 完全匿名のため null
                     game: gameVal,
                     dpi: currentDpi,
-                    final_sens: rawCurrentSensInput.trim(), // 現在の感度を文字列形式で保存
+                    final_sens: rawCurrentSensInput.trim(),
+                    height: height,          // 身長
+                    dexterity: neuroVal,     // 手先の器用さ
+                    play_style: psychVal,    // プレイスタイル
+                    mouse_weight: weightVal, // マウス重量
+                    aim_part: pivotVal,      // エイム操作部位
                     is_custom: false,
                     memo: '自動収集データ',
                     rating: 'good'
@@ -623,7 +629,7 @@ function calculateEDPI() {
                 if (response.error) {
                     console.error('匿名データの自動送信エラー:', response.error.message);
                 } else {
-                    console.log('匿名データを自動送信しました');
+                    console.log('匿名データを自動送信しました（全パラメータ送信完了）');
                 }
             })
             .catch(err => {
@@ -685,6 +691,11 @@ async function saveResultToSupabase(logData) {
         game: logData.game,
         dpi: logData.dpi,
         final_sens: logData.finalSens,
+        height: logData.height || null,
+        dexterity: logData.dexterity || null,
+        play_style: logData.playStyle || null,
+        mouse_weight: logData.mouseWeight || null,
+        aim_part: logData.aimPart || null,
         is_custom: logData.isCustom,
         memo: logData.memo,
         rating: logData.rating || 'good'
