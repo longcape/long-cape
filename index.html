@@ -309,6 +309,32 @@
                 </select>
             </div>
 
+            <!-- 6. 支点・フォーム -->
+            <div class="form-group">
+                <label class="form-label" for="posture">
+                    <span class="step-num">6</span> 主な支点・フォーム
+                </label>
+                <select class="form-select" id="posture" required>
+                    <option value="" disabled selected>選択してください</option>
+                    <option value="wrist">手首支点（手首のみ固定して操作）</option>
+                    <option value="forearm">前腕支点（肘より手前をデスクに乗せる）</option>
+                    <option value="elbow">肘・肩支点（肘全体を乗せて腕を大きく振る）</option>
+                </select>
+            </div>
+
+            <!-- 7. マウスパッドの大きさ -->
+            <div class="form-group">
+                <label class="form-label" for="mousePad">
+                    <span class="step-num">7</span> マウスパッドの大きさ
+                </label>
+                <select class="form-select" id="mousePad" required>
+                    <option value="" disabled selected>選択してください</option>
+                    <option value="small">Sサイズ（横幅 30cm未満）</option>
+                    <option value="medium">Mサイズ（横幅 30〜40cm）</option>
+                    <option value="large">L / XLサイズ（横幅 45cm以上）</option>
+                </select>
+            </div>
+
             <button type="submit" class="btn-submit">最適感度を計算する</button>
         </form>
 
@@ -425,23 +451,37 @@
 </div>
 
 <script>
-// 補正倍率マッピング
+// 人間工学補正倍率マッピング
 
-// 4. 腕の太さ（慣性・摩擦）
+// 4. 腕の太さ（慣性・擦れ抵抗）
 const ARM_TYPE_MULTIPLIERS = {
-    slim: 0.95,    // 細め：慣性が小さく振りが効くためロー感度寄り（-5%）
+    slim: 0.95,    // 細め：慣性が小さく大振りが利くためロー感度寄り（-5%）
     normal: 1.00,  // 標準：基準値（0%）
     heavy: 1.05    // 太め：慣性・摩擦を抑えるためハイ感度寄り（+5%）
 };
 
 // 5. 手先の器用さ（微細操作性）
 const DEXTERITY_MULTIPLIERS = {
-    high: 1.05,    // 器用：細かい調整が得意なためハイ感度も扱える（+5%）
+    high: 1.05,    // 器用：指先調整が得意なためハイ感度対応（+5%）
     normal: 1.00,  // 標準：基準値（0%）
-    low: 0.95      // 大雑把・安定重視：ブレを防ぐためロー感度補正（-5%）
+    low: 0.95      // 大雑把：手ブレを防ぐためロー感度補正（-5%）
 };
 
-// ゲームタイトル別設定
+// 6. 支点・フォーム補正
+const POSTURE_MULTIPLIERS = {
+    wrist: 1.15,   // 手首支点：可動域が狭いためハイ感度寄り（+15%）
+    forearm: 1.00, // 前腕支点：標準（0%）
+    elbow: 0.88    // 肘支点：可動域が広いためロー感度寄り（-12%）
+};
+
+// 7. マウスパッドサイズ補正
+const PAD_MULTIPLIERS = {
+    small: 1.10,   // Sサイズ：物理スペース制限で感度を上げる（+10%）
+    medium: 1.00,  // Mサイズ：標準（0%）
+    large: 0.90    // L/XLサイズ：十分なスペースでロー感度許容（-10%）
+};
+
+// ゲームタイトル別設定（ベースeDPI・Yaw値）
 const GAME_CONFIGS = {
     valorant: { baseEdpi: 280, yaw: 0.07 },
     apex: { baseEdpi: 1200, yaw: 0.022 },
@@ -458,24 +498,29 @@ function calculateSensitivity() {
     const height = parseFloat(document.getElementById('height').value);
     const armType = document.getElementById('armType').value;
     const dexterity = document.getElementById('dexterity').value;
+    const posture = document.getElementById('posture').value;
+    const mousePad = document.getElementById('mousePad').value;
 
-    // 必須入力チェック（1, 3, 4, 5）
-    if (!gameTitle || !height || !armType || !dexterity) {
-        alert('すべての必須項目を入力・選択してください。');
+    // バリデーション
+    if (!gameTitle || !height || !armType || !dexterity || !posture || !mousePad) {
+        alert('すべての必須項目を選択・入力してください。');
         return;
     }
 
     const gameConfig = GAME_CONFIGS[gameTitle] || GAME_CONFIGS.valorant;
 
-    // 1. 身長ベースライン算出 (170cmを基準)
+    // 1. 身長ベースライン算出 (170cm標準)
     const baseEdpi = gameConfig.baseEdpi * (170 / height);
 
-    // 2. 補正倍率算出（4: 腕の太さ, 5: 器用さ）
+    // 2. 補正倍率の算出
     const armMult = ARM_TYPE_MULTIPLIERS[armType] || 1.00;
     const dexMult = DEXTERITY_MULTIPLIERS[dexterity] || 1.00;
+    const postureMult = POSTURE_MULTIPLIERS[posture] || 1.00;
+    const padMult = PAD_MULTIPLIERS[mousePad] || 1.00;
 
-    // 3. 目標eDPI計算
-    const targetEdpi = Math.round(baseEdpi * armMult * dexMult);
+    // 3. 総合目標eDPI計算
+    const totalMultiplier = armMult * dexMult * postureMult * padMult;
+    const targetEdpi = Math.round(baseEdpi * totalMultiplier);
 
     // 4. ゲーム内感度 & 振り向き(cm/360°)算出
     const inGameSens = (targetEdpi / dpi).toFixed(3);
@@ -493,7 +538,7 @@ function calculateSensitivity() {
     }
     
     document.getElementById('resEdpiCm').innerHTML = edpiText;
-    document.getElementById('resAdvice').textContent = getAdvice(armType, dexterity);
+    document.getElementById('resAdvice').textContent = getAdvice(armType, dexterity, posture);
 
     document.getElementById('resultBox').style.display = 'block';
 }
@@ -501,21 +546,27 @@ function calculateSensitivity() {
 /**
  * 人間工学ワンポイント解説
  */
-function getAdvice(armType, dexterity) {
+function getAdvice(armType, dexterity, posture) {
     let advice = '💡 ';
-    if (armType === 'slim') {
-        advice += '細めの腕は慣性が小さく大振りが効きやすいため、ロー感度での精密エイムに向いています。';
-    } else if (armType === 'heavy') {
-        advice += '太めの腕は重量と皮膚のクッション性が手ブレを吸収するため、ミドル〜ハイ感度でも安定します。';
+    
+    if (posture === 'wrist') {
+        advice += '手首支点は可動域が狭いため高めの感度が有利です。';
+    } else if (posture === 'elbow') {
+        advice += '肘・肩支点は腕全体を使った大振りが利くためロー感度と高相性です。';
     } else {
-        advice += '標準的な腕の構造のため、身体的ストロークに無理のないニュートラルな感度調整となっています。';
+        advice += '前腕支点を軸とした安定感のあるフォームです。';
+    }
+
+    if (armType === 'slim') {
+        advice += ' 腕の重量が軽く慣性が小さいため精密エイムに向いています。';
+    } else if (armType === 'heavy') {
+        advice += ' 腕のクッション性が自然にブレを吸収してくれます。';
     }
 
     if (dexterity === 'high') {
-        advice += ' 指先の微小なコントロールが得意なため、やや高めの感度でも微調整が可能です。';
-    } else if (dexterity === 'low') {
-        advice += ' 大振りでの安定感を優先した感度設定にしてあります。';
+        advice += ' 指先調整が得意なため、微妙なエイム微修正が活かせる設定です。';
     }
+
     return advice;
 }
 
