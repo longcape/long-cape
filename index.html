@@ -451,7 +451,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 let currentDiagResult = null;
 
-// ★バックアップ初期値を手首(+0.40)・肩(-0.20)に完全更新
+// ★バックアップ初期値を手首(+0.40)・肩(-0.12)に完全更新
 let dynamicConfig = {
     base_edpi: 230,
     height_factor: 0.005,
@@ -470,7 +470,7 @@ let dynamicConfig = {
     weight_ultraheavy_factor: 0.10,
     pivot_wrist_factor: 0.40,     // 手首 (+40%)
     pivot_arm_factor: 0.00,       // 肘 (基準)
-    pivot_shoulder_factor: -0.20  // 肩 (-20%)
+    pivot_shoulder_factor: -0.12  // 肩 (-12%)
 };
 
 async function fetchLatestConfig() {
