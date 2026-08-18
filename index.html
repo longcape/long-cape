@@ -144,25 +144,25 @@
             <input type="number" id="height" value="173" min="130" max="220">
         </div>
 
-        <!-- 4. 手先の器用さ -->
+        <!-- 4. 腕の太さ（3段階物理モデル） [項目4と5を入れ替え] -->
         <div class="form-group">
-            <label for="neuro" data-i18n="labelNeuro">4. 手先の器用さ・神経的特性（生理的振戦の処理）</label>
+            <label for="armThickness" data-i18n="labelArmThickness">4. 腕の太さ（物理慣性・皮下脂肪の制振性）</label>
+            <select id="armThickness">
+                <option value="slim" data-i18n="armSlim">細め（慣性が小さくロー感度での精密操作に有利）</option>
+                <option value="normal" selected data-i18n="armNormal">普通（標準的な筋肉・脂肪量）</option>
+                <option value="heavy" data-i18n="armHeavy">太め（重量と皮下組織が微小な手ブレを物理吸収）</option>
+            </select>
+        </div>
+
+        <!-- 5. 手先の器用さ [項目4と5を入れ替え] -->
+        <div class="form-group">
+            <label for="neuro" data-i18n="labelNeuro">5. 手先の器用さ・神経的特性（生理的振戦の処理）</label>
             <select id="neuro">
                 <option value="1" data-i18n="neuro1">ステージ1：超器用・指先微調整型</option>
                 <option value="2" data-i18n="neuro2">ステージ2：やや器用・細かい操作が得意</option>
                 <option value="3" data-i18n="neuro3">ステージ3：普通・標準的なバランス</option>
                 <option value="4" data-i18n="neuro4">ステージ4：やや不器用・細かいブレあり</option>
                 <option value="5" selected data-i18n="neuro5">ステージ5：かなり不器用・大きな筋肉で相殺必須</option>
-            </select>
-        </div>
-
-        <!-- 5. 腕の太さ（3段階物理モデル） -->
-        <div class="form-group">
-            <label for="armThickness" data-i18n="labelArmThickness">5. 腕の太さ（物理慣性・皮下脂肪の制振性）</label>
-            <select id="armThickness">
-                <option value="slim" data-i18n="armSlim">細め（慣性が小さくロー感度での精密操作に有利）</option>
-                <option value="normal" selected data-i18n="armNormal">普通（標準的な筋肉・脂肪量）</option>
-                <option value="heavy" data-i18n="armHeavy">太め（重量と皮下組織が微小な手ブレを物理吸収）</option>
             </select>
         </div>
 
@@ -308,14 +308,14 @@ const translations = {
         tabDiag: "感度診断", tabCustom: "感度メモ", tabAdmin: "👑 全データ閲覧(開発者)",
         labelGame: "1. ターゲットゲームタイトル", labelDpi: "2-A. マウスDPI", labelDpiOpt: "(未入力時は800DPIで計算)",
         labelSens: "2-B. 現在のインゲーム感度", labelSensOpt: "(任意)", labelHeight: "3. 身長 (cm)",
-        labelNeuro: "4. 手先の器用さ・神経的特性（生理的振戦の処理）",
-        neuro1: "ステージ1：超器用・指先微調整型", neuro2: "ステージ2：やや器用・細かい操作が得意",
-        neuro3: "ステージ3：普通・標準的なバランス", neuro4: "ステージ4：やや不器用・細かいブレあり",
-        neuro5: "ステージ5：かなり不器用・大きな筋肉で相殺必須",
-        labelArmThickness: "5. 腕の太さ（物理慣性・皮下脂肪の制振性）",
+        labelArmThickness: "4. 腕の太さ（物理慣性・皮下脂肪の制振性）",
         armSlim: "細め（慣性が小さくロー感度での精密操作に有利）",
         armNormal: "普通（標準的な筋肉・脂肪量）",
         armHeavy: "太め（重量と皮下組織が微小な手ブレを物理吸収）",
+        labelNeuro: "5. 手先の器用さ・神経的特性（生理的振戦の処理）",
+        neuro1: "ステージ1：超器用・指先微調整型", neuro2: "ステージ2：やや器用・細かい操作が得意",
+        neuro3: "ステージ3：普通・標準的なバランス", neuro4: "ステージ4：やや不器用・細かいブレあり",
+        neuro5: "ステージ5：かなり不器用・大きな筋肉で相殺必須",
         labelWeight: "6. 現在使用しているマウス重量",
         weightUltra: "超軽量クラス (40g〜55g)", weightStandard: "標準軽量クラス (58g〜65g)",
         weightMid: "ミドルヘビー (70g〜85g)", weightHeavy: "ヘビーウェイト (90g〜105g)",
@@ -343,12 +343,12 @@ const translations = {
         authBtnLogin: "Login / Sign Up", authBtnLogout: "Logout", tabDiag: "Diagnosis", tabCustom: "Memo", tabAdmin: "👑 Developer Panel",
         labelGame: "1. Target Game Title", labelDpi: "2-A. Mouse DPI", labelDpiOpt: "(Default: 800 DPI)",
         labelSens: "2-B. Current Sensitivity", labelSensOpt: "(Optional)", labelHeight: "3. Height (cm)",
-        labelNeuro: "4. Fine Motor Skills / Neural Traits",
-        neuro1: "Stage 1: Ultra Fine Motor", neuro2: "Stage 2: Fine Motor", neuro3: "Stage 3: Normal Balance", neuro4: "Stage 4: Slight Jitters", neuro5: "Stage 5: High Tremors",
-        labelArmThickness: "5. Arm Thickness (Physical Inertia & Damping)",
+        labelArmThickness: "4. Arm Thickness (Physical Inertia & Damping)",
         armSlim: "Slim (Low inertia, good for low-sens precision)",
         armNormal: "Normal (Standard muscle/fat mass)",
         armHeavy: "Heavy (Weight & tissues physically absorb micro-jitters)",
+        labelNeuro: "5. Fine Motor Skills / Neural Traits",
+        neuro1: "Stage 1: Ultra Fine Motor", neuro2: "Stage 2: Fine Motor", neuro3: "Stage 3: Normal Balance", neuro4: "Stage 4: Slight Jitters", neuro5: "Stage 5: High Tremors",
         labelWeight: "6. Current Mouse Weight", weightUltra: "Ultra-Light (40g-55g)", weightStandard: "Standard-Light (58g-65g)", weightMid: "Mid-Heavy (70g-85g)", weightHeavy: "Heavy Weight (90g-105g)", weightUltraheavy: "Ultra-Heavy (110g+)",
         labelPivot: "7. Main Aiming Pivot Point", pivotArm: "Arm / Elbow Pivot", pivotWrist: "Wrist Pivot + Arm", pivotFinger: "Fingertip / Wrist Pivot",
         calcBtn: "Calculate Optimal Sensitivity", resultSubtitle: "Your Theoretical Optimal Sensitivity", saveBtn: "💾 Save Result to My Page", shareBtn: "𝕏 Share Result on 𝕏",
@@ -362,12 +362,13 @@ const translations = {
         siteTitle: "롱케이프의 정리", subtitle: "생물학적·신경학적 파라미터 기반 최적 인게임 감도 진단",
         guestStatus: "게스트 이용 중", loginStatus: "로그인 중:", changeName: "(이름 변경)", authBtnLogin: "로그인 / 회원가입", authBtnLogout: "로그아웃",
         tabDiag: "감도 진단", tabCustom: "감도 메모", tabAdmin: "👑 개발자 패널", labelGame: "1. 타겟 게임 타이틀", labelDpi: "2-A. 마우스 DPI", labelDpiOpt: "(미입력 시 800 DPI)",
-        labelSens: "2-B. 현재 인게임 감도", labelSensOpt: "(선택)", labelHeight: "3. 신장 / 키 (cm)", labelNeuro: "4. 손재주·신경학적 특성",
-        neuro1: "1단계: 극도로 섬세함", neuro2: "2단계: 약간 섬세함", neuro3: "3단계: 보통", neuro4: "4단계: 약간 서툶", neuro5: "5단계: 많이 서툶",
-        labelArmThickness: "5. 팔의 두께 (물리적 관성 및 제동력)",
+        labelSens: "2-B. 현재 인게임 감도", labelSensOpt: "(선택)", labelHeight: "3. 신장 / 키 (cm)",
+        labelArmThickness: "4. 팔의 두께 (물리적 관성 및 제동력)",
         armSlim: "가늘음 (낮은 관성, 저감도 정밀 조작 유리)",
         armNormal: "보통 (표준적인 근육 및 지방량)",
         armHeavy: "두꺼움 (중량과 조직이 미세한 떨림을 물리적으로 흡수)",
+        labelNeuro: "5. 손재주·신경학적 특성",
+        neuro1: "1단계: 극도로 섬세함", neuro2: "2단계: 약간 섬세함", neuro3: "3단계: 보통", neuro4: "4단계: 약간 서툶", neuro5: "5단계: 많이 서툶",
         labelWeight: "6. 현재 사용하는 마우스 무게", weightUltra: "초경량 (40g~55g)", weightStandard: "표준 경량 (58g~65g)", weightMid: "미디엄 헤비 (70g~85g)", weightHeavy: "헤비웨イト (90g~105g)", weightUltraheavy: "울트라 헤비 (110g 이상)",
         labelPivot: "7. 메인 에임 조작 부위", pivotArm: "팔꿈치·팔 전체", pivotWrist: "손목 축 + 팔 병용", pivotFinger: "손가락·손목 중심",
         calcBtn: "최적 인게임 감도 계산하기", resultSubtitle: "당신의 이론상 최적 감도", saveBtn: "💾 이 진단 결과를 마이페이지에 저장하기", shareBtn: "𝕏 포스트로 연구에 협력하기",
@@ -445,7 +446,7 @@ async function fetchLatestConfig() {
             console.log("🤖 最新のAI学習済みパラメータをロードしました:", dynamicConfig);
         }
     } catch (e) {
-        console.warn("係数の取得に失敗しました。デフォルト値で動作します:", e);
+        console.warn("係수의取得に失敗しました。デフォルト値で動作します:", e);
     }
 }
 
@@ -635,7 +636,7 @@ function calculateEDPI() {
                     final_sens: rawCurrentSensInput.trim(),
                     height: height,          
                     dexterity: neuroVal,     
-                    play_style: armVal, // 腕の太さパラメータ
+                    play_style: armVal, 
                     mouse_weight: weightVal, 
                     aim_part: pivotVal,      
                     is_custom: false,
