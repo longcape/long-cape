@@ -8,6 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ロングケープの定理 | 最適インゲーム感度診断ツール</title>
     
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3570868393201833" crossorigin="anonymous"></script>
+
     <!-- PWA設定 -->
     <meta name="theme-color" content="#38bdf8">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -144,7 +147,7 @@
             <input type="number" id="height" value="173" min="130" max="220">
         </div>
 
-        <!-- 4. 腕の太さ（3段階物理モデル） [項目4と5を入れ替え] -->
+        <!-- 4. 腕の太さ（3段階物理モデル） -->
         <div class="form-group">
             <label for="armThickness" data-i18n="labelArmThickness">4. 腕の太さ（物理慣性・皮下脂肪の制振性）</label>
             <select id="armThickness">
@@ -154,7 +157,7 @@
             </select>
         </div>
 
-        <!-- 5. 手先の器用さ [項目4と5を入れ替え] -->
+        <!-- 5. 手先の器用さ -->
         <div class="form-group">
             <label for="neuro" data-i18n="labelNeuro">5. 手先の器用さ・神経的特性（生理的振戦の処理）</label>
             <select id="neuro">
@@ -270,7 +273,18 @@
     </div>
 
     <div class="adsense-container">
-        [ 広告枠: Google AdSense スペース ]
+        <!-- Google AdSense 広告ユニット -->
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3570868393201833"
+             crossorigin="anonymous"></script>
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-3570868393201833"
+             data-ad-slot="XXXXXXXXXX"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
     </div>
 </div>
 
@@ -331,7 +345,7 @@ const translations = {
         btnCustomSave: "感度メモを直接保存する", logsTitle: "📋 マイ感度ログ（保存履歴）",
         logsEmptyGuest: "保存された感度データはありません（要ログイン）", logsEmpty: "保存されたデータはまだありません。",
         proBanner: "🔒 保存数が上限（5件）に達しています。無制限保存および他人の体格データ閲覧にはProプランへのアップグレードが必要です。",
-        modalTitle: "アカウントログイン / 会員登録", modalSub: "保存機能のご利用には無料会員登録が必要です。",
+        modalTitle: "アカウントログイン / 회원가입", modalSub: "保存機能のご利用には無料会員登録が必要です。",
         modalUsername: "ユーザー名（ニックネーム）", modalOpt: "(新規登録時)", modalEmail: "メールアドレス",
         modalPassword: "パスワード", modalPassOpt: "(半角6文字以上)", modalBtnLogin: "ログイン",
         modalBtnSignup: "新規会員登録", modalBtnCancel: "キャンセル", tagDiag: "理論診断", tagCustom: "手動メモ",
@@ -369,14 +383,14 @@ const translations = {
         armHeavy: "두꺼움 (중량과 조직이 미세한 떨림을 물리적으로 흡수)",
         labelNeuro: "5. 손재주·신경학적 특성",
         neuro1: "1단계: 극도로 섬세함", neuro2: "2단계: 약간 섬세함", neuro3: "3단계: 보통", neuro4: "4단계: 약간 서툶", neuro5: "5단계: 많이 서툶",
-        labelWeight: "6. 현재 사용하는 마우스 무게", weightUltra: "초경량 (40g~55g)", weightStandard: "표준 경량 (58g~65g)", weightMid: "미디엄 헤비 (70g~85g)", weightHeavy: "헤비웨イト (90g~105g)", weightUltraheavy: "울트라 헤비 (110g 이상)",
+        labelWeight: "6. 현재 사용하는 마우스 무게", weightUltra: "초경량 (40g~55g)", weightStandard: "표준 경량 (58g~65g)", weightMid: "미디엄 헤비 (70g~85g)", weightHeavy: "헤비웨이트 (90g~105g)", weightUltraheavy: "울트라 헤비 (110g 이상)",
         labelPivot: "7. 메인 에임 조작 부위", pivotArm: "팔꿈치·팔 전체", pivotWrist: "손목 축 + 팔 병용", pivotFinger: "손가락·손목 중심",
         calcBtn: "최적 인게임 감도 계산하기", resultSubtitle: "당신의 이론상 최적 감도", saveBtn: "💾 이 진단 결과를 마이페이지에 저장하기", shareBtn: "𝕏 포스트로 연구에 협력하기",
         labelCustomGame: "대상 타이틀", labelCustomSens: "인게임 감도", labelCustomMemo: "메모 (선택)",
         labelCustomRating: "감도 만족도 / 평가",
         ratingGod: "🏆 인생 감도 (주요 감도)", ratingGood: "🧪 테스트 중 / 미세調整", ratingBad: "❌ 맞지 않음 / 폐기 (학습 제외)",
         btnCustomSave: "감도 메모 직접 저장하기", logsTitle: "📋 마이 감도 로그",
-        logsEmptyGuest: "저장된 감도 데이터가 없습니다 (로그인 필요)", logsEmpty: "저장된 데이터가 없습니다.", proBanner: "🔒 저장 한도(5건)에 도달했습니다.", modalTitle: "계정 로그인 / 회원가입", modalSub: "저장 기능을 이용하려면 무료 회원가입이 need.", modalUsername: "사용자 이름", modalOpt: "(신규 가입 시)", modalEmail: "이메일 주소", modalPassword: "비밀번호", modalPassOpt: "(6자 以上)", modalBtnLogin: "로그인", modalBtnSignup: "회원가입", modalBtnCancel: "キャンセル", tagDiag: "이론 진단", tagCustom: "수동 메모", calcDpiText: "• 계산 기준 DPI:"
+        logsEmptyGuest: "저장된 감도 데이터가 없습니다 (로그인 필요)", logsEmpty: "저장된 데이터가 없습니다.", proBanner: "🔒 저장 한도(5건)에 도달했습니다.", modalTitle: "계정 로그인 / 회원가입", modalSub: "저장 기능을 이용하려면 무료 회원가입이 필요합니다.", modalUsername: "사용자 이름", modalOpt: "(신규 가입 시)", modalEmail: "이메일 주소", modalPassword: "비밀번호", modalPassOpt: "(6자 이상)", modalBtnLogin: "로그인", modalBtnSignup: "회원가입", modalBtnCancel: "취소", tagDiag: "이론 진단", tagCustom: "수동 메모", calcDpiText: "• 계산 기준 DPI:"
     }
 };
 
@@ -446,7 +460,7 @@ async function fetchLatestConfig() {
             console.log("🤖 最新のAI学習済みパラメータをロードしました:", dynamicConfig);
         }
     } catch (e) {
-        console.warn("係수의取得に失敗しました。デフォルト値で動作します:", e);
+        console.warn("係数の取得に失敗しました。デフォルト値で動作します:", e);
     }
 }
 
