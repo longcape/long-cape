@@ -265,7 +265,7 @@
             <div style="font-size:0.85rem; color:var(--text-sub); text-align:center; padding:12px;" data-i18n="logsEmptyGuest">保存された感度データはありません（要ログイン）</div>
         </div>
         <div id="proBanner" class="pro-banner" data-i18n="proBanner">
-            🔒 保存数が上限（5件）に達しています。無制限保存および他人の体格データ閲覧にはProプランへのアップグレードが必要です。
+            🔒 保存数が上限（5件）に達しています。新しいログを保存すると未ロックの古い順に自動更新されます。
         </div>
     </div>
 
@@ -729,13 +729,15 @@ async function saveCustomSens() {
     });
 }
 
-// ログの保存＆5件上限時のロック未設定最古ログ自動上書き処理
+// ログの保存＆5件上限時の論理上書き処理
 async function saveResultToSupabase(logData) {
     if (currentUser.email !== ADMIN_EMAIL) {
+        // アクティブ（削除されていない）ログのみを取得
         const { data: existingLogs } = await supabaseClient
             .from('calc_logs')
             .select('id, is_locked')
             .eq('user_id', currentUser.id)
+            .eq('is_deleted_by_user', false)
             .order('created_at', { ascending: true });
 
         if (existingLogs && existingLogs.length >= 5) {
@@ -746,7 +748,8 @@ async function saveResultToSupabase(logData) {
                 return;
             }
 
-            await supabaseClient.from('calc_logs').delete().eq('id', oldestUnlocked.id);
+            // DBに残しつつユーザー表示のみオフ（論理削除）
+            await supabaseClient.from('calc_logs').update({ is_deleted_by_user: true }).eq('id', oldestUnlocked.id);
         }
     }
 
@@ -763,7 +766,8 @@ async function saveResultToSupabase(logData) {
         is_custom: logData.isCustom,
         memo: logData.memo,
         rating: logData.rating || 'good',
-        is_locked: false
+        is_locked: false,
+        is_deleted_by_user: false
     }]);
 
     if (error) {
@@ -786,10 +790,12 @@ async function loadLogs() {
         return;
     }
 
+    // ユーザー表示用：is_deleted_by_user が false のものだけ取得
     const { data: logs, error } = await supabaseClient
         .from('calc_logs')
         .select('*')
         .eq('user_id', currentUser.id)
+        .eq('is_deleted_by_user', false)
         .order('created_at', { ascending: false });
 
     if (error || !logs) return;
@@ -839,12 +845,12 @@ async function toggleLock(logId, currentStatus) {
     else loadLogs();
 }
 
-// ログの手動削除
+// ログの論理削除（DB側には残す）
 async function deleteLog(logId) {
-    if (!confirm('この感度ログを削除しますか？')) return;
+    if (!confirm('この感度ログをマイページから削除しますか？')) return;
     const { error } = await supabaseClient
         .from('calc_logs')
-        .delete()
+        .update({ is_deleted_by_user: true })
         .eq('id', logId);
 
     if (error) alert('Error: ' + error.message);
@@ -856,6 +862,7 @@ async function loadAdminData() {
     const adminStats = document.getElementById('adminStats');
     if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
 
+    // 管理者は削除フラグ問わずすべての履歴を閲覧可能
     const { data: allLogs, error } = await supabaseClient
         .from('calc_logs')
         .select('*')
@@ -863,13 +870,14 @@ async function loadAdminData() {
 
     if (error) return;
 
-    adminStats.innerText = `Total Records: ${allLogs ? allLogs.length : 0}`;
+    adminStats.innerText = `Total Records (Including User Deleted): ${allLogs ? allLogs.length : 0}`;
 
     adminLogsList.innerHTML = allLogs.map(log => `
-        <div class="log-item" style="border-left: 3px solid var(--admin-color);">
+        <div class="log-item" style="border-left: 3px solid ${log.is_deleted_by_user ? '#ef4444' : 'var(--admin-color)'};">
             <div>
                 <strong>${log.game.toUpperCase()}</strong> [Rating: ${log.rating || 'good'}]
                 <span class="log-tag">${log.is_custom ? 'MEMO' : 'DIAG'}</span>
+                ${log.is_deleted_by_user ? '<span style="font-size:0.7rem; color:#ef4444; margin-left:4px;">(ユーザー削除済)</span>' : ''}
                 <div style="font-size:0.75rem; color:var(--text-sub);">
                     User: ${log.user_id ? log.user_id.slice(0, 8) + '...' : 'Guest'} | DPI: ${log.dpi}
                 </div>
