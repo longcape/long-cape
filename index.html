@@ -115,7 +115,6 @@
 
     <!-- TAB 1: 診断フォーム -->
     <div id="tabDiag" class="tab-content active">
-        <!-- 1. ターゲットゲームタイトル -->
         <div class="form-group">
             <label for="game" data-i18n="labelGame">1. ターゲットゲームタイトル</label>
             <select id="game">
@@ -129,7 +128,6 @@
             </select>
         </div>
 
-        <!-- 2. DPI & 現在のインゲーム感度 -->
         <div class="row">
             <div class="form-group">
                 <label for="currentDpi" data-i18n="labelDpi">2-A. マウスDPI <span class="optional-label" data-i18n="labelDpiOpt">(未入力時は800DPIで計算)</span></label>
@@ -141,13 +139,11 @@
             </div>
         </div>
 
-        <!-- 3. 身長 (cm) -->
         <div class="form-group">
             <label for="height" data-i18n="labelHeight">3. 身長 (cm)</label>
             <input type="number" id="height" value="173" min="130" max="220">
         </div>
 
-        <!-- 4. 腕の太さ -->
         <div class="form-group">
             <label for="armThickness" data-i18n="labelArmThickness">4. 腕の太さ（物理慣性・皮下脂肪の制振性）</label>
             <select id="armThickness">
@@ -157,7 +153,6 @@
             </select>
         </div>
 
-        <!-- 5. 手先の器用さ -->
         <div class="form-group">
             <label for="neuro" data-i18n="labelNeuro">5. 手先の器用さ・神経的特性（生理的振戦の処理）</label>
             <select id="neuro">
@@ -169,7 +164,6 @@
             </select>
         </div>
 
-        <!-- 6. 現在使用しているマウス重量 -->
         <div class="form-group">
             <label for="weight" data-i18n="labelWeight">6. 現在使用しているマウス重量</label>
             <select id="weight">
@@ -181,7 +175,6 @@
             </select>
         </div>
 
-        <!-- 7. メインのエイム操作部位 -->
         <div class="form-group">
             <label for="pivot" data-i18n="labelPivot">7. メインのエイム操作部位（エイムの支点）</label>
             <select id="pivot">
@@ -273,7 +266,6 @@
     </div>
 
     <div class="adsense-container">
-        <!-- Google AdSense 広告ユニット -->
         <ins class="adsbygoogle"
              style="display:block"
              data-ad-client="ca-pub-3570868393201833"
@@ -668,7 +660,6 @@ function calculateEDPI() {
     document.getElementById('xShareBtn').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
     document.getElementById('resultBox').style.display = 'block';
 
-    // 自動収集機能（匿名データ送信）
     const rawCurrentSensInput = document.getElementById('currentSens').value;
     if (rawCurrentSensInput && rawCurrentSensInput.trim() !== '') {
         supabaseClient
@@ -690,15 +681,9 @@ function calculateEDPI() {
                 }
             ])
             .then(response => {
-                if (response.error) {
-                    console.error('匿名データの自動送信エラー:', response.error.message);
-                } else {
-                    console.log('匿名データを自動送信しました（全パラメータ送信完了）');
-                }
+                if (response.error) console.error('匿名データの自動送信エラー:', response.error.message);
             })
-            .catch(err => {
-                console.error('通信エラー:', err);
-            });
+            .catch(err => console.error('通信エラー:', err));
     }
 }
 
@@ -823,11 +808,12 @@ async function loadLogs() {
         if (log.rating === 'god') ratingBadge = ' 🏆';
         else if (log.rating === 'bad') ratingBadge = ' ❌';
 
-        const lockIcon = log.is_locked ? '🔒' : '🔓';
-        const lockTitle = log.is_locked ? 'ロック解除' : '保護する';
+        const isLocked = !!log.is_locked;
+        const lockIcon = isLocked ? '🔒' : '🔓';
+        const lockTitle = isLocked ? 'ロック解除' : '保護する';
 
         return `
-            <div class="log-item" style="${log.is_locked ? 'border-color: var(--accent-color);' : ''}">
+            <div class="log-item" style="${isLocked ? 'border-color: var(--accent-color);' : ''}">
                 <div>
                     <strong>${log.game.toUpperCase()}</strong>${ratingBadge}
                     <span class="log-tag">${log.is_custom ? t.tagCustom : t.tagDiag}</span>
@@ -835,7 +821,7 @@ async function loadLogs() {
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <div style="font-size:1.4rem; font-weight:bold; color:var(--accent-color);">${log.final_sens}</div>
-                    <button onclick="toggleLock('${log.id}', ${log.is_locked})" title="${lockTitle}" style="background:none; border:none; cursor:pointer; font-size:1.1rem;">${lockIcon}</button>
+                    <button onclick="toggleLock('${log.id}', ${isLocked})" title="${lockTitle}" style="background:none; border:none; cursor:pointer; font-size:1.1rem;">${lockIcon}</button>
                     <button onclick="deleteLog('${log.id}')" title="削除" style="background:none; border:none; cursor:pointer; font-size:1rem; opacity:0.6;">🗑️</button>
                 </div>
             </div>
@@ -845,25 +831,36 @@ async function loadLogs() {
 
 // ロック状態のON/OFF切り替え
 async function toggleLock(logId, currentStatus) {
+    if (!currentUser) return;
+    const newStatus = !currentStatus;
     const { error } = await supabaseClient
         .from('calc_logs')
-        .update({ is_locked: !currentStatus })
-        .eq('id', logId);
+        .update({ is_locked: newStatus })
+        .eq('id', logId)
+        .eq('user_id', currentUser.id);
 
-    if (error) alert('Error: ' + error.message);
-    else loadLogs();
+    if (error) {
+        alert('ロック変更エラー: ' + error.message);
+    } else {
+        loadLogs();
+    }
 }
 
-// ログの論理削除（DB側には残す）
+// ログの論理削除（DB側には保持）
 async function deleteLog(logId) {
+    if (!currentUser) return;
     if (!confirm('この感度ログをマイページから削除しますか？')) return;
     const { error } = await supabaseClient
         .from('calc_logs')
         .update({ is_deleted_by_user: true })
-        .eq('id', logId);
+        .eq('id', logId)
+        .eq('user_id', currentUser.id);
 
-    if (error) alert('Error: ' + error.message);
-    else loadLogs();
+    if (error) {
+        alert('削除エラー: ' + error.message);
+    } else {
+        loadLogs();
+    }
 }
 
 async function loadAdminData() {
@@ -928,14 +925,12 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
-<!-- フッター（プライバシーポリシー・利用規約・お問い合わせ） -->
 <footer style="text-align: center; margin-top: 24px; padding-bottom: 24px; font-size: 0.8rem; color: var(--text-sub);">
     <a href="javascript:void(0)" onclick="openModal('privacyModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerPrivacy">プライバシーポリシー</a>
     <a href="javascript:void(0)" onclick="openModal('termsModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerTerms">利用規約</a>
     <a href="https://x.com/shizuo_lcesp" target="_blank" rel="noopener noreferrer" style="color: var(--text-sub); text-decoration: underline;" data-i18n="footerContact">お問い合わせ (𝕏)</a>
 </footer>
 
-<!-- プライバシーポリシー モーダル -->
 <div class="modal-overlay" id="privacyModal">
     <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
         <h3 style="margin-bottom:12px;" data-i18n="privacyTitle">プライバシーポリシー</h3>
@@ -949,7 +944,6 @@ if ('serviceWorker' in navigator) {
     </div>
 </div>
 
-<!-- 利用規約 モーダル -->
 <div class="modal-overlay" id="termsModal">
     <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
         <h3 style="margin-bottom:12px;" data-i18n="termsTitle">利用規約</h3>
