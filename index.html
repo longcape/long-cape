@@ -180,7 +180,7 @@
             <select id="pivot">
                 <option value="wrist" selected data-i18n="pivotWrist">手首</option>
                 <option value="arm" data-i18n="pivotArm">肘</option>
-                <option value="finger" data-i18n="pivotFinger">肩</option>
+                <option value="shoulder" data-i18n="pivotShoulder">肩</option>
             </select>
         </div>
 
@@ -323,7 +323,7 @@ const translations = {
         weightMid: "ミドル (70g〜85g)", weightHeavy: "ヘビーウェイト (90g〜105g)",
         weightUltraheavy: "ウルトラ・ヘビー (110g以上)",
         labelPivot: "7. エイムの支点",
-        pivotWrist: "手首", pivotArm: "肘", pivotFinger: "肩",
+        pivotWrist: "手首", pivotArm: "肘", pivotShoulder: "肩",
         calcBtn: "最適インゲーム感度を算出する", resultSubtitle: "あなたの理論上の最適感度",
         saveBtn: "💾 この診断結果をマイページに保存する", shareBtn: "𝕏 ポストして研究に協力",
         labelCustomGame: "対象タイトル", labelCustomSens: "インゲーム感度", labelCustomMemo: "メモ（任意）",
@@ -360,7 +360,7 @@ const translations = {
         labelNeuro: "5. Dexterity",
         neuro1: "Very Fine", neuro2: "Fine", neuro3: "Normal", neuro4: "Clumsy", neuro5: "Very Clumsy",
         labelWeight: "6. Current Mouse Weight", weightUltra: "Ultra-Light (40g-55g)", weightStandard: "Standard-Light (58g-65g)", weightMid: "Mid-Weight (70g-85g)", weightHeavy: "Heavy Weight (90g-105g)", weightUltraheavy: "Ultra-Heavy (110g+)",
-        labelPivot: "7. Aiming Pivot Point", pivotWrist: "Wrist", pivotArm: "Elbow", pivotFinger: "Shoulder",
+        labelPivot: "7. Aiming Pivot Point", pivotWrist: "Wrist", pivotArm: "Elbow", pivotShoulder: "Shoulder",
         calcBtn: "Calculate Optimal Sensitivity", resultSubtitle: "Your Theoretical Optimal Sensitivity", saveBtn: "💾 Save Result to My Page", shareBtn: "𝕏 Share Result on 𝕏",
         labelCustomGame: "Target Game", labelCustomSens: "In-Game Sensitivity", labelCustomMemo: "Memo (Optional)",
         labelCustomRating: "Sensitivity Satisfaction / Rating",
@@ -389,7 +389,7 @@ const translations = {
         labelNeuro: "5. 손재주",
         neuro1: "매우 뛰어남", neuro2: "뛰어남", neuro3: "보통", neuro4: "서툶", neuro5: "매우 서툶",
         labelWeight: "6. 현재 사용하는 마우스 무게", weightUltra: "초경량 (40g~55g)", weightStandard: "표준 경량 (58g~65g)", weightMid: "미디엄 (70g~85g)", weightHeavy: "헤비웨イト (90g~105g)", weightUltraheavy: "울트라 헤비 (110g 이상)",
-        labelPivot: "7. 에임의 지점", pivotWrist: "손목", pivotArm: "팔꿈치", pivotFinger: "어깨",
+        labelPivot: "7. 에임의 지점", pivotWrist: "손목", pivotArm: "팔꿈치", pivotShoulder: "어깨",
         calcBtn: "최적 인게임 감도 계산하기", resultSubtitle: "당신의 이론상 최적 감도", saveBtn: "💾 이 진단 결과를 마이페이지에 저장하기", shareBtn: "𝕏 포스트로 연구에 협력하기",
         labelCustomGame: "대상 타이틀", labelCustomSens: "인게임 감도", labelCustomMemo: "메모 (선택)",
         labelCustomRating: "감도 만족도 / 평가",
@@ -405,7 +405,7 @@ const translations = {
         <p style="margin-bottom:8px;"><strong>4. 데이터 자동 수집</strong><br>서비스 향상 및 통계 데이터 작성을 위해 입력된 감도, 기기, 신체 특성 데이터가 개인을 식별할 수 없는 완전한 익명 형태로 자동 수집·기록될 수 있습니다.</p>`,
         termsTitle: "이용약관",
         termsBody: `<p style="margin-bottom:8px;"><strong>1. 서비스 목적</strong><br>본 툴은 게임 감도 계산을 돕는 보조 툴이며, 게임 내 성과를 보장하지 않습니다.</p>
-        <p style="margin-bottom:8px;"><strong>2. 면책 조항</strong><br>본 툴 이용으로 인해 발생한 직·간접적 손해에 대해 어떠한 책임도 지지 않습니다.</p>`
+        <p style="margin-bottom:8px;"><strong>2. 면책 조항</strong><br>본 툴 이용으로 인해 발생한 직·간접적 손해에 대해 어떠한責任도 지지 않습니다.</p>`
     }
 };
 
@@ -467,9 +467,9 @@ let dynamicConfig = {
     weight_mid_factor: 0.025,
     weight_heavy_factor: 0.06,
     weight_ultraheavy_factor: 0.10,
-    pivot_arm_factor: -0.08,
-    pivot_wrist_factor: 0.05,
-    pivot_finger_factor: 0.20
+    pivot_wrist_factor: 0.08,
+    pivot_arm_factor: 0.00,
+    pivot_shoulder_factor: -0.08
 };
 
 async function fetchLatestConfig() {
