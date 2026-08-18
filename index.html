@@ -1,602 +1,862 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+    <link rel="icon" href="/icon-192.png?v=3">
+    <link rel="apple-touch-icon" href="/icon-192.png?v=3">
+    <link rel="manifest" href="/manifest.json?v=3">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ロングケープの定理 | 人間工学FPS/TPS感度計算ツール</title>
-    <meta name="description" content="身体的特徴とプレイ環境から、あなたに最適なFPS/TPSゲーム内感度を割り出す人間工学診断ツール。">
+    <title>ロングケープの定理 | 最適インゲーム感度診断ツール</title>
     
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+    <!-- PWA設定 -->
+    <meta name="theme-color" content="#38bdf8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+    <!-- OGP 設定 -->
+    <meta property="og:title" content="ロングケープの定理 | 最適インゲーム感度診断">
+    <meta property="og:description" content="生物学的・神経的パラメータに基づく最適インゲーム感度診断＆マイ感度トラッカー">
+    <meta property="og:image" content="https://longcapenotieri.jp/ogp-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <!-- Google AdSense 審査コード -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3570868393201833" crossorigin="anonymous"></script>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
+            --bg-color: #0b0f19;
+            --card-bg: #131b2e;
+            --accent-color: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --admin-color: #f59e0b;
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
-            --accent-color: #38bdf8;
-            --accent-hover: #0284c7;
-            --border-color: #334155;
+            --border-color: #1e293b;
         }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); line-height: 1.6; padding: 20px; }
+        
+        .header-nav { max-width: 650px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .user-status { font-size: 0.85rem; color: var(--text-sub); display: flex; align-items: center; flex-wrap: wrap; flex: 1; min-width: 130px; }
+        .header-right { display: flex; gap: 6px; align-items: center; flex-shrink: 0; white-space: nowrap; }
+        .lang-select { padding: 5px 6px; font-size: 0.8rem; background: #0f172a; color: var(--text-main); border: 1px solid var(--accent-color); border-radius: 6px; cursor: pointer; outline: none; }
+        .btn-auth-open { background: transparent; border: 1px solid var(--accent-color); color: var(--accent-color); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-weight: bold; white-space: nowrap; font-size: 0.8rem; }
+        
+        .container { max-width: 650px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 32px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h1 { text-align: center; font-size: 1.8rem; margin-bottom: 8px; color: var(--text-main); }
+        .subtitle { text-align: center; font-size: 0.9rem; color: var(--text-sub); margin-bottom: 24px; }
+        
+        .mode-tabs { display: flex; gap: 8px; margin-bottom: 24px; background: #0f172a; padding: 4px; border-radius: 8px; flex-wrap: wrap; }
+        .tab-btn { flex: 1; min-width: 100px; padding: 10px; background: transparent; border: none; color: var(--text-sub); font-weight: bold; cursor: pointer; border-radius: 6px; transition: all 0.2s; text-align: center; font-size: 0.9rem; }
+        .tab-btn.active { background: var(--accent-color); color: #0b0f19; }
+        .tab-btn.admin-tab { color: var(--admin-color); border: 1px dashed var(--admin-color); }
+        .tab-btn.admin-tab.active { background: var(--admin-color); color: #0b0f19; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 6px; }
+        .optional-label { font-weight: normal; font-size: 0.8rem; color: var(--text-sub); margin-left: 6px; }
+        input[type="text"], input[type="number"], input[type="password"], select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-size: 0.95rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent-color); }
+        .row { display: flex; gap: 12px; }
+        .row .form-group { flex: 1; }
+        
+        .btn-primary { width: 100%; padding: 14px; background: var(--accent-color); color: #0b0f19; font-weight: bold; font-size: 1.05rem; border: none; border-radius: 8px; cursor: pointer; margin-top: 8px; transition: background 0.2s; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        
+        .result-box { margin-top: 28px; padding: 24px; background: #0f172a; border: 1px solid var(--accent-color); border-radius: 12px; text-align: center; display: none; }
+        .result-value { font-size: 2.8rem; font-weight: bold; color: var(--accent-color); margin: 8px 0; }
+        .result-desc { font-size: 0.85rem; color: var(--text-sub); text-align: left; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px; }
+        
+        .btn-save-log { width: 100%; padding: 12px; background: #1e293b; color: var(--accent-color); border: 1px solid var(--accent-color); border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+        .btn-save-log:hover { background: var(--accent-color); color: #0b0f19; }
+        
+        .action-buttons { display: flex; gap: 12px; margin-top: 16px; }
+        .btn-share { flex: 1; padding: 10px; background: #000; color: #fff; border: 1px solid #333; border-radius: 8px; font-weight: bold; text-decoration: none; display: inline-block; text-align: center; font-size: 0.85rem; }
+        
+        .logs-container { margin-top: 32px; border-top: 1px dashed var(--border-color); padding-top: 24px; }
+        .logs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .logs-title { font-size: 1.1rem; font-weight: bold; }
+        .log-item { background: #0f172a; border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .log-tag { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: #1e293b; color: var(--accent-color); margin-left: 6px; }
+        .pro-banner { background: #1e1b4b; border: 1px dashed #6366f1; padding: 12px; border-radius: 8px; font-size: 0.8rem; color: #c7d2fe; text-align: center; margin-top: 12px; display: none; }
+        .adsense-container { margin-top: 32px; padding: 16px; background: #0f172a; border: 1px dashed var(--border-color); border-radius: 8px; text-align: center; color: var(--text-sub); font-size: 0.8rem; }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            line-height: 1.6;
-            padding: 20px 12px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 600px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-
-        h1 {
-            font-size: 1.8rem;
-            color: var(--accent-color);
-            margin-bottom: 6px;
-        }
-
-        .subtitle {
-            font-size: 0.85rem;
-            color: var(--text-sub);
-        }
-
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        .form-label {
-            display: block;
-            font-weight: bold;
-            font-size: 0.95rem;
-            margin-bottom: 6px;
-        }
-
-        .step-num {
-            background: var(--accent-color);
-            color: #000;
-            font-size: 0.8rem;
-            padding: 2px 8px;
-            border-radius: 12px;
-            margin-right: 6px;
-        }
-
-        .form-control, .form-select {
-            width: 100%;
-            padding: 10px 12px;
-            background: #0f172a;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            color: var(--text-main);
-            font-size: 0.95rem;
-        }
-
-        .form-control:focus, .form-select:focus {
-            outline: none;
-            border-color: var(--accent-color);
-        }
-
-        .form-hint {
-            font-size: 0.75rem;
-            color: var(--text-sub);
-            margin-top: 4px;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 10px;
-        }
-
-        .form-row .form-group {
-            flex: 1;
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: 12px;
-            background: var(--accent-color);
-            color: #0f172a;
-            font-weight: bold;
-            font-size: 1rem;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .btn-submit:hover {
-            background: var(--accent-hover);
-        }
-
-        /* 結果エリア */
-        .result-box {
-            display: none;
-            background: #0f172a;
-            border: 1px solid var(--accent-color);
-            border-radius: 8px;
-            padding: 16px;
-            margin-top: 20px;
-            text-align: center;
-        }
-
-        .result-title {
-            font-size: 0.9rem;
-            color: var(--text-sub);
-        }
-
-        .result-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--accent-color);
-            margin: 4px 0;
-        }
-
-        .result-detail {
-            font-size: 0.85rem;
-            color: var(--text-main);
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px dashed var(--border-color);
-        }
-
-        /* モーダル */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .modal-body {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        /* 言語切り替えタブ */
-        .lang-tabs {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 12px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
-        }
-
-        .lang-tab {
-            background: none;
-            border: 1px solid var(--border-color);
-            color: var(--text-sub);
-            padding: 4px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.75rem;
-        }
-
-        .lang-tab.active {
-            background: var(--accent-color);
-            color: #0f172a;
-            font-weight: bold;
-            border-color: var(--accent-color);
-        }
-
-        /* フッター */
-        footer {
-            text-align: center;
-            margin-top: 32px;
-            padding: 24px 16px;
-            border-top: 1px solid var(--border-color);
-            font-size: 0.8rem;
-            color: var(--text-sub);
-        }
-
-        .streamer-box {
-            max-width: 550px;
-            margin: 0 auto 20px;
-            padding: 14px 16px;
-            background: #0f172a;
-            border: 1px dashed var(--border-color);
-            border-radius: 10px;
-            text-align: left;
-            line-height: 1.5;
-        }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 100; }
+        .modal-body { background: var(--card-bg); border: 1px solid var(--border-color); padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <header>
-        <h1>ロングケープの定理</h1>
-        <div class="subtitle">人間工学に基づく最適ゲーム感度シミュレーター</div>
-    </header>
-
-    <main class="card">
-        <form id="calcForm" onsubmit="event.preventDefault(); calculateSensitivity();">
-            
-            <!-- 1. ゲームタイトル -->
-            <div class="form-group">
-                <label class="form-label" for="gameTitle">
-                    <span class="step-num">1</span> ゲームタイトル
-                </label>
-                <select class="form-select" id="gameTitle" required>
-                    <option value="" disabled selected>選択してください</option>
-                    <option value="valorant">VALORANT</option>
-                    <option value="apex">Apex Legends</option>
-                    <option value="overwatch">Overwatch 2</option>
-                </select>
-            </div>
-
-            <!-- 2. DPI / 現在の感度（任意） -->
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label" for="dpi">
-                        <span class="step-num">2</span> マウスDPI
-                    </label>
-                    <input type="number" class="form-control" id="dpi" value="800" min="100" step="50" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="currentSens">
-                        現在の感度（任意）
-                    </label>
-                    <input type="number" class="form-control" id="currentSens" placeholder="例: 0.35" step="0.001" min="0">
-                </div>
-            </div>
-
-            <!-- 3. 身長 -->
-            <div class="form-group">
-                <label class="form-label" for="height">
-                    <span class="step-num">3</span> 身長 (cm)
-                </label>
-                <input type="number" class="form-control" id="height" placeholder="例: 172" min="120" max="220" required>
-                <div class="form-hint">※腕のリーチ（物理可動域）の基本ベースラインを計算します</div>
-            </div>
-
-            <!-- 4. 腕の太さ -->
-            <div class="form-group">
-                <label class="form-label" for="armType">
-                    <span class="step-num">4</span> 腕の太さ・体型
-                </label>
-                <select class="form-select" id="armType" required>
-                    <option value="" disabled selected>選択してください</option>
-                    <option value="slim">細め・ほっそり（重量・摩擦が小さく大振りが利く）</option>
-                    <option value="normal">標準（平均的な太さ・肉付き）</option>
-                    <option value="heavy">太め・がっしり（重量・擦れがあり手ブレを自然吸収）</option>
-                </select>
-            </div>
-
-            <!-- 5. 手先の器用さ -->
-            <div class="form-group">
-                <label class="form-label" for="dexterity">
-                    <span class="step-num">5</span> 手先の器用さ・微細操作
-                </label>
-                <select class="form-select" id="dexterity" required>
-                    <option value="" disabled selected>選択してください</option>
-                    <option value="high">高い（指先での細かいミリ単位の操作が得意）</option>
-                    <option value="normal">標準（平均的な操作感）</option>
-                    <option value="low">苦手・大雑把（細かい操作より安定感を重視したい）</option>
-                </select>
-            </div>
-
-            <!-- 6. 支点・フォーム -->
-            <div class="form-group">
-                <label class="form-label" for="posture">
-                    <span class="step-num">6</span> 主な支点・フォーム
-                </label>
-                <select class="form-select" id="posture" required>
-                    <option value="" disabled selected>選択してください</option>
-                    <option value="wrist">手首支点（手首のみ固定して操作）</option>
-                    <option value="forearm">前腕支点（肘より手前をデスクに乗せる）</option>
-                    <option value="elbow">肘・肩支点（肘全体を乗せて腕を大きく振る）</option>
-                </select>
-            </div>
-
-            <!-- 7. マウスパッドの大きさ -->
-            <div class="form-group">
-                <label class="form-label" for="mousePad">
-                    <span class="step-num">7</span> マウスパッドの大きさ
-                </label>
-                <select class="form-select" id="mousePad" required>
-                    <option value="" disabled selected>選択してください</option>
-                    <option value="small">Sサイズ（横幅 30cm未満）</option>
-                    <option value="medium">Mサイズ（横幅 30〜40cm）</option>
-                    <option value="large">L / XLサイズ（横幅 45cm以上）</option>
-                </select>
-            </div>
-
-            <button type="submit" class="btn-submit">最適感度を計算する</button>
-        </form>
-
-        <!-- 計算結果表示エリア -->
-        <div class="result-box" id="resultBox">
-            <div class="result-title">推奨ゲーム内感度 (In-Game Sens)</div>
-            <div class="result-value" id="resSens">-</div>
-            
-            <div class="result-title" style="margin-top: 10px;">目標 eDPI / 振り向き距離</div>
-            <div style="font-weight: bold; font-size: 1.1rem;" id="resEdpiCm">-</div>
-
-            <div class="result-detail" id="resAdvice">-</div>
-        </div>
-    </main>
-
-    <!-- フッター -->
-    <footer>
-        <div class="streamer-box">
-            <div style="font-weight: bold; color: var(--accent-color); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                <span>🎬</span> 動画配信・SNSでのご紹介について
-            </div>
-            <p style="font-size: 0.78rem; margin: 0; color: var(--text-sub);">
-                YouTube / Twitch等での配信・動画コンテンツ・𝕏（旧Twitter）での紹介・レビューは大歓迎です！事前連絡や許諾は不要ですので、概要欄やポスト内に当サイトのURL（<span style="color: var(--text-main); font-weight: bold;">https://longcapenotieri.jp</span>）を掲載の上、ご自由にご活用ください。
-            </p>
-        </div>
-
-        <div style="margin-bottom: 12px;">
-            <a href="javascript:void(0)" onclick="openModal('privacyModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;">プライバシーポリシー</a>
-            <a href="javascript:void(0)" onclick="openModal('termsModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;">利用規約</a>
-            <a href="https://x.com/shizuo_lcesp" target="_blank" rel="noopener noreferrer" style="color: var(--text-sub); text-decoration: underline;">お問い合わせ (𝕏)</a>
-        </div>
-
-        <div style="font-size: 0.75rem; opacity: 0.7;">
-            © 2026 ロングケープの定理 All Rights Reserved.
-        </div>
-    </footer>
+<div class="header-nav">
+    <div class="user-status" id="userStatus">ゲスト閲覧中</div>
+    <div class="header-right">
+        <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)">
+            <option value="ja">🇯🇵 日本語</option>
+            <option value="en">🇺🇸 English</option>
+            <option value="ko">🇰🇷 한국어</option>
+        </select>
+        <button class="btn-auth-open" id="authBtn" onclick="openAuthModal()" data-i18n="authBtnLogin">ログイン / 会員登録</button>
+    </div>
 </div>
+
+<div class="container">
+    <h1 data-i18n="siteTitle">ロングケープの定理</h1>
+    <p class="subtitle" data-i18n="subtitle">生物学的・神経的パラメータに基づく最適インゲーム感度診断</p>
+
+    <div class="mode-tabs">
+        <button class="tab-btn active" onclick="switchTab('diag')" data-i18n="tabDiag">感度診断</button>
+        <button class="tab-btn" onclick="switchTab('custom')" data-i18n="tabCustom">感度メモ</button>
+        <button class="tab-btn admin-tab" id="adminTabBtn" style="display:none;" onclick="switchTab('admin')" data-i18n="tabAdmin">👑 全データ閲覧(開発者)</button>
+    </div>
+
+    <!-- TAB 1: 診断フォーム -->
+    <div id="tabDiag" class="tab-content active">
+        <div class="form-group">
+            <label for="game" data-i18n="labelGame">1. ターゲットゲームタイトル</label>
+            <select id="game">
+                <option value="valo" selected>VALORANT / CS2</option>
+                <option value="apex">Apex Legends</option>
+                <option value="ow">Overwatch 2</option>
+                <option value="fn">Fortnite / フォートナイト</option>
+                <option value="delta">Delta Force / デルタフォース</option>
+                <option value="cod">CoD / アリーナ系</option>
+                <option value="pubg">PUBG / 広域バトロワ</option>
+            </select>
+        </div>
+
+        <div class="row">
+            <div class="form-group">
+                <label for="currentDpi" data-i18n="labelDpi">2-A. マウスDPI <span class="optional-label" data-i18n="labelDpiOpt">(未入力時は800DPIで計算)</span></label>
+                <input type="number" id="currentDpi" value="800" placeholder="800" min="100" max="12800">
+            </div>
+            <div class="form-group">
+                <label for="currentSens" data-i18n="labelSens">2-B. 現在のインゲーム感度 <span class="optional-label" data-i18n="labelSensOpt">(任意)</span></label>
+                <input type="number" id="currentSens" placeholder="0.215" step="0.001">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="height" data-i18n="labelHeight">3. 身長 (cm)</label>
+            <input type="number" id="height" value="173" min="130" max="220">
+        </div>
+
+        <div class="form-group">
+            <label for="neuro" data-i18n="labelNeuro">4. 手先の器用さ・神経的特性（生理的振戦の処理）</label>
+            <select id="neuro">
+                <option value="1" data-i18n="neuro1">ステージ1：超器用・指先微調整型</option>
+                <option value="2" data-i18n="neuro2">ステージ2：やや器用・細かい操作が得意</option>
+                <option value="3" data-i18n="neuro3">ステージ3：普通・標準的なバランス</option>
+                <option value="4" data-i18n="neuro4">ステージ4：やや不器用・細かいブレあり</option>
+                <option value="5" selected data-i18n="neuro5">ステージ5：かなり不器用・大きな筋肉で相殺必須</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="psych" data-i18n="labelPsych">5. プレイスタイル志向性</label>
+            <select id="psych">
+                <option value="1" selected data-i18n="psych1">直感型（自分の身体感覚を最優先）</option>
+                <option value="2" data-i18n="psych2">直感寄り</option>
+                <option value="3" data-i18n="psych3">精密寄り</option>
+                <option value="4" data-i18n="psych4">精密型（プロの完コピ重視）</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="weight" data-i18n="labelWeight">6. 現在使用しているマウス重量</label>
+            <select id="weight">
+                <option value="ultra" data-i18n="weightUltra">超軽量クラス (40g〜55g)</option>
+                <option value="standard" selected data-i18n="weightStandard">標準軽量クラス (58g〜65g)</option>
+                <option value="mid" data-i18n="weightMid">ミドルヘビー (70g〜85g)</option>
+                <option value="heavy" data-i18n="weightHeavy">ヘビーウェイト (90g〜105g)</option>
+                <option value="ultraheavy" data-i18n="weightUltraheavy">ウルトラ・ヘビー (110g以上)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="pivot" data-i18n="labelPivot">7. メインのエイム操作部位（エイムの支点）</label>
+            <select id="pivot">
+                <option value="arm" data-i18n="pivotArm">肘・腕全体主体（大筋肉操作 / 安定性重視）</option>
+                <option value="wrist" selected data-i18n="pivotWrist">手首支点＋腕併用（標準的バランス）</option>
+                <option value="finger" data-i18n="pivotFinger">指先・手首主体（小筋肉操作 / 高追従）</option>
+            </select>
+        </div>
+
+        <button class="btn-primary" onclick="calculateEDPI()" data-i18n="calcBtn">最適インゲーム感度を算出する</button>
+
+        <div id="resultBox" class="result-box">
+            <div class="subtitle" style="margin:0;" data-i18n="resultSubtitle">あなたの理論上の最適感度</div>
+            <div id="resultGameTitle" style="font-weight:bold; color:var(--accent-color);"></div>
+            <div id="resultValue" class="result-value">0.00</div>
+            
+            <div id="resultDesc" class="result-desc"></div>
+
+            <button class="btn-save-log" onclick="handleSaveClick()" data-i18n="saveBtn">💾 この診断結果をマイページに保存する</button>
+
+            <div class="action-buttons">
+                <a id="xShareBtn" href="#" target="_blank" class="btn-share" data-i18n="shareBtn">𝕏 ポストして研究に協力</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: 感度メモ -->
+    <div id="tabCustom" class="tab-content">
+        <div class="form-group">
+            <label for="customGame" data-i18n="labelCustomGame">対象タイトル</label>
+            <select id="customGame">
+                <option value="valo">VALORANT / CS2</option>
+                <option value="apex">Apex Legends</option>
+                <option value="ow">Overwatch 2</option>
+                <option value="fn">Fortnite</option>
+                <option value="delta">Delta Force</option>
+                <option value="cod">CoD</option>
+                <option value="pubg">PUBG</option>
+            </select>
+        </div>
+        <div class="row">
+            <div class="form-group">
+                <label for="customDpi">DPI</label>
+                <input type="number" id="customDpi" value="800">
+            </div>
+            <div class="form-group">
+                <label for="customSens" data-i18n="labelCustomSens">インゲーム感度</label>
+                <input type="number" id="customSens" placeholder="0.215" step="0.001">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="customRating" data-i18n="labelCustomRating">感度のしっくり度・評価</label>
+            <select id="customRating">
+                <option value="god" selected data-i18n="ratingGod">🏆 神感度（実戦で愛用中 / メイン）</option>
+                <option value="good" data-i18n="ratingGood">🧪 微調整中・テスト中</option>
+                <option value="bad" data-i18n="ratingBad">❌ 合わなかった・ボツ（学習除外）</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="customMemo" data-i18n="labelCustomMemo">メモ（任意）</label>
+            <input type="text" id="customMemo" placeholder="...">
+        </div>
+        <button class="btn-primary" onclick="saveCustomSens()" data-i18n="btnCustomSave">感度メモを直接保存する</button>
+    </div>
+
+    <!-- TAB 3: ADMIN専用 -->
+    <div id="tabAdmin" class="tab-content">
+        <div style="padding:16px; background:#1e1b4b; border:1px solid #6366f1; border-radius:8px; margin-bottom:20px;">
+            <h3 style="color:#a5b4fc; font-size:1rem; margin-bottom:4px;" data-i18n="adminPanelTitle">👑 開発者コントロールパネル</h3>
+            <p style="font-size:0.8rem; color:#c7d2fe;" data-i18n="adminPanelSub">全ユーザーの蓄積データがリアルタイムで一覧表示されています。</p>
+            <div style="font-size:0.85rem; font-weight:bold; color:var(--admin-color); margin-top:8px;" id="adminStats">読み込み中...</div>
+        </div>
+        <div id="adminLogsList">読み込み中...</div>
+    </div>
+
+    <div class="logs-container">
+        <div class="logs-header">
+            <div class="logs-title" data-i18n="logsTitle">📋 マイ感度ログ（保存履歴）</div>
+            <div style="font-size:0.8rem; color:var(--text-sub);" id="logCountText">無料枠: 0 / 5件</div>
+        </div>
+        <div id="logsList">
+            <div style="font-size:0.85rem; color:var(--text-sub); text-align:center; padding:12px;" data-i18n="logsEmptyGuest">保存された感度データはありません（要ログイン）</div>
+        </div>
+        <div id="proBanner" class="pro-banner" data-i18n="proBanner">
+            🔒 保存数が上限（5件）に達しています。無制限保存および他人の体格データ閲覧にはProプランへのアップグレードが必要です。
+        </div>
+    </div>
+
+    <div class="adsense-container">
+        [ 広告枠: Google AdSense スペース ]
+    </div>
+</div>
+
+<div class="modal-overlay" id="authModal">
+    <div class="modal-body">
+        <h3 style="margin-bottom:12px;" id="modalTitle" data-i18n="modalTitle">アカウントログイン / 会員登録</h3>
+        <p style="font-size:0.8rem; color:var(--text-sub); margin-bottom:16px;" data-i18n="modalSub">保存機能のご利用には無料会員登録が必要です。</p>
+        
+        <div class="form-group">
+            <label><span data-i18n="modalUsername">ユーザー名（ニックネーム）</span> <span class="optional-label" data-i18n="modalOpt">(新規登録時)</span></label>
+            <input type="text" id="authUsername" placeholder="例: エイムマスター">
+        </div>
+        <div class="form-group">
+            <label data-i18n="modalEmail">メールアドレス</label>
+            <input type="text" id="authEmail" placeholder="example@email.com">
+        </div>
+        <div class="form-group">
+            <label><span data-i18n="modalPassword">パスワード</span> <span class="optional-label" data-i18n="modalPassOpt">(半角6文字以上)</span></label>
+            <input type="password" id="authPassword" placeholder="******">
+        </div>
+        <button class="btn-primary" style="margin-bottom:8px;" onclick="handleAuth('login')" data-i18n="modalBtnLogin">ログイン</button>
+        <button class="btn-save-log" style="margin-top:0; width:100%;" onclick="handleAuth('signup')" data-i18n="modalBtnSignup">新規会員登録</button>
+        <button style="background:transparent; border:none; color:var(--text-sub); width:100%; margin-top:12px; cursor:pointer;" onclick="closeAuthModal()" data-i18n="modalBtnCancel">キャンセル</button>
+    </div>
+</div>
+
+<script>
+// --- 0. 多言語（i18n）辞書データ ---
+const translations = {
+    ja: {
+        siteTitle: "ロングケープの定理",
+        subtitle: "生物学的・神経的パラメータに基づく最適インゲーム感度診断",
+        guestStatus: "ゲスト閲覧中", loginStatus: "ログイン中:", changeName: "(名前変更)",
+        authBtnLogin: "ログイン / 会員登録", authBtnLogout: "ログアウト",
+        tabDiag: "感度診断", tabCustom: "感度メモ", tabAdmin: "👑 全データ閲覧(開発者)",
+        labelGame: "1. ターゲットゲームタイトル", labelDpi: "2-A. マウスDPI", labelDpiOpt: "(未入力時は800DPIで計算)",
+        labelSens: "2-B. 現在のインゲーム感度", labelSensOpt: "(任意)", labelHeight: "3. 身長 (cm)",
+        labelNeuro: "4. 手先の器用さ・神経的特性（生理的振戦の処理）",
+        neuro1: "ステージ1：超器用・指先微調整型", neuro2: "ステージ2：やや器用・細かい操作が得意",
+        neuro3: "ステージ3：普通・標準的なバランス", neuro4: "ステージ4：やや不器用・細かいブレあり",
+        neuro5: "ステージ5：かなり不器用・大きな筋肉で相殺必須",
+        labelPsych: "5. プレイスタイル志向性", psych1: "直感型（自分の身体感覚を最優先）",
+        psych2: "直感寄り", psych3: "精密寄り", psych4: "精密型（プロの完コピ重視）",
+        labelWeight: "6. 現在使用しているマウス重量",
+        weightUltra: "超軽量クラス (40g〜55g)", weightStandard: "標準軽量クラス (58g〜65g)",
+        weightMid: "ミドルヘビー (70g〜85g)", weightHeavy: "ヘビーウェイト (90g〜105g)",
+        weightUltraheavy: "ウルトラ・ヘビー (110g以上)",
+        labelPivot: "7. メインのエイム操作部位（エイムの支点）",
+        pivotArm: "肘・腕全体主体（大筋肉操作 / 安定性重視）", pivotWrist: "手首支点＋腕併用（標準的バランス）",
+        pivotFinger: "指先・手首主体（小筋肉操作 / 高追従）",
+        calcBtn: "最適インゲーム感度を算出する", resultSubtitle: "あなたの理論上の最適感度",
+        saveBtn: "💾 この診断結果をマイページに保存する", shareBtn: "𝕏 ポストして研究に協力",
+        labelCustomGame: "対象タイトル", labelCustomSens: "インゲーム感度", labelCustomMemo: "メモ（任意）",
+        labelCustomRating: "感度のしっくり度・評価",
+        ratingGod: "🏆 神感度（実戦で愛用中 / メイン）", ratingGood: "🧪 微調整中・テスト中", ratingBad: "❌ 合わなかった・ボツ（学習除外）",
+        btnCustomSave: "感度メモを直接保存する", logsTitle: "📋 マイ感度ログ（保存履歴）",
+        logsEmptyGuest: "保存された感度データはありません（要ログイン）", logsEmpty: "保存されたデータはまだありません。",
+        proBanner: "🔒 保存数が上限（5件）に達しています。無制限保存および他人の体格データ閲覧にはProプランへのアップグレードが必要です。",
+        modalTitle: "アカウントログイン / 会員登録", modalSub: "保存機能のご利用には無料会員登録が必要です。",
+        modalUsername: "ユーザー名（ニックネーム）", modalOpt: "(新規登録時)", modalEmail: "メールアドレス",
+        modalPassword: "パスワード", modalPassOpt: "(半角6文字以上)", modalBtnLogin: "ログイン",
+        modalBtnSignup: "新規会員登録", modalBtnCancel: "キャンセル", tagDiag: "理論診断", tagCustom: "手動メモ",
+        calcDpiText: "• 算出基準DPI:"
+    },
+    en: {
+        siteTitle: "Long Cape Theorem", subtitle: "Optimal In-Game Sensitivity Diagnosis Based on Biological & Neural Parameters",
+        guestStatus: "Guest Mode", loginStatus: "Logged in as:", changeName: "(Change Name)",
+        authBtnLogin: "Login / Sign Up", authBtnLogout: "Logout", tabDiag: "Diagnosis", tabCustom: "Memo", tabAdmin: "👑 Developer Panel",
+        labelGame: "1. Target Game Title", labelDpi: "2-A. Mouse DPI", labelDpiOpt: "(Default: 800 DPI)",
+        labelSens: "2-B. Current Sensitivity", labelSensOpt: "(Optional)", labelHeight: "3. Height (cm)",
+        labelNeuro: "4. Fine Motor Skills / Neural Traits",
+        neuro1: "Stage 1: Ultra Fine Motor", neuro2: "Stage 2: Fine Motor", neuro3: "Stage 3: Normal Balance", neuro4: "Stage 4: Slight Jitters", neuro5: "Stage 5: High Tremors",
+        labelPsych: "5. Playstyle Orientation", psych1: "Intuitive", psych2: "Lean Intuitive", psych3: "Lean Precise", psych4: "Precise",
+        labelWeight: "6. Current Mouse Weight", weightUltra: "Ultra-Light (40g-55g)", weightStandard: "Standard-Light (58g-65g)", weightMid: "Mid-Heavy (70g-85g)", weightHeavy: "Heavy Weight (90g-105g)", weightUltraheavy: "Ultra-Heavy (110g+)",
+        labelPivot: "7. Main Aiming Pivot Point", pivotArm: "Arm / Elbow Pivot", pivotWrist: "Wrist Pivot + Arm", pivotFinger: "Fingertip / Wrist Pivot",
+        calcBtn: "Calculate Optimal Sensitivity", resultSubtitle: "Your Theoretical Optimal Sensitivity", saveBtn: "💾 Save Result to My Page", shareBtn: "𝕏 Share Result on 𝕏",
+        labelCustomGame: "Target Game", labelCustomSens: "In-Game Sensitivity", labelCustomMemo: "Memo (Optional)",
+        labelCustomRating: "Sensitivity Satisfaction / Rating",
+        ratingGod: "🏆 Perfect (Main Sens)", ratingGood: "🧪 Testing / In Adjustment", ratingBad: "❌ Bad / Discarded (Excluded)",
+        btnCustomSave: "Save Sensitivity Memo", logsTitle: "📋 My Sensitivity Logs", logsEmptyGuest: "No saved data (Login required)", logsEmpty: "No saved data found.", proBanner: "🔒 Log limit reached (5 max). Upgrade to Pro plan for unlimited saves.",
+        modalTitle: "Account Login / Sign Up", modalSub: "Free account required to save settings.", modalUsername: "Username", modalOpt: "(Sign Up)", modalEmail: "Email", modalPassword: "Password", modalPassOpt: "(Min. 6 chars)", modalBtnLogin: "Login", modalBtnSignup: "Sign Up", modalBtnCancel: "Cancel", tagDiag: "Diagnosis", tagCustom: "Custom Memo", calcDpiText: "• Base DPI:"
+    },
+    ko: {
+        siteTitle: "롱케이프의 정리", subtitle: "생물학적·신경학적 파라미터 기반 최적 인게임 감도 진단",
+        guestStatus: "게스트 이용 중", loginStatus: "로그인 중:", changeName: "(이름 변경)", authBtnLogin: "로그인 / 회원가입", authBtnLogout: "로그아웃",
+        tabDiag: "감도 진단", tabCustom: "감도 메모", tabAdmin: "👑 개발자 패널", labelGame: "1. 타겟 게임 타이틀", labelDpi: "2-A. 마우스 DPI", labelDpiOpt: "(미입력 시 800 DPI)",
+        labelSens: "2-B. 현재 인게임 감도", labelSensOpt: "(선택)", labelHeight: "3. 신장 / 키 (cm)", labelNeuro: "4. 손재주·신경학적 특성",
+        neuro1: "1단계: 극도로 섬세함", neuro2: "2단계: 약간 섬세함", neuro3: "3단계: 보통", neuro4: "4단계: 약간 서툶", neuro5: "5단계: 많이 서툶",
+        psych1: "직관형", psych2: "직관 지향", psych3: "정밀 지향", psych4: "정밀형",
+        labelWeight: "6. 현재 사용하는 마우스 무게", weightUltra: "초경량 (40g~55g)", weightStandard: "표준 경량 (58g~65g)", weightMid: "미디엄 헤비 (70g~85g)", weightHeavy: "헤비웨이트 (90g~105g)", weightUltraheavy: "울트라 헤비 (110g 이상)",
+        labelPivot: "7. 메인 에임 조작 부위", pivotArm: "팔꿈치·팔 전체", pivotWrist: "손목 축 + 팔 병용", pivotFinger: "손가락·손목 중심",
+        calcBtn: "최적 인게임 감도 계산하기", resultSubtitle: "당신의 이론상 최적 감도", saveBtn: "💾 이 진단 결과를 마이페이지에 저장하기", shareBtn: "𝕏 포스트로 연구에 협력하기",
+        labelCustomGame: "대상 타이틀", labelCustomSens: "인게임 감도", labelCustomMemo: "메모 (선택)",
+        labelCustomRating: "감도 만족도 / 평가",
+        ratingGod: "🏆 인생 감도 (주요 감도)", ratingGood: "🧪 테스트 중 / 미세調整", ratingBad: "❌ 맞지 않음 / 폐기 (학습 제외)",
+        btnCustomSave: "감도 메모 직접 저장하기", logsTitle: "📋 마이 감도 로그",
+        logsEmptyGuest: "저장된 감도 데이터가 없습니다 (로그인 필요)", logsEmpty: "저장된 데이터가 없습니다.", proBanner: "🔒 저장 한도(5건)에 도달했습니다.", modalTitle: "계정 로그인 / 회원가입", modalSub: "저장 기능을 이용하려면 무료 회원가입이 need.", modalUsername: "사용자 이름", modalOpt: "(신규 가입 시)", modalEmail: "이메일 주소", modalPassword: "비밀번호", modalPassOpt: "(6자 以上)", modalBtnLogin: "로그인", modalBtnSignup: "회원가입", modalBtnCancel: "キャンセル", tagDiag: "이론 진단", tagCustom: "수동 메모", calcDpiText: "• 계산 기준 DPI:"
+    }
+};
+
+let defaultLang = 'ja';
+const userLang = (navigator.language || navigator.userLanguage || '').toLowerCase();
+if (userLang.startsWith('ko')) { defaultLang = 'ko'; }
+else if (userLang.startsWith('en')) { defaultLang = 'en'; }
+
+let currentLang = localStorage.getItem('appLang') || defaultLang;
+
+function changeLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('appLang', lang);
+    document.getElementById('langSelect').value = lang;
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key]) {
+            el.innerText = translations[lang][key];
+        }
+    });
+
+    updateUserStatusUI();
+    loadLogs();
+    if (currentDiagResult) { calculateEDPI(); }
+}
+
+// --- 1. Supabase Client & Dynamic Config ---
+const SITE_URL = 'https://longcapenotieri.jp';
+const ADMIN_EMAIL = 'rokikiroki@gmail.com';         
+
+const SUPABASE_URL = 'https://gmhayutirvdaesneulgr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_jC2SZ-N4rA_vhLhxd0_66g_1xhydPPt';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let currentDiagResult = null;
+
+let dynamicConfig = {
+    base_edpi: 230,
+    height_factor: 0.005,
+    neuro_1_factor: 0.25,
+    neuro_2_factor: 0.10,
+    neuro_3_factor: 0.00,
+    neuro_4_factor: -0.08,
+    neuro_5_factor: -0.16,
+    weight_ultra_factor: -0.04,
+    weight_standard_factor: 0.00,
+    weight_mid_factor: 0.025,
+    weight_heavy_factor: 0.06,
+    weight_ultraheavy_factor: 0.10,
+    pivot_arm_factor: -0.08,
+    pivot_wrist_factor: 0.05,
+    pivot_finger_factor: 0.20
+};
+
+async function fetchLatestConfig() {
+    try {
+        const { data, error } = await supabaseClient.from('app_config').select('*');
+        if (data && !error && data.length > 0) {
+            data.forEach(item => {
+                dynamicConfig[item.key] = parseFloat(item.value);
+            });
+            console.log("🤖 最新のAI学習済みパラメータをロードしました:", dynamicConfig);
+        }
+    } catch (e) {
+        console.warn("係数の取得に失敗しました。デフォルト値で動作します:", e);
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+    });
+}
+
+function formatSens(val) {
+    let rounded = Math.round(val * 1000) / 1000;
+    let thousandths = Math.abs(Math.round(rounded * 1000)) % 10;
+    return (thousandths === 0) ? rounded.toFixed(2) : rounded.toFixed(3);
+}
+
+function getSensDisplayString(sensVal, gameKey) {
+    if (gameKey === 'pubg') {
+        return Math.round(sensVal).toString();
+    }
+    const formatted = formatSens(parseFloat(sensVal));
+    return (gameKey === 'fn' || gameKey === 'ow') ? `${formatted}%` : formatted;
+}
+
+function updateUserStatusUI() {
+    const userStatus = document.getElementById('userStatus');
+    const authBtn = document.getElementById('authBtn');
+    const adminTabBtn = document.getElementById('adminTabBtn');
+    const t = translations[currentLang];
+
+    if (currentUser) {
+        const displayName = currentUser.user_metadata?.display_name || currentUser.email.split('@')[0];
+        userStatus.innerHTML = `${t.loginStatus} <strong style="color:var(--accent-color); margin: 0 4px;">${escapeHtml(displayName)}</strong> <button onclick="changeUsername()" style="background:none; border:none; color:var(--text-sub); cursor:pointer; text-decoration:underline; font-size:0.75rem; margin-left:4px;">${t.changeName}</button>`;
+        authBtn.innerText = t.authBtnLogout;
+        authBtn.onclick = () => supabaseClient.auth.signOut();
+        
+        if (currentUser.email === ADMIN_EMAIL) {
+            adminTabBtn.style.display = 'inline-block';
+        } else {
+            adminTabBtn.style.display = 'none';
+        }
+    } else {
+        userStatus.innerText = t.guestStatus;
+        authBtn.innerText = t.authBtnLogin;
+        authBtn.onclick = openAuthModal;
+        adminTabBtn.style.display = 'none';
+    }
+}
+
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    currentUser = session ? session.user : null;
+    updateUserStatusUI();
+    if (currentUser) {
+        await syncPendingResult();
+    }
+    loadLogs();
+});
+
+async function changeUsername() {
+    if (!currentUser) return;
+    const currentName = currentUser.user_metadata?.display_name || '';
+    const newName = prompt('New Username / ユーザー名 / 사용자 이름:', currentName);
+    
+    if (newName && newName.trim() !== '') {
+        const { error } = await supabaseClient.auth.updateUser({ data: { display_name: newName.trim() } });
+        if (error) alert('Error: ' + error.message);
+        else location.reload();
+    }
+}
+
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    if(tabName === 'diag') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('tabDiag').classList.add('active');
+    } else if(tabName === 'custom') {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('tabCustom').classList.add('active');
+    } else if(tabName === 'admin') {
+        document.getElementById('adminTabBtn').classList.add('active');
+        document.getElementById('tabAdmin').classList.add('active');
+        loadAdminData();
+    }
+}
+
+function openAuthModal() { document.getElementById('authModal').style.display = 'flex'; }
+function closeAuthModal() { document.getElementById('authModal').style.display = 'none'; }
+
+// --- 診断計算 ---
+function calculateEDPI() {
+    const baseEDPI = dynamicConfig.base_edpi;
+
+    const height = parseFloat(document.getElementById('height').value);
+    const bodyFactor = (170 - height) * dynamicConfig.height_factor;
+
+    const neuroVal = document.getElementById('neuro').value;
+    const neuroKey = `neuro_${neuroVal}_factor`;
+    const neuroFactor = (dynamicConfig[neuroKey] !== undefined) ? dynamicConfig[neuroKey] : 0.0;
+
+    const psychVal = parseInt(document.getElementById('psych').value);
+    let psychFactor = [0, 0.03, 0.01, -0.01, -0.03][psychVal];
+
+    const dpiInput = document.getElementById('currentDpi').value;
+    const currentDpi = (dpiInput && parseFloat(dpiInput) > 0) ? parseFloat(dpiInput) : 800;
+
+    const weightVal = document.getElementById('weight').value;
+    const weightKey = `weight_${weightVal}_factor`;
+    const weightFactor = (dynamicConfig[weightKey] !== undefined) ? dynamicConfig[weightKey] : 0.0;
+
+    const pivotVal = document.getElementById('pivot').value;
+    const pivotKey = `pivot_${pivotVal}_factor`;
+    const pivotFactor = (dynamicConfig[pivotKey] !== undefined) ? dynamicConfig[pivotKey] : 0.0;
+
+    let subTotal = baseEDPI * (1 + bodyFactor + neuroFactor + psychFactor + weightFactor + pivotFactor);
+
+    const gameVal = document.getElementById('game').value;
+    const gameNames = {
+        valo: 'VALORANT / CS2', apex: 'Apex Legends', ow: 'Overwatch 2',
+        fn: 'Fortnite', delta: 'Delta Force', cod: 'CoD', pubg: 'PUBG'
+    };
+
+    let gameFactor = 1.00;
+    let dev = (subTotal - 178.25) / 50.0;
+
+    if (gameVal === 'valo') gameFactor = 1.00;
+    else if (gameVal === 'apex') gameFactor = 1.40 + 0.50 * (Math.atan(dev) / (Math.PI / 2));
+    else if (gameVal === 'ow') gameFactor = 1.35 + 0.45 * (Math.atan(dev) / (Math.PI / 2));
+    else if (gameVal === 'fn') gameFactor = 1.30 + 0.40 * (Math.atan(dev) / (Math.PI / 2));
+    else if (gameVal === 'delta') gameFactor = 1.08;
+    else if (gameVal === 'cod') gameFactor = 1.08;
+    else if (gameVal === 'pubg') gameFactor = 0.90;
+
+    let finalEDPI = Math.round(subTotal * gameFactor);
+    let baseSens = (finalEDPI / currentDpi);
+    let rawSens = baseSens;
+
+    if (gameVal === 'apex') rawSens = baseSens * 3.18;
+    else if (gameVal === 'ow') rawSens = baseSens * 10.60;
+    else if (gameVal === 'fn') rawSens = baseSens * 12.60;
+    else if (gameVal === 'delta') rawSens = baseSens * 7.80;
+    else if (gameVal === 'cod') rawSens = baseSens * 10.60;
+    else if (gameVal === 'pubg') {
+        let ratio = baseSens / 0.30;
+        rawSens = Math.max(1, Math.min(100, Math.round(50 + 25 * Math.log2(ratio))));
+    }
+
+    let finalSensStr = getSensDisplayString(rawSens, gameVal);
+
+    currentDiagResult = {
+        game: gameVal, gameName: gameNames[gameVal], dpi: currentDpi,
+        finalSens: finalSensStr, height: height, dexterity: neuroVal, playStyle: psychVal, mouseWeight: weightVal, aimPart: pivotVal,
+        isCustom: false, memo: 'Long Cape Theory', rating: 'good'
+    };
+
+    const t = translations[currentLang];
+    document.getElementById('resultGameTitle').innerText = gameNames[gameVal];
+    document.getElementById('resultValue').innerText = finalSensStr;
+    document.getElementById('resultDesc').innerHTML = `${t.calcDpiText} ${currentDpi} DPI`;
+    
+    let shareText = "";
+    if (currentLang === 'ja') {
+        shareText = `【ロングケープの定理】\n${gameNames[gameVal]}の最適インゲーム感度は「${finalSensStr}」と診断されました！\n（計算基準DPI: ${currentDpi}）\n\n自分の身体特性から最適感度を診断👇\n${SITE_URL}\n\n#ロングケープの定理 #${gameVal.toUpperCase()}`;
+    } else if (currentLang === 'ko') {
+        shareText = `【롱케이프의 정리】\n${gameNames[gameVal]}의 최적 인게임 감도는 「${finalSensStr}」로 진단되었습니다!\n(계산 기준 DPI: ${currentDpi})\n\n신체 특성 기반 최적 감도 진단👇\n${SITE_URL}\n\n#롱케이프의정리 #${gameVal.toUpperCase()}`;
+    } else {
+        shareText = `[Long Cape Theorem]\nMy optimal sensitivity for ${gameNames[gameVal]} is "${finalSensStr}"!\n(Based on ${currentDpi} DPI)\n\nDiagnose your optimal sens based on physical traits👇\n${SITE_URL}\n\n#LongCapeTheorem #${gameVal.toUpperCase()}`;
+    }
+
+    document.getElementById('xShareBtn').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+    document.getElementById('resultBox').style.display = 'block';
+
+    // ----------------------------------------------------
+    // 【自動収集機能】全パラメータ（5項目追加）を裏側でSupabaseに匿名データ送信
+    // ----------------------------------------------------
+    const rawCurrentSensInput = document.getElementById('currentSens').value;
+    if (rawCurrentSensInput && rawCurrentSensInput.trim() !== '') {
+        supabaseClient
+            .from('calc_logs')
+            .insert([
+                {
+                    user_id: null, // 完全匿名のため null
+                    game: gameVal,
+                    dpi: currentDpi,
+                    final_sens: rawCurrentSensInput.trim(),
+                    height: height,          // 身長
+                    dexterity: neuroVal,     // 手先の器用さ
+                    play_style: psychVal,    // プレイスタイル
+                    mouse_weight: weightVal, // マウス重量
+                    aim_part: pivotVal,      // エイム操作部位
+                    is_custom: false,
+                    memo: '自動収集データ',
+                    rating: 'good'
+                }
+            ])
+            .then(response => {
+                if (response.error) {
+                    console.error('匿名データの自動送信エラー:', response.error.message);
+                } else {
+                    console.log('匿名データを自動送信しました（全パラメータ送信完了）');
+                }
+            })
+            .catch(err => {
+                console.error('通信エラー:', err);
+            });
+    }
+}
+
+function handleSaveClick() {
+    if (!currentDiagResult) return;
+    if (!currentUser) {
+        sessionStorage.setItem('pendingDiagResult', JSON.stringify(currentDiagResult));
+        openAuthModal();
+    } else {
+        saveResultToSupabase(currentDiagResult);
+    }
+}
+
+async function syncPendingResult() {
+    const pending = sessionStorage.getItem('pendingDiagResult');
+    if (pending && currentUser) {
+        const data = JSON.parse(pending);
+        await saveResultToSupabase(data);
+        sessionStorage.removeItem('pendingDiagResult');
+    }
+}
+
+async function saveCustomSens() {
+    if (!currentUser) {
+        openAuthModal();
+        return;
+    }
+    const game = document.getElementById('customGame').value;
+    const dpi = parseFloat(document.getElementById('customDpi').value) || 800;
+    const rawSens = parseFloat(document.getElementById('customSens').value);
+    const rating = document.getElementById('customRating').value;
+    const memo = document.getElementById('customMemo').value || 'Custom Memo';
+
+    if (isNaN(rawSens)) return;
+
+    const formattedSensStr = getSensDisplayString(rawSens, game);
+
+    await saveResultToSupabase({
+        game: game, dpi: dpi, finalSens: formattedSensStr, isCustom: true, memo: memo, rating: rating
+    });
+}
+
+async function saveResultToSupabase(logData) {
+    if (currentUser.email !== ADMIN_EMAIL) {
+        const { data: existingLogs } = await supabaseClient.from('calc_logs').select('id').eq('user_id', currentUser.id);
+        if (existingLogs && existingLogs.length >= 5) {
+            alert('Limit reached (5 max). / 上限(5件)に達しています。');
+            return;
+        }
+    }
+
+    const { error } = await supabaseClient.from('calc_logs').insert([{
+        user_id: currentUser.id,
+        game: logData.game,
+        dpi: logData.dpi,
+        final_sens: logData.finalSens,
+        height: logData.height || null,
+        dexterity: logData.dexterity || null,
+        play_style: logData.playStyle || null,
+        mouse_weight: logData.mouseWeight || null,
+        aim_part: logData.aimPart || null,
+        is_custom: logData.isCustom,
+        memo: logData.memo,
+        rating: logData.rating || 'good'
+    }]);
+
+    if (error) {
+        alert('Error: ' + error.message);
+    } else {
+        loadLogs();
+    }
+}
+
+async function loadLogs() {
+    const logsList = document.getElementById('logsList');
+    const logCountText = document.getElementById('logCountText');
+    const proBanner = document.getElementById('proBanner');
+    const t = translations[currentLang];
+
+    if (!currentUser) {
+        logsList.innerHTML = `<div style="font-size:0.85rem; color:var(--text-sub); text-align:center; padding:12px;">${t.logsEmptyGuest}</div>`;
+        logCountText.innerText = `0 / 5`;
+        proBanner.style.display = 'none';
+        return;
+    }
+
+    const { data: logs, error } = await supabaseClient
+        .from('calc_logs')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+    if (error || !logs) return;
+
+    const isDev = currentUser.email === ADMIN_EMAIL;
+    logCountText.innerText = isDev ? `DEV MODE` : `${logs.length} / 5`;
+    proBanner.style.display = (!isDev && logs.length >= 5) ? 'block' : 'none';
+
+    if (logs.length === 0) {
+        logsList.innerHTML = `<div style="font-size:0.85rem; color:var(--text-sub); text-align:center; padding:12px;">${t.logsEmpty}</div>`;
+        return;
+    }
+
+    logsList.innerHTML = logs.map(log => {
+        let ratingBadge = '';
+        if (log.rating === 'god') ratingBadge = ' 🏆';
+        else if (log.rating === 'bad') ratingBadge = ' ❌';
+
+        return `
+            <div class="log-item">
+                <div>
+                    <strong>${log.game.toUpperCase()}</strong>${ratingBadge}
+                    <span class="log-tag">${log.is_custom ? t.tagCustom : t.tagDiag}</span>
+                    <div style="font-size:0.8rem; color:var(--text-sub);">${log.memo || ''} (DPI: ${log.dpi})</div>
+                </div>
+                <div style="font-size:1.4rem; font-weight:bold; color:var(--accent-color);">${log.final_sens}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadAdminData() {
+    const adminLogsList = document.getElementById('adminLogsList');
+    const adminStats = document.getElementById('adminStats');
+    if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
+
+    const { data: allLogs, error } = await supabaseClient
+        .from('calc_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) return;
+
+    adminStats.innerText = `Total Records: ${allLogs ? allLogs.length : 0}`;
+
+    adminLogsList.innerHTML = allLogs.map(log => `
+        <div class="log-item" style="border-left: 3px solid var(--admin-color);">
+            <div>
+                <strong>${log.game.toUpperCase()}</strong> [Rating: ${log.rating || 'good'}]
+                <span class="log-tag">${log.is_custom ? 'MEMO' : 'DIAG'}</span>
+                <div style="font-size:0.75rem; color:var(--text-sub);">
+                    User: ${log.user_id ? log.user_id.slice(0, 8) + '...' : 'Guest'} | DPI: ${log.dpi}
+                </div>
+            </div>
+            <div style="font-size:1.4rem; font-weight:bold; color:var(--accent-color);">${log.final_sens}</div>
+        </div>
+    `).join('');
+}
+
+async function handleAuth(type) {
+    const email = document.getElementById('authEmail').value;
+    const password = document.getElementById('authPassword').value;
+    const username = document.getElementById('authUsername').value.trim();
+
+    if (!email || !password) return;
+
+    if (type === 'signup') {
+        const displayName = username || email.split('@')[0];
+        const { error } = await supabaseClient.auth.signUp({ 
+            email, password, options: { data: { display_name: displayName } }
+        });
+        if (error) alert('Error: ' + error.message);
+        else closeAuthModal();
+    } else {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) alert('Error: ' + error.message);
+        else closeAuthModal();
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    changeLanguage(currentLang);
+    fetchLatestConfig();
+});
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) { registration.unregister(); }
+    });
+}
+</script>
+
+<!-- フッター（プライバシーポリシー・利用規約・お問い合わせ） -->
+<footer style="text-align: center; margin-top: 24px; padding-bottom: 24px; font-size: 0.8rem; color: var(--text-sub);">
+    <a href="javascript:void(0)" onclick="openModal('privacyModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;">プライバシーポリシー</a>
+    <a href="javascript:void(0)" onclick="openModal('termsModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;">利用規約</a>
+    <a href="https://x.com/shizuo_lcesp" target="_blank" rel="noopener noreferrer" style="color: var(--text-sub); text-decoration: underline;">お問い合わせ (𝕏)</a>
+</footer>
 
 <!-- プライバシーポリシー モーダル -->
 <div class="modal-overlay" id="privacyModal">
-    <div class="modal-body">
-        <h3 style="margin-bottom:12px;">プライバシーポリシー / Privacy Policy</h3>
-        
-        <!-- 言語切り替えタブ -->
-        <div class="lang-tabs">
-            <button class="lang-tab active" onclick="switchLang('privacyModal', 'jp', event)">日本語</button>
-            <button class="lang-tab" onclick="switchLang('privacyModal', 'en', event)">English</button>
-            <button class="lang-tab" onclick="switchLang('privacyModal', 'kr', event)">한국어</button>
+    <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+        <h3 style="margin-bottom:12px;">プライバシーポリシー</h3>
+        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
+            <p style="margin-bottom:8px;"><strong>1. 個人情報の収集</strong><br>当サイトでは、ユーザー登録時にメールアドレスおよびユーザー名を取得します。</p>
+            <p style="margin-bottom:8px;"><strong>2. 利用目的</strong><br>取得した情報は、ログイン認証および個人データの保存管理のためにのみ使用します。</p>
+            <p style="margin-bottom:8px;"><strong>3. 広告について</strong><br>当サイトでは第三者配信の広告サービス（Google AdSense等）を利用する場合があります。Cookieを使用することでユーザーのアクセス情報に基づいた広告を配信します。</p>
+            <p style="margin-bottom:8px;"><strong>4. データの自動収集について</strong><br>当サービスでは、機能向上および統計データ（平均値等）作成のため、入力された感度・デバイス・体格等のデータを個人が特定できない完全な匿名形式で自動的に収集・記録する場合があります。</p>
         </div>
-
-        <!-- 日本語 -->
-        <div class="lang-content lang-jp" style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
-            <p style="margin-bottom:8px;"><strong>1. 個人情報の収集・利用目的</strong><br>当サイトでは、ユーザー登録時にメールアドレスおよびユーザー名を取得します。取得した情報は、ログイン認証および個人データの保存・管理のためにのみ使用します。</p>
-            <p style="margin-bottom:8px;"><strong>2. 広告の配信とCookieについて</strong><br>当サイトでは、第三者配信の広告サービス（Google AdSense）を利用しています。広告配信事業者は、ユーザーの興味に応じた広告を表示するためにCookie（クッキー）を使用することがあります。<br>Cookieを無効にする設定やGoogle AdSenseに関する詳細は<a href="https://policies.google.com/technologies/ads?hl=ja" target="_blank" rel="noopener noreferrer" style="color:var(--accent-color);">Googleポリシーと規約</a>をご確認ください。</p>
-            <p style="margin-bottom:8px;"><strong>3. データの自動収集・統計利用</strong><br>当サービスでは、機能向上およびアルゴリズム精度向上のため、入力された感度・デバイス・体格等のデータを個人が特定出来ない完全な匿名形式で自動的に収集・記録する場合があります。</p>
-            <p style="margin-bottom:8px;"><strong>4. アカウント・データの削除</strong><br>登録アカウントやデータの削除をご希望の場合は、お問い合わせ窓口（𝕏）までご連絡ください。</p>
-        </div>
-
-        <!-- English -->
-        <div class="lang-content lang-en" style="display:none; font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
-            <p style="margin-bottom:8px;"><strong>1. Collection & Use of Personal Data</strong><br>We collect email addresses and usernames upon registration solely for user authentication and data management.</p>
-            <p style="margin-bottom:8px;"><strong>2. Ads and Cookies</strong><br>This site uses Google AdSense. Third-party vendors use cookies to serve ads based on user visits. You can disable personalized advertising via Google Ad Settings.</p>
-            <p style="margin-bottom:8px;"><strong>3. Automatic Data Collection</strong><br>Non-personally identifiable usage data may be collected automatically to improve algorithm accuracy and tool functionality.</p>
-            <p style="margin-bottom:8px;"><strong>4. Account Deletion</strong><br>To request account or data deletion, please contact us via 𝕏 (Twitter).</p>
-        </div>
-
-        <!-- 한국어 -->
-        <div class="lang-content lang-kr" style="display:none; font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
-            <p style="margin-bottom:8px;"><strong>1. 개인정보 수집 및 이용</strong><br>회원가입 시 이메일 주소 및 사용자명을 수집하며, 로그인 인증 및 데이터 관리에만 사용됩니다.</p>
-            <p style="margin-bottom:8px;"><strong>2. 광고 및 쿠키 (Google AdSense)</strong><br>본 사이트는 Google AdSense를 사용합니다. 쿠키를 통한 맞춤형 광고 설정 및 자세한 내용은 Google 정책 페이지에서 확인하실 수 있습니다.</p>
-            <p style="margin-bottom:8px;"><strong>3. 데이터 자동 수집</strong><br>서비스 및 알고리즘 향상을 위해 개인을 식별할 수 없는 완전한 익명 형태로 이용 데이터를 수집할 수 있습니다.</p>
-            <p style="margin-bottom:8px;"><strong>4. 계정 및 데이터 삭제</strong><br>계정 또는 데이터 삭제를 원하실 경우 𝕏(Twitter) 문의 창구로 연락해 주시기 바랍니다.</p>
-        </div>
-
-        <button class="btn-submit" style="margin-top:16px;" onclick="closeModal('privacyModal')">閉じる / Close</button>
+        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('privacyModal')">閉じる</button>
     </div>
 </div>
 
 <!-- 利用規約 モーダル -->
 <div class="modal-overlay" id="termsModal">
-    <div class="modal-body">
-        <h3 style="margin-bottom:12px;">利用規約 / Terms of Service</h3>
-
-        <!-- 言語切り替えタブ -->
-        <div class="lang-tabs">
-            <button class="lang-tab active" onclick="switchLang('termsModal', 'jp', event)">日本語</button>
-            <button class="lang-tab" onclick="switchLang('termsModal', 'en', event)">English</button>
-            <button class="lang-tab" onclick="switchLang('termsModal', 'kr', event)">한국어</button>
+    <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+        <h3 style="margin-bottom:12px;">利用規約</h3>
+        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
+            <p style="margin-bottom:8px;"><strong>1. サービスの目的</strong><br>本ツールはゲームの感度計算を行う補助ツールであり、ゲーム内での成果を保証するものではありません。</p>
+            <p style="margin-bottom:8px;"><strong>2. 免責事項</strong><br>本ツールの利用により生じた直接的・間接的な損害について、一切の責任を負いかねます。</p>
         </div>
-
-        <!-- 日本語 -->
-        <div class="lang-content lang-jp" style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
-            <p style="margin-bottom:8px;"><strong>1. サービスの目的・免責</strong><br>本ツールはゲームの感度計算を行う補助ツールであり、ゲーム内での成果を保証するものではありません。本ツールの利用により生じた直接的・間接的な損害について、当サイトは一切の責任を負いません。</p>
-            <p style="margin-bottom:8px;"><strong>2. 禁止事項</strong><br>ユーザーは、以下の行為を行ってはなりません。<br>・不正アクセス、自動スクレイピング、サーバーに過度な負荷をかける行為<br>・他者のアカウント情報の無断利用<br>・サイト内のコンテンツや計算アルゴリズムの無断転載・複製</p>
-            <p style="margin-bottom:8px;"><strong>3. サービスの変更・停止</strong><br>当サイトは、ユーザーへの事前の通知なく、本サービスの内容変更、一時停止、または提供終了を行うことができるものとします。</p>
-        </div>
-
-        <!-- English -->
-        <div class="lang-content lang-en" style="display:none; font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
-            <p style="margin-bottom:8px;"><strong>1. Purpose & Disclaimer</strong><br>This tool is an auxiliary calculator for gaming sensitivity and does not guarantee in-game performance. We are not liable for any damages arising from tool usage.</p>
-            <p style="margin-bottom:8px;"><strong>2. Prohibited Acts</strong><br>Users shall not engage in unauthorized access, automated scraping, server overloading, unauthorized account use, or copying site content/algorithms.</p>
-            <p style="margin-bottom:8px;"><strong>3. Service Modifications</strong><br>We reserve the right to modify, suspend, or terminate the service at any time without prior notice.</p>
-        </div>
-
-        <!-- 한국어 -->
-        <div class="lang-content lang-kr" style="display:none; font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
-            <p style="margin-bottom:8px;"><strong>1. 서비스 목적 및 면책</strong><br>본 툴は 게임 감도 계산 보조 툴이며, 게임 내 성과를 보장하지 않습니다. 본 툴 이용으로 인한 손해에 대해 책임을 지지 않습니다.</p>
-            <p style="margin-bottom:8px;"><strong>2. 금지사항</strong><br>무단 접근, 자동 스크레이핑, 서버 과부하 유발, 타인의 계정 무단 사용, 콘텐츠 및 알고리즘 무단 복제를 금지합니다.</p>
-            <p style="margin-bottom:8px;"><strong>3. 서비스 변경 및 중단</strong><br>사전 통지 없이 서비스 내용을 변경, 일시 중단 또는 종료할 수 있습니다.</p>
-        </div>
-
-        <button class="btn-submit" style="margin-top:16px;" onclick="closeModal('termsModal')">閉じる / Close</button>
+        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('termsModal')">閉じる</button>
     </div>
 </div>
 
 <script>
-// 人間工学補正倍率マッピング
-
-// 4. 腕の太さ（慣性・擦れ抵抗）
-const ARM_TYPE_MULTIPLIERS = {
-    slim: 0.95,    // 細め：慣性が小さく大振りが利くためロー感度寄り（-5%）
-    normal: 1.00,  // 標準：基準値（0%）
-    heavy: 1.05    // 太め：慣性・摩擦を抑えるためハイ感度寄り（+5%）
-};
-
-// 5. 手先の器用さ（微細操作性）
-const DEXTERITY_MULTIPLIERS = {
-    high: 1.05,    // 器用：指先調整が得意なためハイ感度対応（+5%）
-    normal: 1.00,  // 標準：基準値（0%）
-    low: 0.95      // 大雑把：手ブレを防ぐためロー感度補正（-5%）
-};
-
-// 6. 支点・フォーム補正
-const POSTURE_MULTIPLIERS = {
-    wrist: 1.15,   // 手首支点：可動域が狭いためハイ感度寄り（+15%）
-    forearm: 1.00, // 前腕支点：標準（0%）
-    elbow: 0.88    // 肘支点：可動域が広いためロー感度寄り（-12%）
-};
-
-// 7. マウスパッドサイズ補正
-const PAD_MULTIPLIERS = {
-    small: 1.10,   // Sサイズ：物理スペース制限で感度を上げる（+10%）
-    medium: 1.00,  // Mサイズ：標準（0%）
-    large: 0.90    // L/XLサイズ：十分なスペースでロー感度許容（-10%）
-};
-
-// ゲームタイトル別設定（ベースeDPI・Yaw値）
-const GAME_CONFIGS = {
-    valorant: { baseEdpi: 280, yaw: 0.07 },
-    apex: { baseEdpi: 1200, yaw: 0.022 },
-    overwatch: { baseEdpi: 4000, yaw: 0.0066 }
-};
-
-/**
- * 感度計算メイン処理
- */
-function calculateSensitivity() {
-    const gameTitle = document.getElementById('gameTitle').value;
-    const dpi = parseFloat(document.getElementById('dpi').value) || 800;
-    const currentSens = parseFloat(document.getElementById('currentSens').value) || null;
-    const height = parseFloat(document.getElementById('height').value);
-    const armType = document.getElementById('armType').value;
-    const dexterity = document.getElementById('dexterity').value;
-    const posture = document.getElementById('posture').value;
-    const mousePad = document.getElementById('mousePad').value;
-
-    // バリデーション
-    if (!gameTitle || !height || !armType || !dexterity || !posture || !mousePad) {
-        alert('すべての必須項目を選択・入力してください。');
-        return;
-    }
-
-    const gameConfig = GAME_CONFIGS[gameTitle] || GAME_CONFIGS.valorant;
-
-    // 1. 身長ベースライン算出 (170cm標準)
-    const baseEdpi = gameConfig.baseEdpi * (170 / height);
-
-    // 2. 補正倍率の算出
-    const armMult = ARM_TYPE_MULTIPLIERS[armType] || 1.00;
-    const dexMult = DEXTERITY_MULTIPLIERS[dexterity] || 1.00;
-    const postureMult = POSTURE_MULTIPLIERS[posture] || 1.00;
-    const padMult = PAD_MULTIPLIERS[mousePad] || 1.00;
-
-    // 3. 総合目標eDPI計算
-    const totalMultiplier = armMult * dexMult * postureMult * padMult;
-    const targetEdpi = Math.round(baseEdpi * totalMultiplier);
-
-    // 4. ゲーム内感度 & 振り向き(cm/360°)算出
-    const inGameSens = (targetEdpi / dpi).toFixed(3);
-    const cm360 = ((360 * 2.54) / (dpi * inGameSens * gameConfig.yaw)).toFixed(1);
-
-    // 5. 画面描画
-    document.getElementById('resSens').textContent = inGameSens;
+function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+</script> 
     
-    let edpiText = `${targetEdpi} eDPI （振り向き約 ${cm360} cm）`;
-    if (currentSens) {
-        const currentEdpi = Math.round(dpi * currentSens);
-        const diff = targetEdpi - currentEdpi;
-        const diffText = diff > 0 ? `+${diff}` : `${diff}`;
-        edpiText += `<br><span style="font-size:0.85rem; color:var(--text-sub);">現在のeDPI: ${currentEdpi} (推奨との差: ${diffText})</span>`;
-    }
-    
-    document.getElementById('resEdpiCm').innerHTML = edpiText;
-    document.getElementById('resAdvice').textContent = getAdvice(armType, dexterity, posture);
-
-    document.getElementById('resultBox').style.display = 'block';
-}
-
-/**
- * 人間工学ワンポイント解説
- */
-function getAdvice(armType, dexterity, posture) {
-    let advice = '💡 ';
-    
-    if (posture === 'wrist') {
-        advice += '手首支点は可動域が狭いため高めの感度が有利です。';
-    } else if (posture === 'elbow') {
-        advice += '肘・肩支点は腕全体を使った大振りが利くためロー感度と高相性です。';
-    } else {
-        advice += '前腕支点を軸とした安定感のあるフォームです。';
-    }
-
-    if (armType === 'slim') {
-        advice += ' 腕の重量が軽く慣性が小さいため精密エイムに向いています。';
-    } else if (armType === 'heavy') {
-        advice += ' 腕のクッション性が自然にブレを吸収してくれます。';
-    }
-
-    if (dexterity === 'high') {
-        advice += ' 指先調整が得意なため、微妙なエイム微修正が活かせる設定です。';
-    }
-
-    return advice;
-}
-
-/**
- * モーダル制御
- */
-function openModal(modalId) {
-    document.getElementById(modalId).style.display = 'flex';
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
-
-/**
- * モーダル内言語切り替え機能
- */
-function switchLang(modalId, lang, event) {
-    const modal = document.getElementById(modalId);
-    modal.querySelectorAll('.lang-content').forEach(el => el.style.display = 'none');
-    modal.querySelector(`.lang-${lang}`).style.display = 'block';
-    modal.querySelectorAll('.lang-tab').forEach(tab => tab.classList.remove('active'));
-    event.target.classList.add('active');
-}
-
-window.onclick = function(event) {
-    if (event.target.classList.contains('modal-overlay')) {
-        event.target.style.display = 'none';
-    }
-};
-</script>
 </body>
 </html>
