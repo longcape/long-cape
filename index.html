@@ -77,7 +77,7 @@
         .logs-container { margin-top: 32px; border-top: 1px dashed var(--border-color); padding-top: 24px; }
         .logs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .logs-title { font-size: 1.1rem; font-weight: bold; }
-        .log-item { background: #0f172a; border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .log-item { background: #0f172a; border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; transition: border-color 0.2s; }
         .log-tag { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: #1e293b; color: var(--accent-color); margin-left: 6px; }
         .pro-banner { background: #1e1b4b; border: 1px dashed #6366f1; padding: 12px; border-radius: 8px; font-size: 0.8rem; color: #c7d2fe; text-align: center; margin-top: 12px; display: none; }
         .adsense-container { margin-top: 32px; padding: 16px; background: #0f172a; border: 1px dashed var(--border-color); border-radius: 8px; text-align: center; color: var(--text-sub); font-size: 0.8rem; }
@@ -330,7 +330,7 @@ const translations = {
         ratingGod: "🏆 神感度（実戦で愛用中 / メイン）", ratingGood: "🧪 微調整中・テスト中", ratingBad: "❌ 合わなかった・ボツ（学習除外）",
         btnCustomSave: "感度メモを直接保存する", logsTitle: "📋 マイ感度ログ（保存履歴）",
         logsEmptyGuest: "保存された感度データはありません（要ログイン）", logsEmpty: "保存されたデータはまだありません。",
-        proBanner: "🔒 保存数が上限（5件）に達しています。無制限保存および他人の体格データ閲覧にはProプランへのアップグレードが必要です。",
+        proBanner: "🔒 保存数が上限（5件）に達しています。新しいログを保存すると未ロックの古い順に自動更新されます。",
         modalTitle: "アカウントログイン / 会員登録", modalSub: "保存機能のご利用には無料会員登録が必要です。",
         modalUsername: "ユーザー名（ニックネーム）", modalOpt: "(新規登録時)", modalEmail: "メールアドレス",
         modalPassword: "パスワード", modalPassOpt: "(半角6文字以上)", modalBtnLogin: "ログイン",
@@ -364,7 +364,7 @@ const translations = {
         labelCustomGame: "Target Game", labelCustomSens: "In-Game Sensitivity", labelCustomMemo: "Memo (Optional)",
         labelCustomRating: "Sensitivity Satisfaction / Rating",
         ratingGod: "🏆 Perfect (Main Sens)", ratingGood: "🧪 Testing / In Adjustment", ratingBad: "❌ Bad / Discarded (Excluded)",
-        btnCustomSave: "Save Sensitivity Memo", logsTitle: "📋 My Sensitivity Logs", logsEmptyGuest: "No saved data (Login required)", logsEmpty: "No saved data found.", proBanner: "🔒 Log limit reached (5 max). Upgrade to Pro plan for unlimited saves.",
+        btnCustomSave: "Save Sensitivity Memo", logsTitle: "📋 My Sensitivity Logs", logsEmptyGuest: "No saved data (Login required)", logsEmpty: "No saved data found.", proBanner: "🔒 Log limit reached (5 max). New logs will overwrite the oldest unlocked log.",
         modalTitle: "Account Login / Sign Up", modalSub: "Free account required to save settings.", modalUsername: "Username", modalOpt: "(Sign Up)", modalEmail: "Email", modalPassword: "Password", modalPassOpt: "(Min. 6 chars)", modalBtnLogin: "Login", modalBtnSignup: "Sign Up", modalBtnCancel: "Cancel", tagDiag: "Diagnosis", tagCustom: "Custom Memo", calcDpiText: "• Base DPI:",
         footerPrivacy: "Privacy Policy", footerTerms: "Terms of Service", footerContact: "Contact Us (𝕏)", btnClose: "Close",
         privacyTitle: "Privacy Policy",
@@ -381,7 +381,7 @@ const translations = {
         guestStatus: "게스트 이용 중", loginStatus: "로그인 중:", changeName: "(이름 변경)", authBtnLogin: "로그인 / 회원가입", authBtnLogout: "로그아웃",
         tabDiag: "감도 진단", tabCustom: "감도 메모", tabAdmin: "👑 개발자 패널", labelGame: "1. 타겟 게임 타이틀", labelDpi: "2-A. 마우스 DPI", labelDpiOpt: "(미입력 시 800 DPI)",
         labelSens: "2-B. 현재 인게임 감도", labelSensOpt: "(선택)", labelHeight: "3. 신장 / 키 (cm)",
-        labelArmThickness: "4. 팔의 두께 (물리적 관성 및 제동력)",
+        labelArmThickness: "4. 팔의 두께 (물리적 관성 및 제동力)",
         armSlim: "가늘음 (낮은 관성, 저감도 정밀 조작 유리)",
         armNormal: "보통 (표준적인 근육 및 지방량)",
         armHeavy: "두꺼움 (중량과 조직이 미세한 떨림을 물리적으로 흡수)",
@@ -394,7 +394,8 @@ const translations = {
         labelCustomRating: "감도 만족도 / 평가",
         ratingGod: "🏆 인생 감도 (주요 감도)", ratingGood: "🧪 테스트 중 / 미세調整", ratingBad: "❌ 맞지 않음 / 폐기 (학습 제외)",
         btnCustomSave: "감도 메모 직접 저장하기", logsTitle: "📋 마이 감도 로그",
-        logsEmptyGuest: "저장된 감도 데이터가 없습니다 (로그인 필요)", logsEmpty: "저장된 데이터가 없습니다.", proBanner: "🔒 저장 한도(5건)에 도달했습니다.", modalTitle: "계정 로그인 / 회원가입", modalSub: "저장 기능을 이용하려면 무료 회원가입이 필요합니다.", modalUsername: "사용자 이름", modalOpt: "(신규 가입 시)", modalEmail: "이메일 주소", modalPassword: "비밀번호", modalPassOpt: "(6자 이상)", modalBtnLogin: "로그인", modalBtnSignup: "회원가입", modalBtnCancel: "취소", tagDiag: "이론 진단", tagCustom: "수동 메모", calcDpiText: "• 계산 기준 DPI:",
+        logsEmptyGuest: "저장된 감도 데이터가 없습니다 (로그인 필요)", logsEmpty: "저장된 데이터가 없습니다.", proBanner: "🔒 저장 한도(5건)에 도달했습니다. 새 로그 저장 시 잠금 해제된 오래된 데이터부터 자동 갱신됩니다.",
+        modalTitle: "계정 로그인 / 회원가입", modalSub: "저장 기능을 이용하려면 무료 회원가입이 필요합니다.", modalUsername: "사용자 이름", modalOpt: "(신규 가입 시)", modalEmail: "이메일 주소", modalPassword: "비밀번호", modalPassOpt: "(6자 이상)", modalBtnLogin: "로그인", modalBtnSignup: "회원가입", modalBtnCancel: "취소", tagDiag: "이론 진단", tagCustom: "수동 메모", calcDpiText: "• 계산 기준 DPI:",
         footerPrivacy: "개인정보 처리방침", footerTerms: "이용약관", footerContact: "문의하기 (𝕏)", btnClose: "닫기",
         privacyTitle: "개인정보 처리방침",
         privacyBody: `<p style="margin-bottom:8px;"><strong>1. 개인정보 수집</strong><br>본 사이트는 회원가입 시 이메일 주소 및 사용자 이름을 수집합니다.</p>
@@ -419,7 +420,6 @@ function changeLanguage(lang) {
     localStorage.setItem('appLang', lang);
     document.getElementById('langSelect').value = lang;
 
-    // テキストのみの置換
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[lang] && translations[lang][key]) {
@@ -427,7 +427,6 @@ function changeLanguage(lang) {
         }
     });
 
-    // HTML装飾を含む要素の置換（プライバシーポリシー等）
     document.querySelectorAll('[data-i18n-html]').forEach(el => {
         const key = el.getAttribute('data-i18n-html');
         if (translations[lang] && translations[lang][key]) {
@@ -657,9 +656,7 @@ function calculateEDPI() {
     document.getElementById('xShareBtn').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
     document.getElementById('resultBox').style.display = 'block';
 
-    // ----------------------------------------------------
-    // 【自動収集機能】全パラメータを裏側でSupabaseに匿名データ送信
-    // ----------------------------------------------------
+    // 自動収集機能（匿名データ送信）
     const rawCurrentSensInput = document.getElementById('currentSens').value;
     if (rawCurrentSensInput && rawCurrentSensInput.trim() !== '') {
         supabaseClient
@@ -732,12 +729,24 @@ async function saveCustomSens() {
     });
 }
 
+// ログの保存＆5件上限時のロック未設定最古ログ自動上書き処理
 async function saveResultToSupabase(logData) {
     if (currentUser.email !== ADMIN_EMAIL) {
-        const { data: existingLogs } = await supabaseClient.from('calc_logs').select('id').eq('user_id', currentUser.id);
+        const { data: existingLogs } = await supabaseClient
+            .from('calc_logs')
+            .select('id, is_locked')
+            .eq('user_id', currentUser.id)
+            .order('created_at', { ascending: true });
+
         if (existingLogs && existingLogs.length >= 5) {
-            alert('Limit reached (5 max). / 上限(5件)に達しています。');
-            return;
+            const oldestUnlocked = existingLogs.find(log => !log.is_locked);
+
+            if (!oldestUnlocked) {
+                alert('5件すべてがロックされています。新しいログを保存するには、いずれかのロックを解除してください。');
+                return;
+            }
+
+            await supabaseClient.from('calc_logs').delete().eq('id', oldestUnlocked.id);
         }
     }
 
@@ -753,7 +762,8 @@ async function saveResultToSupabase(logData) {
         aim_part: logData.aimPart || null,
         is_custom: logData.isCustom,
         memo: logData.memo,
-        rating: logData.rating || 'good'
+        rating: logData.rating || 'good',
+        is_locked: false
     }]);
 
     if (error) {
@@ -798,17 +808,47 @@ async function loadLogs() {
         if (log.rating === 'god') ratingBadge = ' 🏆';
         else if (log.rating === 'bad') ratingBadge = ' ❌';
 
+        const lockIcon = log.is_locked ? '🔒' : '🔓';
+        const lockTitle = log.is_locked ? 'ロック解除' : '保護する';
+
         return `
-            <div class="log-item">
+            <div class="log-item" style="${log.is_locked ? 'border-color: var(--accent-color);' : ''}">
                 <div>
                     <strong>${log.game.toUpperCase()}</strong>${ratingBadge}
                     <span class="log-tag">${log.is_custom ? t.tagCustom : t.tagDiag}</span>
                     <div style="font-size:0.8rem; color:var(--text-sub);">${log.memo || ''} (DPI: ${log.dpi})</div>
                 </div>
-                <div style="font-size:1.4rem; font-weight:bold; color:var(--accent-color);">${log.final_sens}</div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="font-size:1.4rem; font-weight:bold; color:var(--accent-color);">${log.final_sens}</div>
+                    <button onclick="toggleLock('${log.id}', ${log.is_locked})" title="${lockTitle}" style="background:none; border:none; cursor:pointer; font-size:1.1rem;">${lockIcon}</button>
+                    <button onclick="deleteLog('${log.id}')" title="削除" style="background:none; border:none; cursor:pointer; font-size:1rem; opacity:0.6;">🗑️</button>
+                </div>
             </div>
         `;
     }).join('');
+}
+
+// ロック状態のON/OFF切り替え
+async function toggleLock(logId, currentStatus) {
+    const { error } = await supabaseClient
+        .from('calc_logs')
+        .update({ is_locked: !currentStatus })
+        .eq('id', logId);
+
+    if (error) alert('Error: ' + error.message);
+    else loadLogs();
+}
+
+// ログの手動削除
+async function deleteLog(logId) {
+    if (!confirm('この感度ログを削除しますか？')) return;
+    const { error } = await supabaseClient
+        .from('calc_logs')
+        .delete()
+        .eq('id', logId);
+
+    if (error) alert('Error: ' + error.message);
+    else loadLogs();
 }
 
 async function loadAdminData() {
