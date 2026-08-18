@@ -405,7 +405,7 @@ const translations = {
         <p style="margin-bottom:8px;"><strong>4. 데이터 자동 수집</strong><br>서비스 향상 및 통계 데이터 작성을 위해 입력된 감도, 기기, 신체 특성 데이터가 개인을 식별할 수 없는 완전한 익명 형태로 자동 수집·기록될 수 있습니다.</p>`,
         termsTitle: "이용약관",
         termsBody: `<p style="margin-bottom:8px;"><strong>1. 서비스 목적</strong><br>본 툴은 게임 감도 계산을 돕는 보조 툴이며, 게임 내 성과를 보장하지 않습니다.</p>
-        <p style="margin-bottom:8px;"><strong>2. 면책 조항</strong><br>본 툴 이용으로 인해 발생한 직·간접적 손해에 대해 어떠한責任도 지지 않습니다.</p>`
+        <p style="margin-bottom:8px;"><strong>2. 면책 조항</strong><br>본 툴 이용으로 인해 발생한 직·간접적 손해에 대해 어떠한 책임도 지지 않습니다.</p>`
     }
 };
 
@@ -451,6 +451,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 let currentDiagResult = null;
 
+// ★バックアップ初期値を手首(+0.40)・肩(-0.20)に完全更新
 let dynamicConfig = {
     base_edpi: 230,
     height_factor: 0.005,
@@ -467,9 +468,9 @@ let dynamicConfig = {
     weight_mid_factor: 0.025,
     weight_heavy_factor: 0.06,
     weight_ultraheavy_factor: 0.10,
-    pivot_wrist_factor: 0.08,
-    pivot_arm_factor: 0.00,
-    pivot_shoulder_factor: -0.08
+    pivot_wrist_factor: 0.40,     // 手首 (+40%)
+    pivot_arm_factor: 0.00,       // 肘 (基準)
+    pivot_shoulder_factor: -0.20  // 肩 (-20%)
 };
 
 async function fetchLatestConfig() {
