@@ -8,9 +8,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ロングケープの定理 | 最適インゲーム感度診断ツール</title>
     
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3570868393201833" crossorigin="anonymous"></script>
-
     <!-- PWA設定 -->
     <meta name="theme-color" content="#38bdf8">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -147,7 +144,7 @@
             <input type="number" id="height" value="173" min="130" max="220">
         </div>
 
-        <!-- 4. 腕の太さ（3段階物理モデル） -->
+        <!-- 4. 腕の太さ -->
         <div class="form-group">
             <label for="armThickness" data-i18n="labelArmThickness">4. 腕の太さ（物理慣性・皮下脂肪の制振性）</label>
             <select id="armThickness">
@@ -181,7 +178,7 @@
             </select>
         </div>
 
-        <!-- 7. メインのエイム操作部位（エイムの支点） -->
+        <!-- 7. メインのエイム操作部位 -->
         <div class="form-group">
             <label for="pivot" data-i18n="labelPivot">7. メインのエイム操作部位（エイムの支点）</label>
             <select id="pivot">
@@ -273,18 +270,7 @@
     </div>
 
     <div class="adsense-container">
-        <!-- Google AdSense 広告ユニット -->
-        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3570868393201833"
-             crossorigin="anonymous"></script>
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-3570868393201833"
-             data-ad-slot="XXXXXXXXXX"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>
-             (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
+        [ 広告枠: Google AdSense スペース ]
     </div>
 </div>
 
@@ -345,11 +331,20 @@ const translations = {
         btnCustomSave: "感度メモを直接保存する", logsTitle: "📋 マイ感度ログ（保存履歴）",
         logsEmptyGuest: "保存された感度データはありません（要ログイン）", logsEmpty: "保存されたデータはまだありません。",
         proBanner: "🔒 保存数が上限（5件）に達しています。無制限保存および他人の体格データ閲覧にはProプランへのアップグレードが必要です。",
-        modalTitle: "アカウントログイン / 회원가입", modalSub: "保存機能のご利用には無料会員登録が必要です。",
+        modalTitle: "アカウントログイン / 会員登録", modalSub: "保存機能のご利用には無料会員登録が必要です。",
         modalUsername: "ユーザー名（ニックネーム）", modalOpt: "(新規登録時)", modalEmail: "メールアドレス",
         modalPassword: "パスワード", modalPassOpt: "(半角6文字以上)", modalBtnLogin: "ログイン",
         modalBtnSignup: "新規会員登録", modalBtnCancel: "キャンセル", tagDiag: "理論診断", tagCustom: "手動メモ",
-        calcDpiText: "• 算出基準DPI:"
+        calcDpiText: "• 算出基準DPI:",
+        footerPrivacy: "プライバシーポリシー", footerTerms: "利用規約", footerContact: "お問い合わせ (𝕏)", btnClose: "閉じる",
+        privacyTitle: "プライバシーポリシー",
+        privacyBody: `<p style="margin-bottom:8px;"><strong>1. 個人情報の収集</strong><br>当サイトでは、ユーザー登録時にメールアドレスおよびユーザー名を取得します。</p>
+        <p style="margin-bottom:8px;"><strong>2. 利用目的</strong><br>取得した情報は、ログイン認証および個人データの保存管理のためにのみ使用します。</p>
+        <p style="margin-bottom:8px;"><strong>3. 広告について</strong><br>当サイトでは第三者配信の広告サービス（Google AdSense等）を利用する場合があります。Cookieを使用することでユーザーのアクセス情報に基づいた広告を配信します。</p>
+        <p style="margin-bottom:8px;"><strong>4. データの自動収集について</strong><br>当サービスでは、機能向上および統計データ（平均値等）作成のため、入力された感度・デバイス・体格等のデータを個人が特定できない完全な匿名形式で自動的に収集・記録する場合があります。</p>`,
+        termsTitle: "利用規約",
+        termsBody: `<p style="margin-bottom:8px;"><strong>1. サービスの目的</strong><br>本ツールはゲームの感度計算を行う補助ツールであり、ゲーム内での成果を保証するものではありません。</p>
+        <p style="margin-bottom:8px;"><strong>2. 免責事項</strong><br>本ツールの利用により生じた直接的・間接的な損害について、一切の責任を負いかねます。</p>`
     },
     en: {
         siteTitle: "Long Cape Theorem", subtitle: "Optimal In-Game Sensitivity Diagnosis Based on Biological & Neural Parameters",
@@ -370,7 +365,16 @@ const translations = {
         labelCustomRating: "Sensitivity Satisfaction / Rating",
         ratingGod: "🏆 Perfect (Main Sens)", ratingGood: "🧪 Testing / In Adjustment", ratingBad: "❌ Bad / Discarded (Excluded)",
         btnCustomSave: "Save Sensitivity Memo", logsTitle: "📋 My Sensitivity Logs", logsEmptyGuest: "No saved data (Login required)", logsEmpty: "No saved data found.", proBanner: "🔒 Log limit reached (5 max). Upgrade to Pro plan for unlimited saves.",
-        modalTitle: "Account Login / Sign Up", modalSub: "Free account required to save settings.", modalUsername: "Username", modalOpt: "(Sign Up)", modalEmail: "Email", modalPassword: "Password", modalPassOpt: "(Min. 6 chars)", modalBtnLogin: "Login", modalBtnSignup: "Sign Up", modalBtnCancel: "Cancel", tagDiag: "Diagnosis", tagCustom: "Custom Memo", calcDpiText: "• Base DPI:"
+        modalTitle: "Account Login / Sign Up", modalSub: "Free account required to save settings.", modalUsername: "Username", modalOpt: "(Sign Up)", modalEmail: "Email", modalPassword: "Password", modalPassOpt: "(Min. 6 chars)", modalBtnLogin: "Login", modalBtnSignup: "Sign Up", modalBtnCancel: "Cancel", tagDiag: "Diagnosis", tagCustom: "Custom Memo", calcDpiText: "• Base DPI:",
+        footerPrivacy: "Privacy Policy", footerTerms: "Terms of Service", footerContact: "Contact Us (𝕏)", btnClose: "Close",
+        privacyTitle: "Privacy Policy",
+        privacyBody: `<p style="margin-bottom:8px;"><strong>1. Collection of Personal Information</strong><br>We collect email addresses and usernames during user registration.</p>
+        <p style="margin-bottom:8px;"><strong>2. Purpose of Use</strong><br>Collected information is used solely for login authentication and storing user data.</p>
+        <p style="margin-bottom:8px;"><strong>3. Advertisements</strong><br>We may use third-party advertising services (e.g., Google AdSense). Cookies may be used to serve ads based on user visits.</p>
+        <p style="margin-bottom:8px;"><strong>4. Automated Data Collection</strong><br>To improve services and generate statistical data, sensitivity, device, and physical trait inputs may be automatically collected in a completely anonymized form.</p>`,
+        termsTitle: "Terms of Service",
+        termsBody: `<p style="margin-bottom:8px;"><strong>1. Purpose of Service</strong><br>This tool is an auxiliary calculator for game sensitivity and does not guarantee in-game performance.</p>
+        <p style="margin-bottom:8px;"><strong>2. Disclaimer</strong><br>We are not responsible for any direct or indirect damages resulting from the use of this service.</p>`
     },
     ko: {
         siteTitle: "롱케이프의 정리", subtitle: "생물학적·신경학적 파라미터 기반 최적 인게임 감도 진단",
@@ -383,14 +387,23 @@ const translations = {
         armHeavy: "두꺼움 (중량과 조직이 미세한 떨림을 물리적으로 흡수)",
         labelNeuro: "5. 손재주·신경학적 특성",
         neuro1: "1단계: 극도로 섬세함", neuro2: "2단계: 약간 섬세함", neuro3: "3단계: 보통", neuro4: "4단계: 약간 서툶", neuro5: "5단계: 많이 서툶",
-        labelWeight: "6. 현재 사용하는 마우스 무게", weightUltra: "초경량 (40g~55g)", weightStandard: "표준 경량 (58g~65g)", weightMid: "미디엄 헤비 (70g~85g)", weightHeavy: "헤비웨이트 (90g~105g)", weightUltraheavy: "울트라 헤비 (110g 이상)",
+        labelWeight: "6. 현재 사용하는 마우스 무게", weightUltra: "초경량 (40g~55g)", weightStandard: "표준 경량 (58g~65g)", weightMid: "미디엄 헤비 (70g~85g)", weightHeavy: "헤비웨イト (90g~105g)", weightUltraheavy: "울트라 헤비 (110g 이상)",
         labelPivot: "7. 메인 에임 조작 부위", pivotArm: "팔꿈치·팔 전체", pivotWrist: "손목 축 + 팔 병용", pivotFinger: "손가락·손목 중심",
         calcBtn: "최적 인게임 감도 계산하기", resultSubtitle: "당신의 이론상 최적 감도", saveBtn: "💾 이 진단 결과를 마이페이지에 저장하기", shareBtn: "𝕏 포스트로 연구에 협력하기",
         labelCustomGame: "대상 타이틀", labelCustomSens: "인게임 감도", labelCustomMemo: "메모 (선택)",
         labelCustomRating: "감도 만족도 / 평가",
         ratingGod: "🏆 인생 감도 (주요 감도)", ratingGood: "🧪 테스트 중 / 미세調整", ratingBad: "❌ 맞지 않음 / 폐기 (학습 제외)",
         btnCustomSave: "감도 메모 직접 저장하기", logsTitle: "📋 마이 감도 로그",
-        logsEmptyGuest: "저장된 감도 데이터가 없습니다 (로그인 필요)", logsEmpty: "저장된 데이터가 없습니다.", proBanner: "🔒 저장 한도(5건)에 도달했습니다.", modalTitle: "계정 로그인 / 회원가입", modalSub: "저장 기능을 이용하려면 무료 회원가입이 필요합니다.", modalUsername: "사용자 이름", modalOpt: "(신규 가입 시)", modalEmail: "이메일 주소", modalPassword: "비밀번호", modalPassOpt: "(6자 이상)", modalBtnLogin: "로그인", modalBtnSignup: "회원가입", modalBtnCancel: "취소", tagDiag: "이론 진단", tagCustom: "수동 메모", calcDpiText: "• 계산 기준 DPI:"
+        logsEmptyGuest: "저장된 감도 데이터가 없습니다 (로그인 필요)", logsEmpty: "저장된 데이터가 없습니다.", proBanner: "🔒 저장 한도(5건)에 도달했습니다.", modalTitle: "계정 로그인 / 회원가입", modalSub: "저장 기능을 이용하려면 무료 회원가입이 필요합니다.", modalUsername: "사용자 이름", modalOpt: "(신규 가입 시)", modalEmail: "이메일 주소", modalPassword: "비밀번호", modalPassOpt: "(6자 이상)", modalBtnLogin: "로그인", modalBtnSignup: "회원가입", modalBtnCancel: "취소", tagDiag: "이론 진단", tagCustom: "수동 메모", calcDpiText: "• 계산 기준 DPI:",
+        footerPrivacy: "개인정보 처리방침", footerTerms: "이용약관", footerContact: "문의하기 (𝕏)", btnClose: "닫기",
+        privacyTitle: "개인정보 처리방침",
+        privacyBody: `<p style="margin-bottom:8px;"><strong>1. 개인정보 수집</strong><br>본 사이트는 회원가입 시 이메일 주소 및 사용자 이름을 수집합니다.</p>
+        <p style="margin-bottom:8px;"><strong>2. 이용 목적</strong><br>수집된 정보는 로그인 인증 및 개인 데이터 저장 관리를 위해서만 사용됩니다.</p>
+        <p style="margin-bottom:8px;"><strong>3. 광고 관련</strong><br>본 사이트는 제3자 광고 서비스(Google AdSense 등)를 이용할 수 있으며, 쿠키를 통해 방문 기록 기반 광고를 제공합니다.</p>
+        <p style="margin-bottom:8px;"><strong>4. 데이터 자동 수집</strong><br>서비스 향상 및 통계 데이터 작성을 위해 입력된 감도, 기기, 신체 특성 데이터가 개인을 식별할 수 없는 완전한 익명 형태로 자동 수집·기록될 수 있습니다.</p>`,
+        termsTitle: "이용약관",
+        termsBody: `<p style="margin-bottom:8px;"><strong>1. 서비스 목적</strong><br>본 툴은 게임 감도 계산을 돕는 보조 툴이며, 게임 내 성과를 보장하지 않습니다.</p>
+        <p style="margin-bottom:8px;"><strong>2. 면책 조항</strong><br>본 툴 이용으로 인해 발생한 직·간접적 손해에 대해 어떠한 책임도 지지 않습니다.</p>`
     }
 };
 
@@ -406,10 +419,19 @@ function changeLanguage(lang) {
     localStorage.setItem('appLang', lang);
     document.getElementById('langSelect').value = lang;
 
+    // テキストのみの置換
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[lang] && translations[lang][key]) {
             el.innerText = translations[lang][key];
+        }
+    });
+
+    // HTML装飾を含む要素の置換（プライバシーポリシー等）
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        const key = el.getAttribute('data-i18n-html');
+        if (translations[lang] && translations[lang][key]) {
+            el.innerHTML = translations[lang][key];
         }
     });
 
@@ -852,34 +874,34 @@ if ('serviceWorker' in navigator) {
 
 <!-- フッター（プライバシーポリシー・利用規約・お問い合わせ） -->
 <footer style="text-align: center; margin-top: 24px; padding-bottom: 24px; font-size: 0.8rem; color: var(--text-sub);">
-    <a href="javascript:void(0)" onclick="openModal('privacyModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;">プライバシーポリシー</a>
-    <a href="javascript:void(0)" onclick="openModal('termsModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;">利用規約</a>
-    <a href="https://x.com/shizuo_lcesp" target="_blank" rel="noopener noreferrer" style="color: var(--text-sub); text-decoration: underline;">お問い合わせ (𝕏)</a>
+    <a href="javascript:void(0)" onclick="openModal('privacyModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerPrivacy">プライバシーポリシー</a>
+    <a href="javascript:void(0)" onclick="openModal('termsModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerTerms">利用規約</a>
+    <a href="https://x.com/shizuo_lcesp" target="_blank" rel="noopener noreferrer" style="color: var(--text-sub); text-decoration: underline;" data-i18n="footerContact">お問い合わせ (𝕏)</a>
 </footer>
 
 <!-- プライバシーポリシー モーダル -->
 <div class="modal-overlay" id="privacyModal">
     <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
-        <h3 style="margin-bottom:12px;">プライバシーポリシー</h3>
-        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
+        <h3 style="margin-bottom:12px;" data-i18n="privacyTitle">プライバシーポリシー</h3>
+        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;" data-i18n-html="privacyBody">
             <p style="margin-bottom:8px;"><strong>1. 個人情報の収集</strong><br>当サイトでは、ユーザー登録時にメールアドレスおよびユーザー名を取得します。</p>
             <p style="margin-bottom:8px;"><strong>2. 利用目的</strong><br>取得した情報は、ログイン認証および個人データの保存管理のためにのみ使用します。</p>
             <p style="margin-bottom:8px;"><strong>3. 広告について</strong><br>当サイトでは第三者配信の広告サービス（Google AdSense等）を利用する場合があります。Cookieを使用することでユーザーのアクセス情報に基づいた広告を配信します。</p>
             <p style="margin-bottom:8px;"><strong>4. データの自動収集について</strong><br>当サービスでは、機能向上および統計データ（平均値等）作成のため、入力された感度・デバイス・体格等のデータを個人が特定できない完全な匿名形式で自動的に収集・記録する場合があります。</p>
         </div>
-        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('privacyModal')">閉じる</button>
+        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('privacyModal')" data-i18n="btnClose">閉じる</button>
     </div>
 </div>
 
 <!-- 利用規約 モーダル -->
 <div class="modal-overlay" id="termsModal">
     <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
-        <h3 style="margin-bottom:12px;">利用規約</h3>
-        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;">
+        <h3 style="margin-bottom:12px;" data-i18n="termsTitle">利用規約</h3>
+        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;" data-i18n-html="termsBody">
             <p style="margin-bottom:8px;"><strong>1. サービスの目的</strong><br>本ツールはゲームの感度計算を行う補助ツールであり、ゲーム内での成果を保証するものではありません。</p>
             <p style="margin-bottom:8px;"><strong>2. 免責事項</strong><br>本ツールの利用により生じた直接的・間接的な損害について、一切の責任を負いかねます。</p>
         </div>
-        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('termsModal')">閉じる</button>
+        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('termsModal')" data-i18n="btnClose">閉じる</button>
     </div>
 </div>
 
