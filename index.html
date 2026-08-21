@@ -337,7 +337,7 @@ const translations = {
         modalPassword: "パスワード", modalPassOpt: "(半角6文字以上)", modalBtnLogin: "ログイン",
         modalBtnSignup: "新規会員登録", modalBtnCancel: "キャンセル", tagDiag: "理論診断", tagCustom: "手動メモ",
         calcDpiText: "• 算出基準DPI:",
-        footerPrivacy: "プライバシーポリシー", footerTerms: "利用規約", footerContact: "お問い合わせ (𝕏)", btnClose: "閉じる",
+        footerAbout: "ロングケープの定理とは", footerPrivacy: "プライバシーポリシー", footerTerms: "利用規約", footerContact: "お問い合わせ (𝕏)", btnClose: "閉じる",
         privacyTitle: "プライバシーポリシー",
         privacyBody: `<p style="margin-bottom:8px;"><strong>1. 個人情報の収集</strong><br>当サイトでは、ユーザー登録時にメールアドレスおよびユーザー名を取得します。</p>
         <p style="margin-bottom:8px;"><strong>2. 利用目的</strong><br>取得した情報は、ログイン認証および個人データの保存管理のためにのみ使用します。</p>
@@ -367,7 +367,7 @@ const translations = {
         ratingGod: "🏆 Perfect (Main Sens)", ratingGood: "🧪 Testing / In Adjustment", ratingBad: "❌ Bad / Discarded (Excluded)",
         btnCustomSave: "Save Sensitivity Memo", logsTitle: "📋 My Sensitivity Logs", logsEmptyGuest: "No saved data (Login required)", logsEmpty: "No saved data found.", proBanner: "🔒 Log limit reached (5 max). New logs will overwrite the oldest unlocked log.",
         modalTitle: "Account Login / Sign Up", modalSub: "Free account required to save settings.", modalUsername: "Username", modalOpt: "(Sign Up)", modalEmail: "Email", modalPassword: "Password", modalPassOpt: "(Min. 6 chars)", modalBtnLogin: "Login", modalBtnSignup: "Sign Up", modalBtnCancel: "Cancel", tagDiag: "Diagnosis", tagCustom: "Custom Memo", calcDpiText: "• Base DPI:",
-        footerPrivacy: "Privacy Policy", footerTerms: "Terms of Service", footerContact: "Contact Us (𝕏)", btnClose: "Close",
+        footerAbout: "About Theorem", footerPrivacy: "Privacy Policy", footerTerms: "Terms of Service", footerContact: "Contact Us (𝕏)", btnClose: "Close",
         privacyTitle: "Privacy Policy",
         privacyBody: `<p style="margin-bottom:8px;"><strong>1. Collection of Personal Information</strong><br>We collect email addresses and usernames during user registration.</p>
         <p style="margin-bottom:8px;"><strong>2. Purpose of Use</strong><br>Collected information is used solely for login authentication and storing user data.</p>
@@ -397,9 +397,9 @@ const translations = {
         btnCustomSave: "감도 메모 직접 저장하기", logsTitle: "📋 마이 감도 로그",
         logsEmptyGuest: "저장된 감도 데이터가 없습니다 (로그인 필요)", logsEmpty: "저장된 데이터가 없습니다.", proBanner: "🔒 저장 한도(5건)에 도달했습니다. 새 로그 저장 시 잠금 해제된 오래된 데이터부터 자동 갱신됩니다.",
         modalTitle: "계정 로그인 / 회원가입", modalSub: "저장 기능을 이용하려면 무료 회원가입이 필요합니다.", modalUsername: "사용자 이름", modalOpt: "(신규 가입 시)", modalEmail: "이메일 주소", modalPassword: "비밀번호", modalPassOpt: "(6자 이상)", modalBtnLogin: "로그인", modalBtnSignup: "회원가입", modalBtnCancel: "취소", tagDiag: "이론 진단", tagCustom: "수동 메모", calcDpiText: "• 계산 기준 DPI:",
-        footerPrivacy: "개인정보 처리방침", footerTerms: "이용약관", footerContact: "문의하기 (𝕏)", btnClose: "닫기",
+        footerAbout: "롱케이프의 정리란", footerPrivacy: "개인정보 처리방침", footerTerms: "이용약관", footerContact: "문의하기 (𝕏)", btnClose: "닫기",
         privacyTitle: "개인정보 처리방침",
-        privacyBody: `<p style="margin-bottom:8px;"><strong>1. 개인정보 수집</strong><br>본 사이트는 회원가입 시 이메일 주소 및 사용자 이름을 수집합니다.</p>
+        privacyBody: `<p style="margin-bottom:8px;"><strong>1. 개인情報の収集</strong><br>본 사이트는 회원가입 시 이메일 주소 및 사용자 이름을 수집합니다.</p>
         <p style="margin-bottom:8px;"><strong>2. 이용 목적</strong><br>수집된 정보는 로그인 인증 및 개인 데이터 저장 관리를 위해서만 사용됩니다.</p>
         <p style="margin-bottom:8px;"><strong>3. 광고 관련</strong><br>본 사이트는 제3자 광고 서비스(Google AdSense 등)를 이용할 수 있으며, 쿠키를 통해 방문 기록 기반 광고를 제공합니다.</p>
         <p style="margin-bottom:8px;"><strong>4. 데이터 자동 수집</strong><br>서비스 향상 및 통계 데이터 작성을 위해 입력된 감도, 기기, 신체 특성 데이터가 개인을 식별할 수 없는 완전한 익명 형태로 자동 수집·기록될 수 있습니다.</p>`,
@@ -931,10 +931,26 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <footer style="text-align: center; margin-top: 24px; padding-bottom: 24px; font-size: 0.8rem; color: var(--text-sub);">
+    <a href="javascript:void(0)" onclick="openModal('aboutModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerAbout">ロングケープの定理とは</a>
     <a href="javascript:void(0)" onclick="openModal('privacyModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerPrivacy">プライバシーポリシー</a>
     <a href="javascript:void(0)" onclick="openModal('termsModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerTerms">利用規約</a>
     <a href="https://x.com/shizuo_lcesp" target="_blank" rel="noopener noreferrer" style="color: var(--text-sub); text-decoration: underline;" data-i18n="footerContact">お問い合わせ (𝕏)</a>
 </footer>
+
+<!-- ロングケープの定理とは モーダル -->
+<div class="modal-overlay" id="aboutModal">
+    <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+        <h3 style="margin-bottom:12px;">ロングケープの定理とは</h3>
+        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.6;">
+            <p style="margin-bottom:10px;">本ツールは、単なる感度変換ツールではありません。身長、腕の太さ、手先の器用さ、マウス重量、そしてエイムの支点（手首・肘・肩）という身体的・神経的パラメータを解析し、独自のアルゴリズムで「理論上の最適感度」を算出するエイム最適化エンジンです。</p>
+            <p style="margin-bottom:10px;"><strong>メモ帳としての活用と、開発の目的</strong><br>マイページ機能を使えば、自分の感度の変遷を記録する「感度メモ帳」としても自由にご活用いただけます。</p>
+            <p style="margin-bottom:10px;">長年培われたゲーマーの感覚（職人の域）には、まだこの計算式が完全に追いつけない部分も多々あります。しかし、この定理を長い年月をかけて完成させ、本当に信頼できる最適化システムへ昇華させたいと考えています。</p>
+            <p style="margin-bottom:10px;"><strong>データの活用と自動学習の仕組み</strong><br>皆様が保存してくださる「神感度」のデータは、毎週水曜日の深夜に自動集計され、システム全体の計算係数へと段階的に反映・アップデートされていきます。</p>
+            <p>集まるデータが増えれば増えるほど、定理の精度はより洗練されていきます。この壮大な実験と研究の精度を上げるため、ぜひあなたの「神感度」データをご提供ください。</p>
+        </div>
+        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('aboutModal')" data-i18n="btnClose">閉じる</button>
+    </div>
+</div>
 
 <div class="modal-overlay" id="privacyModal">
     <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
