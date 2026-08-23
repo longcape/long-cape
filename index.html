@@ -134,8 +134,8 @@
                 <input type="number" id="currentDpi" value="800" placeholder="800" min="100" max="12800" onchange="saveUserParams()">
             </div>
             <div class="form-group">
-                <label for="currentSens" data-i18n="labelSens">2-B. 現在のインゲーム感度 <span class="optional-label" data-i18n="labelSensOpt">(※入力でAI学習＆精度UP！)</span></label>
-                <input type="number" id="currentSens" placeholder="例: 0.215 (入力協力でAI向上)" step="0.001">
+                <label for="currentSens" data-i18n="labelSens">2-B. 現在のインゲーム感度 <span class="optional-label" data-i18n="labelSensOpt">(※現在の感度入力でAIが学習し精度が上がります)</span></label>
+                <input type="number" id="currentSens" placeholder="例: 0.215" step="0.001">
             </div>
         </div>
 
@@ -311,7 +311,7 @@ const translations = {
         authBtnLogin: "ログイン / 会員登録", authBtnLogout: "ログアウト",
         tabDiag: "感度診断", tabCustom: "感度メモ", tabAdmin: "👑 全データ閲覧(開発者)",
         labelGame: "1. ターゲットゲームタイトル", labelDpi: "2-A. マウスDPI", labelDpiOpt: "(未入力時は800DPIで計算)",
-        labelSens: "2-B. 現在のインゲーム感度", labelSensOpt: "(※入力でAI学習＆精度UP！)", labelHeight: "3. 身長 (cm)",
+        labelSens: "2-B. 現在のインゲーム感度", labelSensOpt: "(※現在の感度入力でAIが学習し精度が上がります)", labelHeight: "3. 身長 (cm)",
         labelArmThickness: "4. 腕の太さ",
         armSlim: "細め",
         armNormal: "普通",
@@ -358,7 +358,7 @@ const translations = {
         guestStatus: "Guest Mode", loginStatus: "Logged in as:", changeName: "(Change Name)",
         authBtnLogin: "Login / Sign Up", authBtnLogout: "Logout", tabDiag: "Diagnosis", tabCustom: "Memo", tabAdmin: "👑 Developer Panel",
         labelGame: "1. Target Game Title", labelDpi: "2-A. Mouse DPI", labelDpiOpt: "(Default: 800 DPI)",
-        labelSens: "2-B. Current Sensitivity", labelSensOpt: "(Required for AI Learning)", labelHeight: "3. Height (cm)",
+        labelSens: "2-B. Current Sensitivity", labelSensOpt: "(Entering your sens helps AI learning & accuracy)", labelHeight: "3. Height (cm)",
         labelArmThickness: "4. Arm Thickness",
         armSlim: "Slim",
         armNormal: "Normal",
@@ -393,7 +393,7 @@ const translations = {
         siteTitle: "롱케이프의 정리", subtitle: "생물학적·신경학적 파라미터 기반 최적 인게임 감도 진단",
         guestStatus: "게스트 이용 중", loginStatus: "로그인 중:", changeName: "(이름 변경)", authBtnLogin: "로그인 / 회원가입", authBtnLogout: "로그아웃",
         tabDiag: "감도 진단", tabCustom: "감도 메모", tabAdmin: "👑 개발자 패널", labelGame: "1. 타겟 게임 타이틀", labelDpi: "2-A. 마우스 DPI", labelDpiOpt: "(미입력 시 800 DPI)",
-        labelSens: "2-B. 현재 인게임 감도", labelSensOpt: "(※입력 시 AI 학습 및 정밀도 향상!)", labelHeight: "3. 신장 / 키 (cm)",
+        labelSens: "2-B. 현재 인게임 감도", labelSensOpt: "(※현재 감도를 입력하면 AI가 학습하여 정밀도가 향상됩니다)", labelHeight: "3. 신장 / 키 (cm)",
         labelArmThickness: "4. 팔 두께",
         armSlim: "가늘음",
         armNormal: "보통",
