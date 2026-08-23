@@ -453,7 +453,6 @@ function changeLanguage(lang) {
         }
     });
 
-    // モーダルのタイトルや本文も言語切替に対応
     const aboutTitleEl = document.getElementById('aboutModalTitle');
     const aboutBodyEl = document.getElementById('aboutModalBody');
     if (aboutTitleEl && translations[lang]) aboutTitleEl.innerText = translations[lang].aboutTitle;
@@ -636,7 +635,8 @@ function calculateEDPI() {
     let dev = (subTotal - 178.25) / 50.0;
 
     if (gameVal === 'valo') gameFactor = 1.00;
-    else if (gameVal === 'apex') gameFactor = 1.40 + 0.50 * (Math.atan(dev) / (Math.PI / 2));
+    // ★Apex専用の反転非線形ダイナミクスカーブ (実測値ベース 1.48 基準)
+    else if (gameVal === 'apex') gameFactor = 1.48 - 0.25 * (Math.atan(dev) / (Math.PI / 2));
     else if (gameVal === 'ow') gameFactor = 1.35 + 0.45 * (Math.atan(dev) / (Math.PI / 2));
     else if (gameVal === 'fn') gameFactor = 1.30 + 0.40 * (Math.atan(dev) / (Math.PI / 2));
     else if (gameVal === 'delta') gameFactor = 1.08;
@@ -650,6 +650,7 @@ function calculateEDPI() {
     if (gameVal === 'apex') rawSens = baseSens * 3.18;
     else if (gameVal === 'ow') rawSens = baseSens * 10.60;
     else if (gameVal === 'fn') rawSens = baseSens * 12.60;
+    // ★Delta Force基本倍率 (7.80 にFIX)
     else if (gameVal === 'delta') rawSens = baseSens * 7.80;
     else if (gameVal === 'cod') rawSens = baseSens * 10.60;
     else if (gameVal === 'pubg') {
