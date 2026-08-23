@@ -58,7 +58,7 @@
         
         .form-group { margin-bottom: 20px; }
         label { display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 6px; }
-        .optional-label { font-weight: normal; font-size: 0.8rem; color: var(--text-sub); margin-left: 6px; }
+        .optional-label { font-weight: normal; font-size: 0.8rem; color: var(--accent-color); margin-left: 6px; }
         input[type="text"], input[type="number"], input[type="password"], select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-size: 0.95rem; }
         input:focus, select:focus { outline: none; border-color: var(--accent-color); }
         .row { display: flex; gap: 12px; }
@@ -117,7 +117,7 @@
     <div id="tabDiag" class="tab-content active">
         <div class="form-group">
             <label for="game" data-i18n="labelGame">1. ターゲットゲームタイトル</label>
-            <select id="game">
+            <select id="game" onchange="saveUserParams()">
                 <option value="valo" selected>VALORANT / CS2</option>
                 <option value="apex">Apex Legends</option>
                 <option value="ow">Overwatch 2</option>
@@ -130,23 +130,23 @@
 
         <div class="row">
             <div class="form-group">
-                <label for="currentDpi" data-i18n="labelDpi">2-A. マウスDPI <span class="optional-label" data-i18n="labelDpiOpt">(未入力時は800DPIで計算)</span></label>
-                <input type="number" id="currentDpi" value="800" placeholder="800" min="100" max="12800">
+                <label for="currentDpi" data-i18n="labelDpi">2-A. マウスDPI <span class="optional-label" data-i18n="labelDpiOpt" style="color:var(--text-sub);">(未入力時は800DPIで計算)</span></label>
+                <input type="number" id="currentDpi" value="800" placeholder="800" min="100" max="12800" onchange="saveUserParams()">
             </div>
             <div class="form-group">
-                <label for="currentSens" data-i18n="labelSens">2-B. 現在のインゲーム感度 <span class="optional-label" data-i18n="labelSensOpt">(任意)</span></label>
-                <input type="number" id="currentSens" placeholder="0.215" step="0.001">
+                <label for="currentSens" data-i18n="labelSens">2-B. 現在のインゲーム感度 <span class="optional-label" data-i18n="labelSensOpt">(※入力でAI学習＆精度UP！)</span></label>
+                <input type="number" id="currentSens" placeholder="例: 0.215 (入力協力でAI向上)" step="0.001">
             </div>
         </div>
 
         <div class="form-group">
             <label for="height" data-i18n="labelHeight">3. 身長 (cm)</label>
-            <input type="number" id="height" value="173" min="130" max="220">
+            <input type="number" id="height" value="173" min="130" max="220" onchange="saveUserParams()">
         </div>
 
         <div class="form-group">
             <label for="armThickness" data-i18n="labelArmThickness">4. 腕の太さ</label>
-            <select id="armThickness">
+            <select id="armThickness" onchange="saveUserParams()">
                 <option value="slim" data-i18n="armSlim">細め</option>
                 <option value="normal" selected data-i18n="armNormal">普通</option>
                 <option value="heavy" data-i18n="armHeavy">太め</option>
@@ -155,7 +155,7 @@
 
         <div class="form-group">
             <label for="neuro" data-i18n="labelNeuro">5. 手先の器用さ</label>
-            <select id="neuro">
+            <select id="neuro" onchange="saveUserParams()">
                 <option value="1" data-i18n="neuro1">かなり器用</option>
                 <option value="2" data-i18n="neuro2">器用</option>
                 <option value="3" data-i18n="neuro3">普通</option>
@@ -166,7 +166,7 @@
 
         <div class="form-group">
             <label for="weight" data-i18n="labelWeight">6. 現在使用しているマウス重量</label>
-            <select id="weight">
+            <select id="weight" onchange="saveUserParams()">
                 <option value="ultra" data-i18n="weightUltra">超軽量クラス (40g〜55g)</option>
                 <option value="standard" selected data-i18n="weightStandard">標準軽量クラス (58g〜65g)</option>
                 <option value="mid" data-i18n="weightMid">ミドル (70g〜85g)</option>
@@ -177,7 +177,7 @@
 
         <div class="form-group">
             <label for="pivot" data-i18n="labelPivot">7. エイムの支点</label>
-            <select id="pivot">
+            <select id="pivot" onchange="saveUserParams()">
                 <option value="wrist" selected data-i18n="pivotWrist">手首</option>
                 <option value="arm" data-i18n="pivotArm">肘</option>
                 <option value="shoulder" data-i18n="pivotShoulder">肩</option>
@@ -284,7 +284,7 @@
         <p style="font-size:0.8rem; color:var(--text-sub); margin-bottom:16px;" data-i18n="modalSub">保存機能のご利用には無料会員登録が必要です。</p>
         
         <div class="form-group">
-            <label><span data-i18n="modalUsername">ユーザー名（ニックネーム）</span> <span class="optional-label" data-i18n="modalOpt">(新規登録時)</span></label>
+            <label><span data-i18n="modalUsername">ユーザー名（ニックネーム）</span> <span class="optional-label" data-i18n="modalOpt" style="color:var(--text-sub);">(新規登録時)</span></label>
             <input type="text" id="authUsername" placeholder="例: エイムマスター">
         </div>
         <div class="form-group">
@@ -292,7 +292,7 @@
             <input type="text" id="authEmail" placeholder="example@email.com">
         </div>
         <div class="form-group">
-            <label><span data-i18n="modalPassword">パスワード</span> <span class="optional-label" data-i18n="modalPassOpt">(半角6文字以上)</span></label>
+            <label><span data-i18n="modalPassword">パスワード</span> <span class="optional-label" data-i18n="modalPassOpt" style="color:var(--text-sub);">(半角6文字以上)</span></label>
             <input type="password" id="authPassword" placeholder="******">
         </div>
         <button class="btn-primary" style="margin-bottom:8px;" onclick="handleAuth('login')" data-i18n="modalBtnLogin">ログイン</button>
@@ -311,7 +311,7 @@ const translations = {
         authBtnLogin: "ログイン / 会員登録", authBtnLogout: "ログアウト",
         tabDiag: "感度診断", tabCustom: "感度メモ", tabAdmin: "👑 全データ閲覧(開発者)",
         labelGame: "1. ターゲットゲームタイトル", labelDpi: "2-A. マウスDPI", labelDpiOpt: "(未入力時は800DPIで計算)",
-        labelSens: "2-B. 現在のインゲーム感度", labelSensOpt: "(任意)", labelHeight: "3. 身長 (cm)",
+        labelSens: "2-B. 現在のインゲーム感度", labelSensOpt: "(※入力でAI学習＆精度UP！)", labelHeight: "3. 身長 (cm)",
         labelArmThickness: "4. 腕の太さ",
         armSlim: "細め",
         armNormal: "普通",
@@ -358,7 +358,7 @@ const translations = {
         guestStatus: "Guest Mode", loginStatus: "Logged in as:", changeName: "(Change Name)",
         authBtnLogin: "Login / Sign Up", authBtnLogout: "Logout", tabDiag: "Diagnosis", tabCustom: "Memo", tabAdmin: "👑 Developer Panel",
         labelGame: "1. Target Game Title", labelDpi: "2-A. Mouse DPI", labelDpiOpt: "(Default: 800 DPI)",
-        labelSens: "2-B. Current Sensitivity", labelSensOpt: "(Optional)", labelHeight: "3. Height (cm)",
+        labelSens: "2-B. Current Sensitivity", labelSensOpt: "(Required for AI Learning)", labelHeight: "3. Height (cm)",
         labelArmThickness: "4. Arm Thickness",
         armSlim: "Slim",
         armNormal: "Normal",
@@ -393,7 +393,7 @@ const translations = {
         siteTitle: "롱케이프의 정리", subtitle: "생물학적·신경학적 파라미터 기반 최적 인게임 감도 진단",
         guestStatus: "게스트 이용 중", loginStatus: "로그인 중:", changeName: "(이름 변경)", authBtnLogin: "로그인 / 회원가입", authBtnLogout: "로그아웃",
         tabDiag: "감도 진단", tabCustom: "감도 메모", tabAdmin: "👑 개발자 패널", labelGame: "1. 타겟 게임 타이틀", labelDpi: "2-A. 마우스 DPI", labelDpiOpt: "(미입력 시 800 DPI)",
-        labelSens: "2-B. 현재 인게임 감도", labelSensOpt: "(선택)", labelHeight: "3. 신장 / 키 (cm)",
+        labelSens: "2-B. 현재 인게임 감도", labelSensOpt: "(※입력 시 AI 학습 및 정밀도 향상!)", labelHeight: "3. 신장 / 키 (cm)",
         labelArmThickness: "4. 팔 두께",
         armSlim: "가늘음",
         armNormal: "보통",
@@ -496,6 +496,40 @@ let dynamicConfig = {
     pivot_shoulder_factor: -0.12  // 肩 (-12%)
 };
 
+// ★ユーザー入力パラメータの自動記憶・復元機能
+function saveUserParams() {
+    const params = {
+        height: document.getElementById('height').value,
+        armThickness: document.getElementById('armThickness').value,
+        neuro: document.getElementById('neuro').value,
+        weight: document.getElementById('weight').value,
+        pivot: document.getElementById('pivot').value,
+        currentDpi: document.getElementById('currentDpi').value,
+        game: document.getElementById('game').value
+    };
+    const key = currentUser ? `user_params_${currentUser.id}` : 'user_params_guest';
+    localStorage.setItem(key, JSON.stringify(params));
+}
+
+function loadUserParams() {
+    const key = currentUser ? `user_params_${currentUser.id}` : 'user_params_guest';
+    const saved = localStorage.getItem(key);
+    if (saved) {
+        try {
+            const params = JSON.parse(saved);
+            if (params.height) document.getElementById('height').value = params.height;
+            if (params.armThickness) document.getElementById('armThickness').value = params.armThickness;
+            if (params.neuro) document.getElementById('neuro').value = params.neuro;
+            if (params.weight) document.getElementById('weight').value = params.weight;
+            if (params.pivot) document.getElementById('pivot').value = params.pivot;
+            if (params.currentDpi) document.getElementById('currentDpi').value = params.currentDpi;
+            if (params.game) document.getElementById('game').value = params.game;
+        } catch(e) {
+            console.warn("パラメータ読み込みエラー:", e);
+        }
+    }
+}
+
 async function fetchLatestConfig() {
     try {
         const { data, error } = await supabaseClient.from('app_config').select('*');
@@ -554,6 +588,7 @@ function updateUserStatusUI() {
         authBtn.onclick = openAuthModal;
         adminTabBtn.style.display = 'none';
     }
+    loadUserParams();
 }
 
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
@@ -599,6 +634,8 @@ function closeAuthModal() { document.getElementById('authModal').style.display =
 
 // --- 診断計算 ---
 function calculateEDPI() {
+    saveUserParams(); // 計算時に現在の身体パラメータを記憶
+
     const baseEDPI = dynamicConfig.base_edpi;
 
     const height = parseFloat(document.getElementById('height').value);
@@ -689,7 +726,7 @@ function calculateEDPI() {
             .from('calc_logs')
             .insert([
                 {
-                    user_id: null,
+                    user_id: currentUser ? currentUser.id : null,
                     game: gameVal,
                     dpi: currentDpi,
                     final_sens: rawCurrentSensInput.trim(),
@@ -699,12 +736,12 @@ function calculateEDPI() {
                     mouse_weight: weightVal, 
                     aim_part: pivotVal,      
                     is_custom: false,
-                    memo: '自動収集データ',
+                    memo: '自動学習収集データ',
                     rating: 'good'
                 }
             ])
             .then(response => {
-                if (response.error) console.error('匿名データの自動送信エラー:', response.error.message);
+                if (response.error) console.error('データ送信エラー:', response.error.message);
             })
             .catch(err => console.error('通信エラー:', err));
     }
@@ -943,6 +980,7 @@ async function handleAuth(type) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+    loadUserParams();
     changeLanguage(currentLang);
     fetchLatestConfig();
 });
