@@ -107,6 +107,15 @@
         .seo-article { margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 24px; font-size: 0.85rem; color: var(--text-sub); line-height: 1.7; }
         .seo-article h2 { font-size: 1rem; color: var(--text-main); margin-bottom: 8px; }
         .seo-article p { margin-bottom: 12px; }
+        /* 解説の折りたたみ。中身は HTML に常に存在するため、クローラーからは通常どおり読める */
+        .seo-article details { margin-top: 4px; }
+        .seo-article summary { cursor: pointer; list-style: none; color: var(--accent-color); font-weight: bold; font-size: 0.88rem; padding: 12px 0; }
+        .seo-article summary::-webkit-details-marker { display: none; }
+        .seo-article summary::after { content: ' ▼'; font-size: 0.7rem; }
+        .seo-article details[open] summary::after { content: ' ▲'; }
+        .seo-article summary:hover { color: var(--accent-hover); }
+        .seo-article summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: 4px; }
+        .seo-article .seo-more-body { padding-top: 4px; border-top: 1px solid var(--border-color); }
 
         .logs-container { margin-top: 32px; border-top: 1px dashed var(--border-color); padding-top: 24px; }
         .logs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -236,6 +245,10 @@
             <h2 data-i18n="seoTitle1">ロングケープの定理とは？</h2>
             <p data-i18n="seoBody1">「上手い人と同じ感度にしたのに、なぜか自分には合わない」——その原因は、腕の長さも関節の可動域も、使っているマウスの重さも人によって違うからです。ロングケープの定理は、身長・腕の太さ・手先の器用さ・マウス重量・エイムの支点という身体的および環境的なパラメータから逆算して、その人にとって理論上もっとも制御しやすいインゲーム感度を求める無料ツールです。登録なしでご利用いただけます。</p>
 
+            <details class="seo-more">
+            <summary data-i18n="seoExpand">詳しい解説を読む（eDPI・身体特性・タイトル別の違い・使い方）</summary>
+            <div class="seo-more-body">
+
             <h2 data-i18n="seoTitle2">eDPI と cm/360 ― 感度を比較する共通単位</h2>
             <p data-i18n="seoBody2">ゲーム内の感度数値そのものにはほとんど意味がありません。VALORANT の 0.35 と Apex Legends の 0.35 はまったく違う速さになるためです。比較可能にするのが eDPI（＝ DPI × インゲーム感度）と、360 度振り向くのに必要なマウスの移動距離を表す cm/360 です。エイムは結局のところ腕と手首の運動なので、最終的にはこの移動距離が身体に合っているかどうかがすべてを決めます。本ツールが身体パラメータを尋ねるのは、この動作量を身体側から逆算するためです。</p>
 
@@ -250,6 +263,9 @@
 
             <h2 data-i18n="seoTitle6">データが増えるほど精度が上がる仕組み</h2>
             <p data-i18n="seoBody6">本ツールの補正係数は固定値ではありません。利用者が入力した「実際に使っている感度」を統計的に集計し、身体パラメータとの関係を回帰分析することで定期的に更新されます。少数の極端なデータに振り回されないよう、1 回の更新幅を最大 ±10% に制限し、タイトルごとの外れ値の自動除外、ボツ評価データの学習除外、同一利用者の重複除去、本ツール自身の出力の学習除外といった安全装置を設けています。診断時の「現在のインゲーム感度」の入力は任意ですが、ご協力いただくほど全利用者にとっての精度が上がります。</p>
+
+            </div>
+            </details>
 
             <p style="margin-top:16px;"><a href="/about.html" style="color:var(--accent-color);" data-i18n="seoMore">▶ さらに詳しい解説とよくある質問を読む</a></p>
             <p style="font-size:0.78rem; margin-top:12px;" data-i18n="seoDisclaimer">※ 本ツールは各ゲームタイトルの開発・運営元とは関係のない非公式のファンメイドツールです。算出される感度は統計と経験則に基づく参考値であり、成績の向上を保証するものではありません。</p>
@@ -371,6 +387,7 @@
 // --- 0. 多言語（i18n）辞書データ ---
 const translations = {
     ja: {
+        seoExpand: "詳しい解説を読む（eDPI・身体特性・タイトル別の違い・使い方）",
         backendOffline: "サーバーに接続できないため、保存機能は現在ご利用いただけません（感度診断はそのままご利用いただけます）",
         adminPanelTitle: "👑 開発者コントロールパネル",
         adminPanelSub: "全ユーザーの蓄積データがリアルタイムで一覧表示されています。",
@@ -423,6 +440,7 @@ const translations = {
         footerAbout: "ロングケープの定理とは", footerPrivacy: "プライバシーポリシー", footerTerms: "利用規約", footerContact: "お問い合わせ"
     },
     en: {
+        seoExpand: "Read the detailed explanation (eDPI, physique, per-title differences, how to apply)",
         backendOffline: "Cannot reach the server, so saving is currently unavailable. The calculator itself still works.",
         adminPanelTitle: "👑 Developer Control Panel",
         adminPanelSub: "All accumulated user data is listed here in real time.",
@@ -462,6 +480,7 @@ const translations = {
         footerAbout: "About Theorem", footerPrivacy: "Privacy Policy", footerTerms: "Terms of Service", footerContact: "Contact"
     },
     ko: {
+        seoExpand: "자세한 해설 보기 (eDPI・신체 특성・타이틀별 차이・사용법)",
         backendOffline: "서버에 연결할 수 없어 저장 기능은 현재 이용할 수 없습니다. 감도 진단은 그대로 이용하실 수 있습니다.",
         adminPanelTitle: "👑 개발자 컨트롤 패널",
         adminPanelSub: "전체 사용자의 축적 데이터가 실시간으로 표시됩니다.",
