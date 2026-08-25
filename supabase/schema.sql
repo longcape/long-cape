@@ -20,7 +20,9 @@ create table if not exists public.app_config (
 
 alter table public.app_config enable row level security;
 
--- 誰でも読める（フロントが計算に使うため）／書き込みは service_role のみ（学習ジョブ）
+-- 誰でも読める（フロントが計算に使うため）／書き込みは service_role のみ（学習ジョブ）。
+-- 書き込みを許す旧ポリシーが残っていると係数を誰にでも改ざんされるため、
+-- app_config 側にも INSERT / UPDATE / DELETE のポリシーが無いことを確認すること。
 drop policy if exists "app_config は全員が読み取り可" on public.app_config;
 create policy "app_config は全員が読み取り可"
     on public.app_config for select
@@ -62,6 +64,14 @@ stable
 as $$
     select coalesce(auth.jwt() ->> 'email', '') = 'rokikiroki@gmail.com';
 $$;
+
+-- 旧ポリシーの削除。
+-- Postgres の PERMISSIVE ポリシーは条件が OR で結合されるため、緩い旧ポリシーが
+-- 残っていると下記の制限が無効化される。特に "Allow select for own logs or anonymous"
+-- は未ログインで作成された行を誰にでも見せてしまうので、必ず削除する。
+drop policy if exists "Allow insert for all users" on public.calc_logs;
+drop policy if exists "Allow select for own logs or anonymous" on public.calc_logs;
+drop policy if exists "Users can update their own calc_logs" on public.calc_logs;
 
 -- 参照：自分のログ、または管理者のみ
 drop policy if exists "自分のログのみ参照可（管理者は全件）" on public.calc_logs;
