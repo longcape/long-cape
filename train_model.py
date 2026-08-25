@@ -53,8 +53,9 @@ DEFAULT_SCALE = {
 
 # 診断結果の保存ログ（＝本ツールの出力）に付くメモ。学習からは必ず除外する。
 DIAG_OUTPUT_MEMOS = {"long cape theory", "ロングケープの定理"}
-# 診断フォームの「現在の感度」から自動収集したログのメモ
-AUTO_COLLECT_MEMO = "自動学習収集データ"
+# 診断フォームの「現在の感度」から自動収集したログのメモ。
+# 過去のバージョンでは "自動収集データ" という文言だったため、両方を受け付ける。
+AUTO_COLLECT_MEMOS = {"自動学習収集データ", "自動収集データ"}
 
 # カテゴリ列 -> (app_config のキー接頭辞, 基準カテゴリ)
 CATEGORICALS = {
@@ -198,7 +199,7 @@ df["is_custom"] = df["is_custom"].fillna(False).astype(bool)
 #   - 感度メモ（is_custom = true）
 #   - 診断フォームの「現在の感度」自動収集ログ
 # 診断結果そのものの保存ログ（本ツールの出力）は自己強化ループになるため除外。
-is_auto_collect = df["memo_norm"] == AUTO_COLLECT_MEMO.lower()
+is_auto_collect = df["memo_norm"].isin({m.lower() for m in AUTO_COLLECT_MEMOS})
 is_diag_output = df["memo_norm"].isin(DIAG_OUTPUT_MEMOS)
 df = df[(df["is_custom"] & ~is_diag_output) | is_auto_collect].copy()
 print(f"🎯 教師データ候補（実使用感度のみ）: {len(df)} 件")
@@ -210,6 +211,7 @@ ng_keywords = [
     "微妙", "ダメ", "だめ", "合わない", "あわない", "ぶれる", "ブレる",
     "イマイチ", "いまいち", "やめた", "ボツ", "しっくりこない", "無理",
     "bad", "not good", "worst", "fail", "discard", "테스트중", "별로",
+    "疎通テスト", "テストデータ", "動作確認", "test data",
 ]
 ng_pattern = "|".join(ng_keywords)
 df = df[~df["memo_norm"].str.contains(ng_pattern, na=False)]
