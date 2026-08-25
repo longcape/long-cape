@@ -7,6 +7,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ロングケープの定理 | 最適インゲーム感度診断・計算ツール</title>
+    <meta name="description" content="身長・腕の太さ・手先の器用さ・マウス重量・エイムの支点から、VALORANT / Apex Legends / Overwatch 2 / Fortnite / Delta Force / CoD / PUBG の理論上の最適インゲーム感度を算出する無料の感度診断ツール。感度メモの保存にも対応。">
+    <meta name="keywords" content="感度診断, エイム感度, eDPI, cm/360, VALORANT 感度, Apex 感度, 最適感度, 感度計算">
+    <link rel="canonical" href="https://longcapenotieri.jp/">
+    <meta name="robots" content="index, follow">
     
     <!-- PWA設定 -->
     <meta name="theme-color" content="#38bdf8">
@@ -17,7 +21,29 @@
     <meta property="og:title" content="ロングケープの定理 | 最適インゲーム感度診断">
     <meta property="og:description" content="生物学的・神経的パラメータに基づく最適インゲーム感度診断＆マイ感度トラッカー">
     <meta property="og:image" content="https://longcapenotieri.jp/ogp-image.png">
+    <meta property="og:url" content="https://longcapenotieri.jp/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="ロングケープの定理">
+    <meta property="og:locale" content="ja_JP">
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ロングケープの定理 | 最適インゲーム感度診断">
+    <meta name="twitter:description" content="生物学的・神経的パラメータに基づく最適インゲーム感度診断＆マイ感度トラッカー">
+
+    <!-- 構造化データ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "ロングケープの定理",
+      "alternateName": "Long Cape Theorem",
+      "url": "https://longcapenotieri.jp/",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Any",
+      "inLanguage": ["ja", "en", "ko"],
+      "description": "身長・腕の太さ・手先の器用さ・マウス重量・エイムの支点から、FPS タイトルごとの理論上の最適インゲーム感度を算出する無料の感度診断ツール。",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" }
+    }
+    </script>
 
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3570868393201833" crossorigin="anonymous"></script>
@@ -205,12 +231,28 @@
             </div>
         </div>
 
-        <!-- Google AdSense対策用のSEO解説テキスト（多言語対応） -->
+        <!-- 解説セクション（多言語対応） -->
         <div class="seo-article">
             <h2 data-i18n="seoTitle1">ロングケープの定理とは？</h2>
-            <p data-i18n="seoBody1">身長、腕の太さ、マウス重量、エイムの支点などの身体的・神経的パラメータを解析し、独自のアルゴリズムで理論上の最適感度を算出するエイム最適化エンジンです。</p>
-            <h2 data-i18n="seoTitle2">なぜ身体的特徴で最適な感度が変わるのか？</h2>
-            <p data-i18n="seoBody2">関節の可動域やプレイスタイル（手首・肘・肩）によって、必要とされるeDPIのベースラインは異なります。本ツールではゲーム特性に合わせたダイナミクスカーブで、実戦で最も正確にコントロールできる感度を導き出します。</p>
+            <p data-i18n="seoBody1">「上手い人と同じ感度にしたのに、なぜか自分には合わない」——その原因は、腕の長さも関節の可動域も、使っているマウスの重さも人によって違うからです。ロングケープの定理は、身長・腕の太さ・手先の器用さ・マウス重量・エイムの支点という身体的および環境的なパラメータから逆算して、その人にとって理論上もっとも制御しやすいインゲーム感度を求める無料ツールです。登録なしでご利用いただけます。</p>
+
+            <h2 data-i18n="seoTitle2">eDPI と cm/360 ― 感度を比較する共通単位</h2>
+            <p data-i18n="seoBody2">ゲーム内の感度数値そのものにはほとんど意味がありません。VALORANT の 0.35 と Apex Legends の 0.35 はまったく違う速さになるためです。比較可能にするのが eDPI（＝ DPI × インゲーム感度）と、360 度振り向くのに必要なマウスの移動距離を表す cm/360 です。エイムは結局のところ腕と手首の運動なので、最終的にはこの移動距離が身体に合っているかどうかがすべてを決めます。本ツールが身体パラメータを尋ねるのは、この動作量を身体側から逆算するためです。</p>
+
+            <h2 data-i18n="seoTitle3">なぜ身体的特徴で最適な感度が変わるのか</h2>
+            <p data-i18n="seoBody3">もっとも影響が大きいのはエイムの支点です。手首エイムは可動範囲が狭いため短い距離で振り向ける速い感度が必要で、肩エイムは大きく腕を動かせるため低感度でも十分に振り向けます。身長は腕の長さと相関し、腕が長いほど同じ回転角に対する移動距離が伸びます。腕の太さは動き出しと停止の慣性に、マウス重量は初速の出しやすさに直結します。手先の器用さは、指先での微調整がどれだけ利くかを表します。</p>
+
+            <h2 data-i18n="seoTitle4">ゲームタイトルごとに数値が違う理由</h2>
+            <p data-i18n="seoBody4">各タイトルは、インゲーム感度の「1」が意味する角度がそれぞれ異なります。VALORANT / CS2 は 0.1 刻みの微細な調整が効く基準系、Overwatch 2 や CoD は 1〜100 のスケール、Fortnite は％表示、PUBG は対数的なスケールです。本ツールはまず身体から導かれる基準 eDPI を求め、そこにタイトルごとの単位変換とプレイスタイル補正を掛けます。そのため同じ身体パラメータでも、各タイトルで体感的に等価な感度が表示されます。</p>
+
+            <h2 data-i18n="seoTitle5">診断結果を実際に使うときの手順</h2>
+            <p data-i18n="seoBody5">現在の感度と診断結果が大きく離れている場合、一度に乗り換えると数日間はむしろ成績が落ちます。まず現在値と目標値の中間から始め、1 週間ごとに寄せていくのが安全です。DPI は 800 のまま固定し、インゲーム感度側で調整するのが基本になります。感度変更の直後は必ず違和感が出ますが、それが「合っていない」のか「慣れていない」のかは最低 3 日ほど使わなければ判別できません。しっくり来た値は感度メモに保存しておくと、迷走したときに戻る場所ができます。</p>
+
+            <h2 data-i18n="seoTitle6">データが増えるほど精度が上がる仕組み</h2>
+            <p data-i18n="seoBody6">本ツールの補正係数は固定値ではありません。利用者が入力した「実際に使っている感度」を統計的に集計し、身体パラメータとの関係を回帰分析することで定期的に更新されます。少数の極端なデータに振り回されないよう、1 回の更新幅を最大 ±10% に制限し、タイトルごとの外れ値の自動除外、ボツ評価データの学習除外、同一利用者の重複除去、本ツール自身の出力の学習除外といった安全装置を設けています。診断時の「現在のインゲーム感度」の入力は任意ですが、ご協力いただくほど全利用者にとっての精度が上がります。</p>
+
+            <p style="margin-top:16px;"><a href="/about.html" style="color:var(--accent-color);" data-i18n="seoMore">▶ さらに詳しい解説とよくある質問を読む</a></p>
+            <p style="font-size:0.78rem; margin-top:12px;" data-i18n="seoDisclaimer">※ 本ツールは各ゲームタイトルの開発・運営元とは関係のない非公式のファンメイドツールです。算出される感度は統計と経験則に基づく参考値であり、成績の向上を保証するものではありません。</p>
         </div>
     </div>
 
@@ -278,17 +320,28 @@
         </div>
     </div>
 
-    <div class="adsense-container">
+    <!-- 広告枠。data-ad-slot には AdSense 管理画面で発行した広告ユニット ID（数字）が必要で、
+         "auto" は無効値のため広告が配信されない。ID 未設定のうちは枠自体を出さず、
+         head に読み込んだ AdSense コードによる自動広告のみが動作する。 -->
+    <div class="adsense-container" id="adSlotContainer" hidden>
         <ins class="adsbygoogle"
              style="display:block"
              data-ad-client="ca-pub-3570868393201833"
-             data-ad-slot="auto"
+             data-ad-slot=""
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
-        <script>
-             (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
     </div>
+    <script>
+        // AdSense 管理画面 → 広告 → 広告ユニットごと で発行した ID（例: '1234567890'）を設定する
+        const ADSENSE_SLOT_ID = '';
+        (function () {
+            if (!ADSENSE_SLOT_ID) return;
+            const container = document.getElementById('adSlotContainer');
+            container.querySelector('ins').setAttribute('data-ad-slot', ADSENSE_SLOT_ID);
+            container.hidden = false;
+            (adsbygoogle = window.adsbygoogle || []).push({});
+        })();
+    </script>
 </div>
 
 <div class="modal-overlay" id="authModal">
@@ -318,6 +371,9 @@
 // --- 0. 多言語（i18n）辞書データ ---
 const translations = {
     ja: {
+        backendOffline: "サーバーに接続できないため、保存機能は現在ご利用いただけません（感度診断はそのままご利用いただけます）",
+        adminPanelTitle: "👑 開発者コントロールパネル",
+        adminPanelSub: "全ユーザーの蓄積データがリアルタイムで一覧表示されています。",
         siteTitle: "ロングケープの定理",
         subtitle: "生物学的・神経的パラメータに基づく最適インゲーム感度診断",
         guestStatus: "ゲスト閲覧中", loginStatus: "ログイン中:", changeName: "(名前変更)",
@@ -351,18 +407,25 @@ const translations = {
         modalBtnSignup: "新規会員登録", modalBtnCancel: "キャンセル", tagDiag: "理論診断", tagCustom: "手動メモ",
         calcDpiText: "• 算出基準DPI:",
         seoTitle1: "ロングケープの定理とは？",
-        seoBody1: "身長、腕の太さ、マウス重量、エイムの支点などの身体的・神経的パラメータを解析し、独自のアルゴリズムで理論上の最適感度を算出するエイム最適化エンジンです。",
-        seoTitle2: "なぜ身体的特徴で最適な感度が変わるのか？",
-        seoBody2: "関節の可動域やプレイスタイル（手首・肘・肩）によって、必要とされるeDPIのベースラインは異なります。本ツールではゲーム特性に合わせたダイナミクスカーブで、実戦で最も正確にコントロールできる感度を導き出します。",
-        footerAbout: "ロングケープの定理とは", footerPrivacy: "プライバシーポリシー", footerTerms: "利用規約", footerContact: "お問い合わせ (𝕏)", btnClose: "閉じる",
-        aboutTitle: "ロングケープの定理とは",
-        aboutBody: `<p style="margin-bottom:10px;">本ツールは、単なる感度変換ツールではありません。身長、腕の太さ、手先の器用さ、マウス重量、そしてエイムの支点（手首・肘・肩）という身体的・神経的パラメータを解析し、独自のアルゴリズムで「理論上の最適感度」を算出するエイム最適化エンジンです。</p>`,
-        privacyTitle: "プライバシーポリシー",
-        privacyBody: `<p style="margin-bottom:8px;">当サイトではプライバシーを保護しつつ適切なサービスを提供します。</p>`,
-        termsTitle: "利用規約",
-        termsBody: `<p style="margin-bottom:8px;">本ツールの利用規約に関する記載です。</p>`
+        seoBody1: "「上手い人と同じ感度にしたのに、なぜか自分には合わない」——その原因は、腕の長さも関節の可動域も、使っているマウスの重さも人によって違うからです。ロングケープの定理は、身長・腕の太さ・手先の器用さ・マウス重量・エイムの支点という身体的および環境的なパラメータから逆算して、その人にとって理論上もっとも制御しやすいインゲーム感度を求める無料ツールです。登録なしでご利用いただけます。",
+        seoTitle2: "eDPI と cm/360 ― 感度を比較する共通単位",
+        seoBody2: "ゲーム内の感度数値そのものにはほとんど意味がありません。VALORANT の 0.35 と Apex Legends の 0.35 はまったく違う速さになるためです。比較可能にするのが eDPI（＝ DPI × インゲーム感度）と、360 度振り向くのに必要なマウスの移動距離を表す cm/360 です。エイムは結局のところ腕と手首の運動なので、最終的にはこの移動距離が身体に合っているかどうかがすべてを決めます。本ツールが身体パラメータを尋ねるのは、この動作量を身体側から逆算するためです。",
+        seoTitle3: "なぜ身体的特徴で最適な感度が変わるのか",
+        seoBody3: "もっとも影響が大きいのはエイムの支点です。手首エイムは可動範囲が狭いため短い距離で振り向ける速い感度が必要で、肩エイムは大きく腕を動かせるため低感度でも十分に振り向けます。身長は腕の長さと相関し、腕が長いほど同じ回転角に対する移動距離が伸びます。腕の太さは動き出しと停止の慣性に、マウス重量は初速の出しやすさに直結します。手先の器用さは、指先での微調整がどれだけ利くかを表します。",
+        seoTitle4: "ゲームタイトルごとに数値が違う理由",
+        seoBody4: "各タイトルは、インゲーム感度の「1」が意味する角度がそれぞれ異なります。VALORANT / CS2 は 0.1 刻みの微細な調整が効く基準系、Overwatch 2 や CoD は 1〜100 のスケール、Fortnite は％表示、PUBG は対数的なスケールです。本ツールはまず身体から導かれる基準 eDPI を求め、そこにタイトルごとの単位変換とプレイスタイル補正を掛けます。そのため同じ身体パラメータでも、各タイトルで体感的に等価な感度が表示されます。",
+        seoTitle5: "診断結果を実際に使うときの手順",
+        seoBody5: "現在の感度と診断結果が大きく離れている場合、一度に乗り換えると数日間はむしろ成績が落ちます。まず現在値と目標値の中間から始め、1 週間ごとに寄せていくのが安全です。DPI は 800 のまま固定し、インゲーム感度側で調整するのが基本になります。感度変更の直後は必ず違和感が出ますが、それが「合っていない」のか「慣れていない」のかは最低 3 日ほど使わなければ判別できません。しっくり来た値は感度メモに保存しておくと、迷走したときに戻る場所ができます。",
+        seoTitle6: "データが増えるほど精度が上がる仕組み",
+        seoBody6: "本ツールの補正係数は固定値ではありません。利用者が入力した「実際に使っている感度」を統計的に集計し、身体パラメータとの関係を回帰分析することで定期的に更新されます。少数の極端なデータに振り回されないよう、1 回の更新幅を最大 ±10% に制限し、タイトルごとの外れ値の自動除外、ボツ評価データの学習除外、同一利用者の重複除去、本ツール自身の出力の学習除外といった安全装置を設けています。診断時の「現在のインゲーム感度」の入力は任意ですが、ご協力いただくほど全利用者にとっての精度が上がります。",
+        seoMore: "▶ さらに詳しい解説とよくある質問を読む",
+        seoDisclaimer: "※ 本ツールは各ゲームタイトルの開発・運営元とは関係のない非公式のファンメイドツールです。算出される感度は統計と経験則に基づく参考値であり、成績の向上を保証するものではありません。",
+        footerAbout: "ロングケープの定理とは", footerPrivacy: "プライバシーポリシー", footerTerms: "利用規約", footerContact: "お問い合わせ"
     },
     en: {
+        backendOffline: "Cannot reach the server, so saving is currently unavailable. The calculator itself still works.",
+        adminPanelTitle: "👑 Developer Control Panel",
+        adminPanelSub: "All accumulated user data is listed here in real time.",
         siteTitle: "Long Cape Theorem", subtitle: "Optimal In-Game Sensitivity Diagnosis Based on Biological & Neural Parameters",
         guestStatus: "Guest Mode", loginStatus: "Logged in as:", changeName: "(Change Name)",
         authBtnLogin: "Login / Sign Up", authBtnLogout: "Logout", tabDiag: "Diagnosis", tabCustom: "Memo", tabAdmin: "👑 Developer Panel",
@@ -383,18 +446,25 @@ const translations = {
         btnCustomSave: "Save Sensitivity Memo", logsTitle: "📋 My Sensitivity Logs", logsEmptyGuest: "No saved data (Login required)", logsEmpty: "No saved data found.", proBanner: "🔒 Log limit reached (5 max). New logs will overwrite the oldest unlocked log.",
         modalTitle: "Account Login / Sign Up", modalSub: "Free account required to save settings.", modalUsername: "Username", modalOpt: "(Sign Up)", modalEmail: "Email", modalPassword: "Password", modalPassOpt: "(Min. 6 chars)", modalBtnLogin: "Login", modalBtnSignup: "Sign Up", modalBtnCancel: "Cancel", tagDiag: "Diagnosis", tagCustom: "Custom Memo", calcDpiText: "• Base DPI:",
         seoTitle1: "What is Long Cape Theorem?",
-        seoBody1: "An aim optimization engine that analyzes physical and neural parameters—such as height, arm thickness, mouse weight, and aiming pivot—to calculate your theoretically optimal sensitivity.",
-        seoTitle2: "Why do physical traits affect optimal sensitivity?",
-        seoBody2: "Joint range of motion and playstyles (wrist, arm, shoulder) alter your required eDPI baseline. This tool applies custom dynamics curves tuned to game mechanics for ultimate control.",
-        footerAbout: "About Theorem", footerPrivacy: "Privacy Policy", footerTerms: "Terms of Service", footerContact: "Contact Us (𝕏)", btnClose: "Close",
-        aboutTitle: "About Long Cape Theorem",
-        aboutBody: `<p style="margin-bottom:10px;">This tool goes beyond a simple sensitivity converter. It analyzes physical and neural parameters using a proprietary algorithm to calculate your theoretically optimal sensitivity.</p>`,
-        privacyTitle: "Privacy Policy",
-        privacyBody: `<p style="margin-bottom:8px;">We protect your privacy while providing optimal services.</p>`,
-        termsTitle: "Terms of Service",
-        termsBody: `<p style="margin-bottom:8px;">Terms of service agreement for this tool.</p>`
+        seoBody1: "Copying a pro player's sensitivity rarely works, because arm length, joint range of motion and mouse weight differ from person to person. Long Cape Theorem is a free tool that works backwards from your physical and environmental parameters — height, arm thickness, dexterity, mouse weight and aiming pivot — to the in-game sensitivity you can theoretically control best. No account required.",
+        seoTitle2: "eDPI and cm/360 — the common units for comparing sensitivity",
+        seoBody2: "A raw in-game sensitivity number means almost nothing on its own: 0.35 in VALORANT and 0.35 in Apex Legends are completely different speeds. Two units make them comparable — eDPI (DPI multiplied by in-game sensitivity) and cm/360, the distance your mouse must physically travel for a full 360 degree turn. Aiming is ultimately arm and wrist movement, so what really matters is whether that distance suits your body. That is why this tool asks about your physique.",
+        seoTitle3: "Why physical traits change your optimal sensitivity",
+        seoBody3: "The aiming pivot matters most. Wrist aimers have a narrow range of motion and need a faster sensitivity to turn within it, while shoulder aimers can move the whole arm and turn comfortably at low sensitivity. Height correlates with arm length: longer arms cover more distance for the same rotation. Arm thickness governs the inertia of starting and stopping, mouse weight governs how easily you reach initial speed, and dexterity reflects how well micro-adjustments work at your fingertips.",
+        seoTitle4: "Why the numbers differ between game titles",
+        seoBody4: "Each title assigns a different angle to a sensitivity of 1. VALORANT and CS2 form the reference system with fine 0.1 steps; Overwatch 2 and CoD use a 1-100 scale; Fortnite is expressed as a percentage; PUBG uses a logarithmic scale. This tool first derives a baseline eDPI from your body, then applies each title's unit conversion and playstyle correction — so the same physique yields values that feel equivalent across every title.",
+        seoTitle5: "How to actually apply the result",
+        seoBody5: "If the result is far from your current setting, switching all at once will cost you several days of performance. Start halfway between your current value and the target, then close the gap week by week. Keep DPI fixed at 800 and adjust the in-game sensitivity instead. A change always feels wrong at first, and you need at least three days to tell a genuinely bad fit apart from simple unfamiliarity. Save any value that clicks in the memo tab so you always have somewhere to return to.",
+        seoTitle6: "How accuracy improves as data accumulates",
+        seoBody6: "The correction factors are not fixed constants. The sensitivities users report actually using are aggregated statistically and regressed against their physical parameters, and the factors are updated periodically. To keep a handful of extreme entries from distorting the model, each update is capped at plus or minus 10 percent, and the pipeline applies per-title outlier removal, exclusion of entries rated as discarded, de-duplication per user, and exclusion of the tool's own output. Entering your current sensitivity is optional, but every entry improves accuracy for everyone.",
+        seoMore: "Read the full explanation and FAQ",
+        seoDisclaimer: "This is an unofficial fan-made tool with no affiliation to any game developer or publisher. Calculated values are references based on statistics and heuristics and do not guarantee improved results.",
+        footerAbout: "About Theorem", footerPrivacy: "Privacy Policy", footerTerms: "Terms of Service", footerContact: "Contact"
     },
     ko: {
+        backendOffline: "서버에 연결할 수 없어 저장 기능은 현재 이용할 수 없습니다. 감도 진단은 그대로 이용하실 수 있습니다.",
+        adminPanelTitle: "👑 개발자 컨트롤 패널",
+        adminPanelSub: "전체 사용자의 축적 데이터가 실시간으로 표시됩니다.",
         siteTitle: "롱케이프의 정리", subtitle: "생물학적·신경학적 파라미터 기반 최적 인게임 감도 진단",
         guestStatus: "게스트 이용 중", loginStatus: "로그인 중:", changeName: "(이름 변경)", authBtnLogin: "로그인 / 회원가입", authBtnLogout: "로그아웃",
         tabDiag: "감도 진단", tabCustom: "감도 메모", tabAdmin: "👑 개발자 패널", labelGame: "1. 타겟 게임 타이틀", labelDpi: "2-A. 마우스 DPI", labelDpiOpt: "(미입력 시 800 DPI)",
@@ -415,16 +485,20 @@ const translations = {
         logsEmptyGuest: "저장된 감도 데이터가 없습니다 (로그인 필요)", logsEmpty: "저장된 데이터가 없습니다.", proBanner: "🔒 저장 한도(5건)에 도달했습니다. 새 로그 저장 시 잠금 해제된 오래된 데이터부터 자동 갱신됩니다.",
         modalTitle: "계정 로그인 / 회원가입", modalSub: "저장 기능을 이용하려면 무료 회원가입이 필요합니다.", modalUsername: "사용자 이름", modalOpt: "(신규 가입 시)", modalEmail: "이메일 주소", modalPassword: "비밀번호", modalPassOpt: "(6자 이상)", modalBtnLogin: "로그인", modalBtnSignup: "회원가입", modalBtnCancel: "취소", tagDiag: "이론 진단", tagCustom: "수동 메모", calcDpiText: "• 계산 기준 DPI:",
         seoTitle1: "롱케이프의 정리란?",
-        seoBody1: "신장, 팔 두께, 마우스 무게, 에임의 지점 등의 신체적·신경학적 파라미터를 분석하여 이론상의 최적 감도를 도출하는 에임 최적화 엔진입니다.",
-        seoTitle2: "왜 신체적 특징에 따라 최적의 감도가 달라질까?",
-        seoBody2: "관절의 가동 범위나 플레이 스타일(손목/팔꿈치/어깨)에 따라 필요한 eDPI 기준이 달라집니다. 본 툴은 게임 특성에 맞춘 커브를 통해 가장 정확한 감도를 도출합니다.",
-        footerAbout: "롱케이프의 정리란", footerPrivacy: "개인정보 처리방침", footerTerms: "이용약관", footerContact: "문의하기 (𝕏)", btnClose: "닫기",
-        aboutTitle: "롱케이프의 정리란",
-        aboutBody: `<p style="margin-bottom:10px;">신체적·신경학적 파라미터를 독자적인 알고리즘으로 분석하여 이론상의 최적 감도를 도출하는 에임 최적화 엔진입니다.</p>`,
-        privacyTitle: "개인정보 처리방침",
-        privacyBody: `<p style="margin-bottom:8px;">개인정보를 보호하며 적절한 서비스를 제공합니다.</p>`,
-        termsTitle: "이용약관",
-        termsBody: `<p style="margin-bottom:8px;">본 툴 이용에 대한 약관입니다.</p>`
+        seoBody1: "잘하는 사람과 같은 감도로 맞춰도 자신에게는 맞지 않는 경우가 많습니다. 팔 길이도, 관절 가동 범위도, 사용하는 마우스의 무게도 사람마다 다르기 때문입니다. 롱케이프의 정리는 신장·팔 두께·손재주·마우스 무게·에임의 지점이라는 신체적·환경적 파라미터에서 역산하여, 그 사람이 이론상 가장 잘 제어할 수 있는 인게임 감도를 산출하는 무료 도구입니다. 회원가입 없이 이용할 수 있습니다.",
+        seoTitle2: "eDPI 와 cm/360 — 감도를 비교하는 공통 단위",
+        seoBody2: "게임 내 감도 수치 자체에는 거의 의미가 없습니다. 발로란트의 0.35 와 에이펙스의 0.35 는 전혀 다른 속도이기 때문입니다. 비교를 가능하게 하는 것이 eDPI(DPI 와 인게임 감도의 곱)와, 360도 돌아보는 데 필요한 마우스 이동 거리를 나타내는 cm/360 입니다. 에임은 결국 팔과 손목의 운동이므로, 최종적으로는 이 이동 거리가 신체에 맞는지가 모든 것을 결정합니다.",
+        seoTitle3: "왜 신체적 특징에 따라 최적 감도가 달라지는가",
+        seoBody3: "가장 영향이 큰 것은 에임의 지점입니다. 손목 에임은 가동 범위가 좁아 짧은 거리로 돌아볼 수 있는 빠른 감도가 필요하고, 어깨 에임은 팔을 크게 움직일 수 있어 낮은 감도로도 충분합니다. 신장은 팔 길이와 상관관계가 있어, 팔이 길수록 같은 회전각에 대한 이동 거리가 늘어납니다. 팔 두께는 움직임의 시작과 정지의 관성에, 마우스 무게는 초기 속도의 내기 쉬움에 직결됩니다.",
+        seoTitle4: "게임 타이틀마다 수치가 다른 이유",
+        seoBody4: "각 타이틀은 인게임 감도 1 이 의미하는 각도가 서로 다릅니다. 발로란트와 CS2 는 0.1 단위의 미세 조정이 가능한 기준계, 오버워치 2 와 CoD 는 1~100 스케일, 포트나이트는 퍼센트 표시, 배틀그라운드는 로그 스케일입니다. 본 도구는 먼저 신체에서 도출되는 기준 eDPI 를 구하고, 거기에 타이틀별 단위 변환과 플레이 스타일 보정을 곱합니다. 그래서 같은 신체 파라미터라도 각 타이틀에서 체감상 동등한 감도가 표시됩니다.",
+        seoTitle5: "진단 결과를 실제로 적용하는 방법",
+        seoBody5: "현재 감도와 진단 결과가 크게 차이 난다면, 한 번에 바꿀 경우 며칠간 오히려 성적이 떨어집니다. 우선 현재값과 목표값의 중간부터 시작해 일주일 단위로 좁혀가는 것이 안전합니다. DPI 는 800 으로 고정하고 인게임 감도 쪽에서 조정하는 것이 기본입니다. 감도 변경 직후에는 반드시 위화감이 생기지만, 그것이 맞지 않아서인지 익숙하지 않아서인지는 최소 3일은 써봐야 알 수 있습니다.",
+        seoTitle6: "데이터가 쌓일수록 정확도가 올라가는 구조",
+        seoBody6: "본 도구의 보정 계수는 고정값이 아닙니다. 이용자가 입력한 실제 사용 중인 감도를 통계적으로 집계하고 신체 파라미터와의 관계를 회귀 분석하여 정기적으로 갱신됩니다. 소수의 극단적인 데이터에 휘둘리지 않도록 1회 갱신 폭을 최대 ±10% 로 제한하고, 타이틀별 이상치 자동 제외, 폐기 평가 데이터의 학습 제외, 동일 이용자의 중복 제거, 본 도구 자체 출력의 학습 제외 등의 안전장치를 두고 있습니다.",
+        seoMore: "▶ 더 자세한 설명과 자주 묻는 질문 보기",
+        seoDisclaimer: "※ 본 도구는 각 게임사와 관계없는 비공식 팬메이드 도구입니다. 산출되는 감도는 통계와 경험칙에 근거한 참고값이며 성적 향상을 보장하지 않습니다.",
+        footerAbout: "롱케이프의 정리란", footerPrivacy: "개인정보 처리방침", footerTerms: "이용약관", footerContact: "문의하기"
     }
 };
 
@@ -454,10 +528,7 @@ function changeLanguage(lang) {
         }
     });
 
-    const aboutTitleEl = document.getElementById('aboutModalTitle');
-    const aboutBodyEl = document.getElementById('aboutModalBody');
-    if (aboutTitleEl && translations[lang]) aboutTitleEl.innerText = translations[lang].aboutTitle;
-    if (aboutBodyEl && translations[lang]) aboutBodyEl.innerHTML = translations[lang].aboutBody;
+    document.documentElement.lang = lang;
 
     updateUserStatusUI();
     loadLogs();
@@ -470,7 +541,19 @@ const ADMIN_EMAIL = 'rokikiroki@gmail.com';
 
 const SUPABASE_URL = 'https://gmhayutirvdaesneulgr.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_jC2SZ-N4rA_vhLhxd0_66g_1xhydPPt';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// CDN の読み込み失敗でページ全体が停止しないようにする。
+// SDK が使えない場合でも、感度診断そのものは完全にオフラインで動作させる。
+let supabaseClient = null;
+try {
+    if (typeof supabase !== 'undefined' && supabase && typeof supabase.createClient === 'function') {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else {
+        console.warn('Supabase SDK を読み込めませんでした。感度診断は利用できますが、ログイン・保存機能は無効です。');
+    }
+} catch (e) {
+    console.warn('Supabase の初期化に失敗しました:', e);
+}
+const isBackendAvailable = () => supabaseClient !== null;
 
 let currentUser = null;
 let currentDiagResult = null;
@@ -493,7 +576,44 @@ let dynamicConfig = {
     weight_ultraheavy_factor: 0.10,
     pivot_wrist_factor: 0.40,
     pivot_arm_factor: 0.00,
-    pivot_shoulder_factor: -0.12
+    pivot_shoulder_factor: -0.12,
+
+    // --- ゲームタイトル別パラメータ ---
+    // scale_*  : エンジン固有の単位変換定数（実測ベースの固定値）
+    // game_*_trim : 学習で動く補正倍率（既定 1.00 = 現行カーブそのまま）
+    scale_valo: 1.00,
+    scale_apex: 3.18,
+    scale_ow: 10.60,
+    scale_fn: 12.60,
+    scale_delta: 7.80,
+    scale_cod: 10.60,
+    scale_pubg: 1.00,
+    game_valo_trim: 1.00,
+    game_apex_trim: 1.00,
+    game_ow_trim: 1.00,
+    game_fn_trim: 1.00,
+    game_delta_trim: 1.00,
+    game_cod_trim: 1.00,
+    game_pubg_trim: 1.00
+};
+
+// app_config から取り込んだ値が数値として妥当なときだけ採用する
+function getConfigNum(key, fallback) {
+    const v = dynamicConfig[key];
+    return (typeof v === 'number' && isFinite(v)) ? v : fallback;
+}
+
+// 学習・保存用に、感度を「単位記号なしの数値文字列」へ正規化する
+function sensToNumericString(val, gameKey) {
+    const num = parseFloat(val);
+    if (!isFinite(num)) return null;
+    return String(gameKey === 'pubg' ? Math.round(num) : Math.round(num * 1000) / 1000);
+}
+
+// タイトルごとに現実的な入力レンジ（明らかな誤入力・悪戯を弾く）
+const SENS_INPUT_RANGE = {
+    valo: [0.05, 3.0], apex: [0.2, 10.0], ow: [0.5, 30.0], fn: [1.0, 40.0],
+    delta: [0.5, 25.0], cod: [0.5, 30.0], pubg: [1, 100]
 };
 
 function saveUserParams() {
@@ -530,11 +650,13 @@ function loadUserParams() {
 }
 
 async function fetchLatestConfig() {
+    if (!isBackendAvailable()) return;
     try {
         const { data, error } = await supabaseClient.from('app_config').select('*');
         if (data && !error && data.length > 0) {
             data.forEach(item => {
-                dynamicConfig[item.key] = parseFloat(item.value);
+                const num = parseFloat(item.value);
+                if (isFinite(num)) dynamicConfig[item.key] = num;
             });
         }
     } catch (e) {
@@ -543,8 +665,8 @@ async function fetchLatestConfig() {
 }
 
 function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>"']/g, function(m) {
+    if (str === null || str === undefined || str === '') return '';
+    return String(str).replace(/[&<>"']/g, function(m) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
     });
 }
@@ -556,10 +678,13 @@ function formatSens(val) {
 }
 
 function getSensDisplayString(sensVal, gameKey) {
+    // 旧形式（"6.50%" のような単位付き文字列）も数値としてパースできるようにする
+    const num = parseFloat(String(sensVal).replace('%', '').trim());
+    if (!isFinite(num)) return '-';
     if (gameKey === 'pubg') {
-        return Math.round(sensVal).toString();
+        return Math.round(num).toString();
     }
-    const formatted = formatSens(parseFloat(sensVal));
+    const formatted = formatSens(num);
     return (gameKey === 'fn' || gameKey === 'ow') ? `${formatted}%` : formatted;
 }
 
@@ -589,7 +714,7 @@ function updateUserStatusUI() {
     loadUserParams();
 }
 
-supabaseClient.auth.onAuthStateChange(async (event, session) => {
+if (isBackendAvailable()) supabaseClient.auth.onAuthStateChange(async (event, session) => {
     currentUser = session ? session.user : null;
     updateUserStatusUI();
     if (currentUser) {
@@ -599,7 +724,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
 });
 
 async function changeUsername() {
-    if (!currentUser) return;
+    if (!currentUser || !isBackendAvailable()) return;
     const currentName = currentUser.user_metadata?.display_name || '';
     const newName = prompt('New Username / ユーザー名 / 사용자 이름:', currentName);
     
@@ -665,36 +790,40 @@ function calculateEDPI() {
         fn: 'Fortnite', delta: 'Delta Force', cod: 'CoD', pubg: 'PUBG'
     };
 
-    let gameFactor = 1.00;
-    let dev = (subTotal - 178.25) / 50.0;
+    // ダイナミクスカーブ（タイトル固有の形。実測ベースでFIX済み）
+    const dev = (subTotal - 178.25) / 50.0;
+    const atanNorm = Math.atan(dev) / (Math.PI / 2);
+    const gameCurves = {
+        valo:  1.00,
+        apex:  1.48 - 0.25 * atanNorm,
+        ow:    1.35 + 0.45 * atanNorm,
+        fn:    1.30 + 0.40 * atanNorm,
+        delta: 1.08,
+        cod:   1.08,
+        pubg:  0.90
+    };
+    const curve = (gameCurves[gameVal] !== undefined) ? gameCurves[gameVal] : 1.00;
+    // 学習で動く補正倍率。データが貯まるまでは 1.00 なので現行の挙動と完全に一致する
+    const gameFactor = curve * getConfigNum(`game_${gameVal}_trim`, 1.00);
 
-    if (gameVal === 'valo') gameFactor = 1.00;
-    else if (gameVal === 'apex') gameFactor = 1.48 - 0.25 * (Math.atan(dev) / (Math.PI / 2));
-    else if (gameVal === 'ow') gameFactor = 1.35 + 0.45 * (Math.atan(dev) / (Math.PI / 2));
-    else if (gameVal === 'fn') gameFactor = 1.30 + 0.40 * (Math.atan(dev) / (Math.PI / 2));
-    else if (gameVal === 'delta') gameFactor = 1.08;
-    else if (gameVal === 'cod') gameFactor = 1.08;
-    else if (gameVal === 'pubg') gameFactor = 0.90;
+    const finalEDPI = Math.round(subTotal * gameFactor);
+    const baseSens = (finalEDPI / currentDpi);
+    let rawSens;
 
-    let finalEDPI = Math.round(subTotal * gameFactor);
-    let baseSens = (finalEDPI / currentDpi);
-    let rawSens = baseSens;
-
-    if (gameVal === 'apex') rawSens = baseSens * 3.18;
-    else if (gameVal === 'ow') rawSens = baseSens * 10.60;
-    else if (gameVal === 'fn') rawSens = baseSens * 12.60;
-    else if (gameVal === 'delta') rawSens = baseSens * 7.80;
-    else if (gameVal === 'cod') rawSens = baseSens * 10.60;
-    else if (gameVal === 'pubg') {
-        let ratio = baseSens / 0.30;
+    if (gameVal === 'pubg') {
+        const ratio = baseSens / 0.30;
         rawSens = Math.max(1, Math.min(100, Math.round(50 + 25 * Math.log2(ratio))));
+    } else {
+        rawSens = baseSens * getConfigNum(`scale_${gameVal}`, 1.00);
     }
 
-    let finalSensStr = getSensDisplayString(rawSens, gameVal);
+    const finalSensStr = getSensDisplayString(rawSens, gameVal);
 
     currentDiagResult = {
         game: gameVal, gameName: gameNames[gameVal], dpi: currentDpi,
-        finalSens: finalSensStr, height: height, dexterity: neuroVal, armThickness: armVal, mouseWeight: weightVal, aimPart: pivotVal,
+        // DB には単位記号なしの数値文字列で保存する（学習側で確実にパースできるようにするため）
+        finalSens: sensToNumericString(rawSens, gameVal),
+        height: height, dexterity: neuroVal, armThickness: armVal, mouseWeight: weightVal, aimPart: pivotVal,
         isCustom: false, memo: 'Long Cape Theory', rating: 'good'
     };
 
@@ -715,35 +844,64 @@ function calculateEDPI() {
     document.getElementById('xShareBtn').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
     document.getElementById('resultBox').style.display = 'block';
 
-    const rawCurrentSensInput = document.getElementById('currentSens').value;
-    if (rawCurrentSensInput && rawCurrentSensInput.trim() !== '') {
-        supabaseClient
-            .from('calc_logs')
-            .insert([
-                {
-                    user_id: currentUser ? currentUser.id : null,
-                    game: gameVal,
-                    dpi: currentDpi,
-                    final_sens: rawCurrentSensInput.trim(),
-                    height: height,          
-                    dexterity: neuroVal,     
-                    play_style: armVal, 
-                    mouse_weight: weightVal, 
-                    aim_part: pivotVal,      
-                    is_custom: false,
-                    memo: '自動学習収集データ',
-                    rating: 'good'
-                }
-            ])
-            .then(response => {
-                if (response.error) console.error('データ送信エラー:', response.error.message);
-            })
-            .catch(err => console.error('通信エラー:', err));
+    collectLearningSample({
+        game: gameVal, dpi: currentDpi, height: height,
+        dexterity: neuroVal, armThickness: armVal, mouseWeight: weightVal, aimPart: pivotVal
+    });
+}
+
+// 「2-B. 現在のインゲーム感度」に入力された “ユーザーが実際に使っている感度” を
+// 学習用データとして収集する。学習側の教師データはこの行と感度メモの 2 種類のみ。
+function collectLearningSample(params) {
+    const rawInput = document.getElementById('currentSens').value;
+    if (!rawInput || rawInput.trim() === '') return;
+
+    const numeric = parseFloat(rawInput.trim());
+    if (!isFinite(numeric) || !isBackendAvailable()) return;
+
+    // タイトルごとの現実的なレンジ外は誤入力・悪戯とみなして送信しない
+    const range = SENS_INPUT_RANGE[params.game];
+    if (range && (numeric < range[0] || numeric > range[1])) {
+        console.warn('入力感度がレンジ外のため学習データとして送信しません:', numeric);
+        return;
     }
+    if (!(params.height >= 130 && params.height <= 220)) return;
+
+    const sensStr = sensToNumericString(numeric, params.game);
+    // 同じ内容で計算ボタンを連打しても行が量産されないようにする
+    const fingerprint = [params.game, params.dpi, sensStr, params.height,
+        params.dexterity, params.armThickness, params.mouseWeight, params.aimPart].join('|');
+    if (sessionStorage.getItem('lastLearningSample') === fingerprint) return;
+
+    supabaseClient
+        .from('calc_logs')
+        .insert([{
+            user_id: currentUser ? currentUser.id : null,
+            game: params.game,
+            dpi: params.dpi,
+            final_sens: sensStr,
+            height: params.height,
+            dexterity: params.dexterity,
+            play_style: params.armThickness,
+            mouse_weight: params.mouseWeight,
+            aim_part: params.aimPart,
+            is_custom: false,
+            memo: '自動学習収集データ',
+            rating: 'good'
+        }])
+        .then(response => {
+            if (response.error) console.error('データ送信エラー:', response.error.message);
+            else sessionStorage.setItem('lastLearningSample', fingerprint);
+        })
+        .catch(err => console.error('通信エラー:', err));
 }
 
 function handleSaveClick() {
     if (!currentDiagResult) return;
+    if (!isBackendAvailable()) {
+        alert('現在サーバーに接続できないため、保存機能は利用できません。診断結果の表示はそのままご利用いただけます。');
+        return;
+    }
     if (!currentUser) {
         sessionStorage.setItem('pendingDiagResult', JSON.stringify(currentDiagResult));
         openAuthModal();
@@ -762,6 +920,10 @@ async function syncPendingResult() {
 }
 
 async function saveCustomSens() {
+    if (!isBackendAvailable()) {
+        alert('現在サーバーに接続できないため、保存機能は利用できません。');
+        return;
+    }
     if (!currentUser) {
         openAuthModal();
         return;
@@ -774,14 +936,31 @@ async function saveCustomSens() {
 
     if (isNaN(rawSens)) return;
 
-    const formattedSensStr = getSensDisplayString(rawSens, game);
+    const range = SENS_INPUT_RANGE[game];
+    if (range && (rawSens < range[0] || rawSens > range[1])) {
+        alert('入力された感度が対象タイトルの想定レンジ外です。値をご確認ください。');
+        return;
+    }
+
+    // 感度メモも学習の教師データになるため、診断フォームの身体パラメータを一緒に保存する。
+    // （旧実装はここが全て null だったため、学習に使えるデータが 1 件も存在しなかった）
+    const heightVal = parseFloat(document.getElementById('height').value);
 
     await saveResultToSupabase({
-        game: game, dpi: dpi, finalSens: formattedSensStr, isCustom: true, memo: memo, rating: rating
+        game: game,
+        dpi: dpi,
+        finalSens: sensToNumericString(rawSens, game),
+        height: isFinite(heightVal) ? heightVal : null,
+        dexterity: document.getElementById('neuro').value,
+        armThickness: document.getElementById('armThickness').value,
+        mouseWeight: document.getElementById('weight').value,
+        aimPart: document.getElementById('pivot').value,
+        isCustom: true, memo: memo, rating: rating
     });
 }
 
 async function saveResultToSupabase(logData) {
+    if (!isBackendAvailable() || !currentUser) return;
     if (currentUser.email !== ADMIN_EMAIL) {
         const { data: existingLogs } = await supabaseClient
             .from('calc_logs')
@@ -832,6 +1011,13 @@ async function loadLogs() {
     const proBanner = document.getElementById('proBanner');
     const t = translations[currentLang];
 
+    if (!isBackendAvailable()) {
+        logsList.innerHTML = `<div style="font-size:0.85rem; color:var(--text-sub); text-align:center; padding:12px;">${t.backendOffline}</div>`;
+        logCountText.innerText = '-';
+        proBanner.style.display = 'none';
+        return;
+    }
+
     if (!currentUser) {
         logsList.innerHTML = `<div style="font-size:0.85rem; color:var(--text-sub); text-align:center; padding:12px;">${t.logsEmptyGuest}</div>`;
         logCountText.innerText = `0 / 5`;
@@ -866,15 +1052,22 @@ async function loadLogs() {
         const lockIcon = isLocked ? '🔒' : '🔓';
         const lockTitle = isLocked ? 'ロック解除' : '保護する';
 
+        // メモ・ゲーム名はユーザー入力なので必ずエスケープする（保存型XSS対策）
+        const gameLabel = escapeHtml(String(log.game || '').toUpperCase());
+        const memoLabel = escapeHtml(log.memo || '');
+        // DB には数値で保存し、% などの単位はここで付ける（旧形式の "6.50%" もそのまま扱える）
+        const sensLabel = escapeHtml(getSensDisplayString(log.final_sens, log.game));
+        const dpiLabel = escapeHtml(String(log.dpi ?? ''));
+
         return `
             <div class="log-item" style="${isLocked ? 'border-color: var(--accent-color);' : ''}">
                 <div>
-                    <strong>${log.game.toUpperCase()}</strong>${ratingBadge}
+                    <strong>${gameLabel}</strong>${ratingBadge}
                     <span class="log-tag">${log.is_custom ? t.tagCustom : t.tagDiag}</span>
-                    <div style="font-size:0.8rem; color:var(--text-sub);">${log.memo || ''} (DPI: ${log.dpi})</div>
+                    <div style="font-size:0.8rem; color:var(--text-sub);">${memoLabel} (DPI: ${dpiLabel})</div>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="font-size:1.4rem; font-weight:bold; color:var(--accent-color);">${log.final_sens}</div>
+                    <div style="font-size:1.4rem; font-weight:bold; color:var(--accent-color);">${sensLabel}</div>
                     <button onclick="toggleLock('${log.id}', ${isLocked})" title="${lockTitle}" style="background:none; border:none; cursor:pointer; font-size:1.1rem;">${lockIcon}</button>
                     <button onclick="deleteLog('${log.id}', ${isLocked})" title="${isLocked ? 'ロックされているため削除できません' : '削除'}" style="background:none; border:none; cursor:${isLocked ? 'not-allowed' : 'pointer'}; font-size:1rem; opacity:${isLocked ? '0.2' : '0.6'};">🗑️</button>
                 </div>
@@ -884,7 +1077,7 @@ async function loadLogs() {
 }
 
 async function toggleLock(logId, currentStatus) {
-    if (!currentUser) return;
+    if (!currentUser || !isBackendAvailable()) return;
     const newStatus = !currentStatus;
     const { error } = await supabaseClient
         .from('calc_logs')
@@ -900,7 +1093,7 @@ async function toggleLock(logId, currentStatus) {
 }
 
 async function deleteLog(logId, isLocked) {
-    if (!currentUser) return;
+    if (!currentUser || !isBackendAvailable()) return;
 
     if (isLocked) {
         alert('🔒 ロック（保護）されているログは削除できません。\n削除する場合は先にロックを解除（🔓）してください。');
@@ -924,7 +1117,7 @@ async function deleteLog(logId, isLocked) {
 async function loadAdminData() {
     const adminLogsList = document.getElementById('adminLogsList');
     const adminStats = document.getElementById('adminStats');
-    if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
+    if (!currentUser || currentUser.email !== ADMIN_EMAIL || !isBackendAvailable()) return;
 
     const { data: allLogs, error } = await supabaseClient
         .from('calc_logs')
@@ -935,22 +1128,28 @@ async function loadAdminData() {
 
     adminStats.innerText = `Total Records (Including User Deleted): ${allLogs ? allLogs.length : 0}`;
 
+    // 他ユーザーが入力した文字列を管理者画面に描画するため、必ずエスケープする
     adminLogsList.innerHTML = allLogs.map(log => `
         <div class="log-item" style="border-left: 3px solid ${log.is_deleted_by_user ? '#ef4444' : 'var(--admin-color)'};">
             <div>
-                <strong>${log.game.toUpperCase()}</strong> [Rating: ${log.rating || 'good'}]
+                <strong>${escapeHtml(String(log.game || '').toUpperCase())}</strong> [Rating: ${escapeHtml(log.rating || 'good')}]
                 <span class="log-tag">${log.is_custom ? 'MEMO' : 'DIAG'}</span>
                 ${log.is_deleted_by_user ? '<span style="font-size:0.7rem; color:#ef4444; margin-left:4px;">(ユーザー削除済)</span>' : ''}
                 <div style="font-size:0.75rem; color:var(--text-sub);">
-                    User: ${log.user_id ? log.user_id.slice(0, 8) + '...' : 'Guest'} | DPI: ${log.dpi}
+                    User: ${log.user_id ? escapeHtml(String(log.user_id).slice(0, 8)) + '...' : 'Guest'} | DPI: ${escapeHtml(String(log.dpi ?? ''))}
+                    | Memo: ${escapeHtml(log.memo || '')}
                 </div>
             </div>
-            <div style="font-size:1.4rem; font-weight:bold; color:var(--accent-color);">${log.final_sens}</div>
+            <div style="font-size:1.4rem; font-weight:bold; color:var(--accent-color);">${escapeHtml(getSensDisplayString(log.final_sens, log.game))}</div>
         </div>
     `).join('');
 }
 
 async function handleAuth(type) {
+    if (!isBackendAvailable()) {
+        alert('現在サーバーに接続できないため、ログイン・登録は利用できません。時間をおいて再度お試しください。');
+        return;
+    }
     const email = document.getElementById('authEmail').value;
     const password = document.getElementById('authPassword').value;
     const username = document.getElementById('authUsername').value.trim();
@@ -975,6 +1174,14 @@ window.addEventListener('DOMContentLoaded', () => {
     loadUserParams();
     changeLanguage(currentLang);
     fetchLatestConfig();
+
+    if (!isBackendAvailable()) {
+        const authBtn = document.getElementById('authBtn');
+        authBtn.disabled = true;
+        authBtn.style.opacity = '0.4';
+        authBtn.style.cursor = 'not-allowed';
+        document.getElementById('userStatus').innerText = translations[currentLang].backendOffline;
+    }
 });
 
 if ('serviceWorker' in navigator) {
@@ -985,47 +1192,13 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <footer style="text-align: center; margin-top: 24px; padding-bottom: 24px; font-size: 0.8rem; color: var(--text-sub);">
-    <a href="javascript:void(0)" onclick="openModal('aboutModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerAbout">ロングケープの定理とは</a>
-    <a href="javascript:void(0)" onclick="openModal('privacyModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerPrivacy">プライバシーポリシー</a>
-    <a href="javascript:void(0)" onclick="openModal('termsModal')" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerTerms">利用規約</a>
-    <a href="https://x.com/shizuo_lcesp" target="_blank" rel="noopener noreferrer" style="color: var(--text-sub); text-decoration: underline;" data-i18n="footerContact">お問い合わせ (𝕏)</a>
+    <a href="/about.html" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerAbout">ロングケープの定理とは</a>
+    <a href="/privacy.html" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerPrivacy">プライバシーポリシー</a>
+    <a href="/terms.html" style="color: var(--text-sub); text-decoration: underline; margin-right: 12px;" data-i18n="footerTerms">利用規約</a>
+    <a href="/contact.html" style="color: var(--text-sub); text-decoration: underline;" data-i18n="footerContact">お問い合わせ</a>
+    <p style="margin-top:12px; font-size:0.75rem;">© 2026 ロングケープの定理 (Long Cape Theorem)</p>
 </footer>
 
-<!-- モーダル各種 -->
-<div class="modal-overlay" id="aboutModal">
-    <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
-        <h3 style="margin-bottom:12px;" id="aboutModalTitle">ロングケープの定理とは</h3>
-        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.6;" id="aboutModalBody">
-            <p style="margin-bottom:10px;">本ツールは、単なる感度変換ツールではありません。身長、腕の太さ、手先の器用さ、マウス重量、そしてエイムの支点（手首・肘・肩）という身体的・神経的パラメータを解析し、独自のアルゴリズムで「理論上の最適感度」を算出するエイム最適化エンジンです。</p>
-        </div>
-        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('aboutModal')" data-i18n="btnClose">閉じる</button>
-    </div>
-</div>
-
-<div class="modal-overlay" id="privacyModal">
-    <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
-        <h3 style="margin-bottom:12px;" data-i18n="privacyTitle">プライバシーポリシー</h3>
-        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;" data-i18n-html="privacyBody">
-            <p style="margin-bottom:8px;">当サイトではプライバシーを保護しつつ適切なサービスを提供します。</p>
-        </div>
-        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('privacyModal')" data-i18n="btnClose">閉じる</button>
-    </div>
-</div>
-
-<div class="modal-overlay" id="termsModal">
-    <div class="modal-body" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
-        <h3 style="margin-bottom:12px;" data-i18n="termsTitle">利用規約</h3>
-        <div style="font-size:0.8rem; color:var(--text-sub); text-align:left; line-height:1.5;" data-i18n-html="termsBody">
-            <p style="margin-bottom:8px;">本ツールの利用規約に関する記載です。</p>
-        </div>
-        <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('termsModal')" data-i18n="btnClose">閉じる</button>
-    </div>
-</div>
-
-<script>
-function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-</script> 
 
 </body>
 </html>

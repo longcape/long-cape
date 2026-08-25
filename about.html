@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <title>ロングケープの定理とは | 身体特性から最適エイム感度を導く考え方</title>
+    <meta name="description" content="身長・腕の太さ・手先の器用さ・マウス重量・エイムの支点という5つのパラメータが、なぜ最適なインゲーム感度を左右するのか。eDPI と cm/360 の基礎から、タイトルごとに数値が異なる理由、感度を乗り換えるときの手順までを解説します。">
+    <link rel="canonical" href="https://longcapenotieri.jp/about.html">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="ロングケープの定理とは | 身体特性から最適エイム感度を導く考え方">
+    <meta property="og:description" content="身長・腕の太さ・器用さ・マウス重量・支点から最適インゲーム感度を導く考え方を解説します。">
+    <meta property="og:url" content="https://longcapenotieri.jp/about.html">
+    <meta property="og:image" content="https://longcapenotieri.jp/ogp-image.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/icon-192.png?v=3">
+    <link rel="apple-touch-icon" href="/icon-192.png?v=3">
+    <meta name="theme-color" content="#0b0f19">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3570868393201833" crossorigin="anonymous"></script>
+    <style>
+        :root { --bg-color:#0b0f19; --card-bg:#131b2e; --accent-color:#38bdf8; --text-main:#f8fafc; --text-sub:#94a3b8; --border-color:#1e293b; }
+        * { box-sizing:border-box; margin:0; padding:0; font-family:'Helvetica Neue', Arial, sans-serif; }
+        body { background:var(--bg-color); color:var(--text-main); line-height:1.9; padding:20px; }
+        .wrap { max-width:760px; margin:0 auto; }
+        .crumb { font-size:0.8rem; color:var(--text-sub); margin-bottom:16px; }
+        .crumb a { color:var(--accent-color); text-decoration:none; }
+        .card { background:var(--card-bg); border:1px solid var(--border-color); border-radius:16px; padding:28px; }
+        h1 { font-size:1.6rem; margin-bottom:8px; }
+        .lead { color:var(--text-sub); font-size:0.9rem; margin-bottom:24px; }
+        h2 { font-size:1.1rem; margin:28px 0 10px; padding-left:10px; border-left:3px solid var(--accent-color); }
+        h3 { font-size:0.98rem; margin:20px 0 6px; color:var(--accent-color); }
+        p, li { font-size:0.9rem; color:#cbd5e1; margin-bottom:10px; }
+        ul, ol { padding-left:22px; margin-bottom:12px; }
+        a { color:var(--accent-color); }
+        table { width:100%; border-collapse:collapse; margin:12px 0 18px; font-size:0.85rem; }
+        th, td { border:1px solid var(--border-color); padding:8px 10px; text-align:left; vertical-align:top; }
+        th { background:#0f172a; color:var(--text-main); white-space:nowrap; }
+        .note { background:#0f172a; border:1px solid var(--border-color); border-radius:10px; padding:14px 16px; font-size:0.85rem; color:var(--text-sub); margin:16px 0; }
+        .updated { font-size:0.8rem; color:var(--text-sub); margin-top:28px; padding-top:16px; border-top:1px solid var(--border-color); }
+        .backlink { display:inline-block; margin-top:20px; padding:12px 20px; background:var(--accent-color); color:#0b0f19; font-weight:bold; border-radius:8px; text-decoration:none; }
+        footer { max-width:760px; margin:32px auto 0; text-align:center; font-size:0.8rem; color:var(--text-sub); padding-bottom:24px; }
+        footer a { color:var(--text-sub); text-decoration:underline; margin:0 8px; }
+        .table-scroll { overflow-x:auto; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="crumb"><a href="/">ロングケープの定理</a> ＞ ロングケープの定理とは</div>
+    <div class="card">
+        <h1>ロングケープの定理とは</h1>
+        <p class="lead">「上手い人と同じ感度にしたのに、なぜか自分には合わない」——その原因は、腕の長さも、関節の可動域も、握力も、使っているマウスの重さも人によって違うからです。ロングケープの定理は、身体的・環境的なパラメータから逆算して、その人にとって理論上もっとも制御しやすい感度を求めるためのツールです。</p>
+
+        <h2>1. 感度は「数字」ではなく「距離」で考える</h2>
+        <p>FPS の感度設定でまず理解しておきたいのは、ゲーム内の感度数値そのものにはほとんど意味がない、ということです。VALORANT の 0.35 と Apex Legends の 0.35 は、まったく違う速さになります。比較可能な形にするために使われるのが次の 2 つの指標です。</p>
+
+        <h3>eDPI（実効 DPI）</h3>
+        <p>マウスの DPI とインゲーム感度を掛け合わせた値です。<strong>eDPI = DPI × インゲーム感度</strong> で求められます。800 DPI・感度 0.35 の人と、400 DPI・感度 0.70 の人は、どちらも eDPI 280 でまったく同じ速さになります。感度を他人と比較するときは、必ずこの eDPI で比べる必要があります。</p>
+
+        <h3>cm/360</h3>
+        <p>ゲーム内で 360 度振り向くために、マウスを実際に何センチ動かす必要があるかを表した値です。eDPI が「速さの指標」なら、cm/360 は「身体の動作量そのもの」を表します。エイムは結局のところ腕と手首の運動なので、最終的にはこの cm/360 が身体に合っているかどうかが問題になります。ロングケープの定理が身体的パラメータを入力させるのは、この動作量を身体側から逆算するためです。</p>
+
+        <div class="note">目安として、cm/360 が 20cm を下回ると「ハイセンシ」、30〜40cm 前後が「ミドルセンシ」、45cm を超えると「ローセンシ」と呼ばれます。ただしこの区分自体に絶対的な正解はなく、身体とデスクスペースに対して適正かどうかがすべてです。</div>
+
+        <h2>2. なぜ身体的特徴で最適な感度が変わるのか</h2>
+        <p>本ツールが入力を求める 5 つのパラメータは、それぞれ次の理屈で最適感度に影響します。</p>
+
+        <h3>エイムの支点（手首 / 肘 / 肩）</h3>
+        <p>もっとも影響が大きいパラメータです。支点が身体の中心に近づくほど、同じ角度を動かしたときのマウスの移動距離が大きくなります。手首エイムは可動範囲が狭いぶん短い距離で振り向ける速い感度が必要で、肩エイムは大きく腕を動かせるため低い感度でも十分に振り向けます。本ツールでも、手首支点には大きめのプラス補正、肩支点にはマイナス補正がかかります。</p>
+
+        <h3>身長</h3>
+        <p>身長は腕の長さと相関します。腕が長いほど同じ肩・肘の回転角に対してマウスが動く距離が伸びるため、低い感度でも同じ振り向き量を確保できます。逆に腕が短い場合は、可動範囲の不足を感度側で補う必要があります。本ツールでは 170cm を基準に、そこからの偏差で補正を掛けています。</p>
+
+        <h3>腕の太さ</h3>
+        <p>前腕の質量は、動き出しと停止の慣性に直結します。腕が太いほど微細な減速が効きにくく、狙った位置で止めるのが難しくなるため、わずかに感度を上げて動作量を減らしたほうが安定する傾向があります。逆に細い腕は微調整が効くため、低感度で精密に合わせる運用が向きます。</p>
+
+        <h3>手先の器用さ</h3>
+        <p>指先での微調整（マイクロアジャスト）がどれだけ利くかを表します。器用な人ほど高い感度でも止められるため、速い感度の恩恵を受けられます。器用さに自信がない場合は、感度を落として物理的な移動距離で精度を稼ぐほうが結果的に安定します。本ツールでもっとも補正幅が大きいパラメータのひとつです。</p>
+
+        <h3>マウス重量</h3>
+        <p>軽いマウスは初速が出やすく、少ない力で大きく動かせます。重いマウスは慣性が大きく、同じ感度でも「動かしづらい」と感じるため、感度側でわずかに補う必要があります。40g 台の超軽量マウスから 100g を超えるものまで、実際の操作感の差は無視できません。</p>
+
+        <h2>3. タイトルごとに数値が違う理由</h2>
+        <p>各ゲームは、インゲーム感度の「1」が意味する角度がそれぞれ異なります。同じ振り向き量を得るために必要な数値は、たとえば次のように大きく変わります。</p>
+        <div class="table-scroll">
+        <table>
+            <tr><th>タイトル</th><th>感度系の特徴</th></tr>
+            <tr><td>VALORANT / CS2</td><td>本ツールの基準系。0.1 刻みの微細な調整が効き、eDPI がそのまま比較単位になる</td></tr>
+            <tr><td>Apex Legends</td><td>VALORANT 換算より数値が大きくなる。実測ベースの反転非線形カーブで補正</td></tr>
+            <tr><td>Overwatch 2 / CoD</td><td>1〜100 のスケール。VALORANT 系より一桁大きい数値になる</td></tr>
+            <tr><td>Fortnite</td><td>％表示。建築・編集を伴うため、純粋なエイム最適値よりやや高めが好まれる</td></tr>
+            <tr><td>Delta Force</td><td>独自スケール。基本倍率を実測値ベースで調整</td></tr>
+            <tr><td>PUBG</td><td>1〜100 の対数的なスケール。広域索敵のため相対的に低感度が好まれる</td></tr>
+        </table>
+        </div>
+        <p>本ツールはまず「身体から導かれる基準 eDPI」を求め、そこにタイトルごとの単位変換とプレイスタイル補正を掛けて最終的な数値を出力します。したがって、同じ身体パラメータでもタイトルを切り替えれば、それぞれのゲームで<strong>体感的に等価</strong>な感度が表示されます。</p>
+
+        <h2>4. 診断結果の使い方</h2>
+        <ol>
+            <li><strong>いきなり全部変えない。</strong> 現在の感度と診断結果が大きく離れている場合、一度に乗り換えると数日間はむしろ成績が落ちます。現在値と目標値の中間から始め、1 週間ごとに寄せていくのが安全です。</li>
+            <li><strong>DPI ではなくインゲーム感度で合わせる。</strong> DPI は 800 のまま固定し、インゲーム感度側で調整するのが基本です。マウスによっては DPI 値によってセンサーの挙動が変わることがあります。</li>
+            <li><strong>最低 3 日は固定する。</strong> 感度変更の直後は必ず違和感が出ます。その違和感が「合っていない」のか「慣れていない」のかは、数日使わなければ判別できません。</li>
+            <li><strong>しっくり来た値は必ず記録する。</strong> 感度メモ機能に「神感度」として保存しておけば、迷走したときに戻る場所ができます。</li>
+        </ol>
+
+        <h2>5. データが増えるほど精度が上がる仕組み</h2>
+        <p>本ツールの各補正係数は、固定値ではありません。利用者が入力した「実際に使っている感度」を統計的に集計し、身体パラメータと実使用感度の関係を回帰分析することで、係数そのものが定期的に更新されます。</p>
+        <p>ただし、少数の極端なデータでアルゴリズムが振り回されないように、次の安全装置を設けています。</p>
+        <ul>
+            <li>1 回の更新で各係数が動ける幅は最大 ±10% まで（急激な変化の抑制）</li>
+            <li>タイトルごとの四分位範囲による外れ値の自動除外</li>
+            <li>「合わなかった・ボツ」と評価されたデータ、ネガティブなメモを含むデータの学習除外</li>
+            <li>同一利用者の試行錯誤ログは最終到達値のみを採用（同じ人の重複投票を防止）</li>
+            <li>本ツール自身が出力した診断結果は学習対象から除外（自己強化ループの防止）</li>
+            <li>各係数の絶対的な上限・下限クランプ</li>
+        </ul>
+        <p>感度診断の際に「現在のインゲーム感度」を入力していただくと、そのデータが次回以降の係数補正に反映されます。入力は任意ですが、協力いただけるほど全利用者にとっての精度が上がる設計です。</p>
+
+        <h2>6. よくある質問</h2>
+        <h3>会員登録しないと使えませんか？</h3>
+        <p>いいえ。感度診断そのものは登録不要・無料でご利用いただけます。登録が必要になるのは、診断結果や感度メモをマイページに保存する場合のみです。</p>
+        <h3>診断結果と、プロ選手の感度が全然違うのですが？</h3>
+        <p>プロ選手の感度は、その選手の身体・環境・プレイスタイルに最適化された値です。同じ数値が自分に合う保証はありません。本ツールは「他人の正解」ではなく「自分の身体から導いた基準点」を提示するためのものです。</p>
+        <h3>マウスパッドの大きさは影響しますか？</h3>
+        <p>大きく影響します。物理的にマウスを動かせる範囲が足りない場合、理論値がどれだけ低感度でも実戦では振り向けません。診断結果が現在よりかなり低感度になった場合は、まずデスクスペースが足りているかを確認してください。</p>
+        <h3>保存したデータは削除できますか？</h3>
+        <p>できます。マイページの各ログから個別に削除できるほか、アカウントごとの削除も <a href="/contact.html">お問い合わせ窓口</a> から受け付けています。詳細は <a href="/privacy.html">プライバシーポリシー</a> をご覧ください。</p>
+
+        <p class="updated">最終更新日：2026年8月25日</p>
+        <a class="backlink" href="/">← 感度診断を試す</a>
+    </div>
+</div>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type":"Question","name":"会員登録しないと使えませんか？","acceptedAnswer":{"@type":"Answer","text":"感度診断そのものは登録不要・無料で利用できます。登録が必要になるのは、診断結果や感度メモをマイページに保存する場合のみです。"}},
+    {"@type":"Question","name":"診断結果とプロ選手の感度が違うのはなぜですか？","acceptedAnswer":{"@type":"Answer","text":"プロ選手の感度はその選手の身体・環境・プレイスタイルに最適化された値であり、同じ数値が自分に合う保証はありません。本ツールは自分の身体から導いた基準点を提示するためのものです。"}},
+    {"@type":"Question","name":"マウスパッドの大きさは影響しますか？","acceptedAnswer":{"@type":"Answer","text":"大きく影響します。物理的にマウスを動かせる範囲が足りない場合、理論値がどれだけ低感度でも実戦では振り向けません。診断結果が低感度になった場合はデスクスペースを確認してください。"}},
+    {"@type":"Question","name":"保存したデータは削除できますか？","acceptedAnswer":{"@type":"Answer","text":"マイページの各ログから個別に削除できるほか、アカウントごとの削除もお問い合わせ窓口から受け付けています。"}}
+  ]
+}
+</script>
+<footer>
+    <a href="/">感度診断ツール</a>
+    <a href="/about.html">ロングケープの定理とは</a>
+    <a href="/privacy.html">プライバシーポリシー</a>
+    <a href="/terms.html">利用規約</a>
+    <a href="/contact.html">お問い合わせ</a>
+    <p style="margin-top:12px; font-size:0.75rem;">© 2026 ロングケープの定理 (Long Cape Theorem)</p>
+</footer>
+</body>
+</html>
