@@ -61,7 +61,12 @@ function replaceBlock(src, beginRe, endMarker, body, what, endIndent = '') {
     return src.slice(0, start) + '\n' + body + '\n' + endIndent + src.slice(end);
 }
 
-let html = fs.readFileSync(INDEX_HTML, 'utf8');
+// 改行コードは環境依存（Windows の git は CRLF でチェックアウトすることがある）。
+// 内部では LF に正規化して比較・生成し、書き戻すときに元の形式へ戻す。
+// これをしないと Windows 環境で --check が常に失敗する。
+const raw = fs.readFileSync(INDEX_HTML, 'utf8');
+const usesCRLF = raw.includes('\r\n');
+let html = raw.replace(/\r\n/g, '\n');
 const before = html;
 
 html = replaceBlock(html, /\/\* GAMES:BEGIN \*\//, '/* GAMES:END */', gamesBlock, 'GAMES');
@@ -93,6 +98,6 @@ if (check) {
     process.exit(1);
 }
 
-fs.writeFileSync(INDEX_HTML, html);
+fs.writeFileSync(INDEX_HTML, usesCRLF ? html.replace(/\n/g, '\r\n') : html);
 console.log(`✅ index.html を games.json と同期しました（${games.length} タイトル）`);
 console.log('   感度計算が変わっていないことを node tests/regression.mjs で確認してください。');
