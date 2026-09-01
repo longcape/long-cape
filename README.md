@@ -20,7 +20,11 @@ manifest.json       PWA マニフェスト
 train_model.py      係数の自動学習ジョブ（GitHub Actions から週次実行）
 requirements.txt    学習ジョブの依存パッケージ
 supabase/schema.sql テーブル定義と RLS ポリシー（手動で適用が必要）
+CLAUDE_HANDOFF_PACKAGE/HANDOFF.md  引継ぎ資料。進捗・未完了タスク・再開手順の集約先
 ```
+
+> **作業を引き継ぐ場合は、まず [`CLAUDE_HANDOFF_PACKAGE/HANDOFF.md`](CLAUDE_HANDOFF_PACKAGE/HANDOFF.md) を読んでください。**
+> 現在の進捗・未完了タスク・既知の問題・再開手順がそこに集約されています。
 
 ---
 
