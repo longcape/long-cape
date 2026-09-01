@@ -1,0 +1,80 @@
+{
+  "_readme": [
+    "ゲームタイトル定義の正本。index.html と train_model.py はどちらもこのファイルを基準にする。",
+    "タイトルを追加・変更したら `node tools/sync-games.mjs` を実行して index.html の生成ブロックを更新すること。",
+    "index.html 側は静的サイトのため埋め込みコピーを持つ。ズレは `node tools/sync-games.mjs --check` が検出する。",
+    "scale と curve は実測ベースの固定値。学習が動かすのは app_config 側の base_edpi・各係数・game_*_trim のみ。"
+  ],
+  "games": [
+    {
+      "key": "valo",
+      "name": "VALORANT / CS2",
+      "formLabel": "VALORANT / CS2",
+      "scale": 1.0,
+      "curve": { "type": "constant", "value": 1.0 },
+      "sensTransform": "linear",
+      "display": { "integer": false, "suffix": "" },
+      "inputRange": [0.05, 3.0]
+    },
+    {
+      "key": "apex",
+      "name": "Apex Legends",
+      "formLabel": "Apex Legends",
+      "scale": 3.18,
+      "curve": { "type": "atan", "base": 1.48, "coef": -0.25 },
+      "sensTransform": "linear",
+      "display": { "integer": false, "suffix": "" },
+      "inputRange": [0.2, 10.0]
+    },
+    {
+      "key": "ow",
+      "name": "Overwatch 2",
+      "formLabel": "Overwatch 2",
+      "scale": 10.6,
+      "curve": { "type": "atan", "base": 1.35, "coef": 0.45 },
+      "sensTransform": "linear",
+      "display": { "integer": false, "suffix": "%" },
+      "inputRange": [0.5, 30.0]
+    },
+    {
+      "key": "fn",
+      "name": "Fortnite",
+      "formLabel": "Fortnite / フォートナイト",
+      "scale": 12.6,
+      "curve": { "type": "atan", "base": 1.3, "coef": 0.4 },
+      "sensTransform": "linear",
+      "display": { "integer": false, "suffix": "%" },
+      "inputRange": [1.0, 40.0]
+    },
+    {
+      "key": "delta",
+      "name": "Delta Force",
+      "formLabel": "Delta Force / デルタフォース",
+      "scale": 7.8,
+      "curve": { "type": "constant", "value": 1.08 },
+      "sensTransform": "linear",
+      "display": { "integer": false, "suffix": "" },
+      "inputRange": [0.5, 25.0]
+    },
+    {
+      "key": "cod",
+      "name": "CoD",
+      "formLabel": "CoD / アリーナ系",
+      "scale": 10.6,
+      "curve": { "type": "constant", "value": 1.08 },
+      "sensTransform": "linear",
+      "display": { "integer": false, "suffix": "" },
+      "inputRange": [0.5, 30.0]
+    },
+    {
+      "key": "pubg",
+      "name": "PUBG",
+      "formLabel": "PUBG / 広域バトロワ",
+      "scale": 1.0,
+      "curve": { "type": "constant", "value": 0.9 },
+      "sensTransform": "pubgLog",
+      "display": { "integer": true, "suffix": "" },
+      "inputRange": [1, 100]
+    }
+  ]
+}
