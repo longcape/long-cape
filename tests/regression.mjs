@@ -47,7 +47,10 @@ if (!fs.existsSync(BASELINE)) {
     process.exit(1);
 }
 
-const expected = fs.readFileSync(BASELINE, 'utf8');
+// 改行コードは環境依存（Windows の git は CRLF でチェックアウトすることがある）。
+// baseline.csv は常に LF で書き出し、比較時は読み込み側を LF へ正規化する。
+// これをしないと Windows 環境で全行が差分扱いになり、テストが使えない。
+const expected = fs.readFileSync(BASELINE, 'utf8').replace(/\r\n/g, '\n');
 if (expected === current) {
     console.log(`✅ 回帰テスト成功: ${CASES.length} パターンすべて一致（感度計算に変化なし）`);
     process.exit(0);
