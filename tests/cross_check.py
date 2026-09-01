@@ -23,6 +23,7 @@ from sensitivity_model import (  # noqa: E402
     DEFAULT_SCALE,
     GAMES,
     forward_sens,
+    forward_sens_detail,
     invert_to_subtotal,
     is_log_transform,
     js_round,
@@ -97,21 +98,44 @@ def main():
     print(f"✅ JS と Python の計算結果が一致: {checked} 件")
 
     # 逆算の往復精度（forward → invert が元の subTotal に戻るか）
+    #
+    # PUBG のように感度が 1〜100 の整数に制限されるタイトルでは、範囲外の subTotal が
+    # 端へクランプされる。クランプされた点は情報が落ちており原理的に元へ戻せないため、
+    # 精度判定からは除外し、件数だけ報告する（モデルの不具合ではない）。
     worst = 0.0
     worst_where = None
+    worst_clamped = 0.0
+    clamped_count = 0
+    checked_rt = 0
+
     for game in GAMES:
         for st in (120.0, 178.25, 230.0, 300.0, 420.0):
             for dpi in (400.0, 800.0, 1600.0):
-                sens = forward_sens(st, dpi, game, DEFAULT_SCALE[game], 1.0)
+                sens, clamped = forward_sens_detail(st, dpi, game, DEFAULT_SCALE[game], 1.0)
                 if sens <= 0:
                     continue
                 back = invert_to_subtotal(sens, dpi, game, DEFAULT_SCALE[game], 1.0)
                 err = abs(back - st) / st
+                if clamped:
+                    clamped_count += 1
+                    worst_clamped = max(worst_clamped, err)
+                    continue
+                checked_rt += 1
                 if err > worst:
                     worst, worst_where = err, (game, st, dpi)
 
-    # PUBG は整数へ丸めるため往復誤差が大きめに出る。閾値はタイトル共通で 5%。
-    print(f"✅ 逆算の往復誤差 最大 {worst * 100:.3f}%（{worst_where[0]} subTotal={worst_where[1]} dpi={worst_where[2]}）")
+    print(
+        f"✅ 逆算の往復誤差 最大 {worst * 100:.3f}%"
+        f"（{worst_where[0]} subTotal={worst_where[1]} dpi={worst_where[2]} / 検査 {checked_rt} 点）"
+    )
+    if clamped_count:
+        print(
+            f"ℹ️ 表現範囲外でクランプされた {clamped_count} 点は精度判定から除外"
+            f"（その中の最大往復誤差 {worst_clamped * 100:.1f}%。仕様上の想定内）"
+        )
+
+    # 感度を整数で表現するタイトルは 1 段階あたり約 2.8% 動くため、往復誤差は
+    # 原理的に最大 ±1.4% 程度出る。実測 1.3% に対し、余裕をみて 5% を上限とする。
     if worst > 0.05:
         print("❌ 往復誤差が 5% を超えています。invert_to_subtotal を確認してください。")
         return 1

@@ -69,18 +69,29 @@ def is_log_transform(game):
     return GAME_DEFS.get(game, {}).get("sensTransform") == "pubgLog"
 
 
-def forward_sens(sub_total, dpi, game, scale, trim):
-    """subTotal から in-game 感度を求める。index.html の calculateEDPI() と同じ順序で計算する。
+def forward_sens_detail(sub_total, dpi, game, scale, trim):
+    """subTotal から in-game 感度を求め、(感度, クランプされたか) を返す。
 
-    丸め（finalEDPI の round、PUBG の round/clamp）まで含めて再現する。
+    index.html の calculateEDPI() と同じ順序で計算し、丸め（finalEDPI の round、
+    PUBG の round/clamp）まで含めて再現する。
+
+    PUBG のように表現範囲が 1〜100 の整数に限られるタイトルでは、範囲外の
+    subTotal が端へ丸め込まれる。その点は原理的に逆算で元へ戻せないため、
+    呼び出し側が区別できるようクランプの有無を返す。
     """
     final_edpi = js_round(sub_total * game_curve(sub_total, game) * trim)
     base_sens = final_edpi / dpi
     if is_log_transform(game):
         ratio = base_sens / PUBG_BASE_SENS
         raw = js_round(PUBG_OFFSET + PUBG_GAIN * np.log2(ratio))
-        return float(min(max(raw, PUBG_RANGE[0]), PUBG_RANGE[1]))
-    return float(base_sens * scale)
+        lo, hi = PUBG_RANGE
+        return float(min(max(raw, lo), hi)), bool(raw < lo or raw > hi)
+    return float(base_sens * scale), False
+
+
+def forward_sens(sub_total, dpi, game, scale, trim):
+    """subTotal から in-game 感度を求める。index.html の calculateEDPI() と同じ。"""
+    return forward_sens_detail(sub_total, dpi, game, scale, trim)[0]
 
 
 def invert_to_subtotal(sens, dpi, game, scale, trim):
