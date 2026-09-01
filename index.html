@@ -158,6 +158,7 @@
         <div class="form-group">
             <label for="game" data-i18n="labelGame">1. ターゲットゲームタイトル</label>
             <select id="game" onchange="saveUserParams()">
+                <!-- GAME_OPTIONS:BEGIN diagnosis 自動生成 — games.json が正本 -->
                 <option value="valo" selected>VALORANT / CS2</option>
                 <option value="apex">Apex Legends</option>
                 <option value="ow">Overwatch 2</option>
@@ -165,6 +166,7 @@
                 <option value="delta">Delta Force / デルタフォース</option>
                 <option value="cod">CoD / アリーナ系</option>
                 <option value="pubg">PUBG / 広域バトロワ</option>
+                <!-- GAME_OPTIONS:END -->
             </select>
         </div>
 
@@ -277,6 +279,7 @@
         <div class="form-group">
             <label for="customGame" data-i18n="labelCustomGame">対象タイトル</label>
             <select id="customGame">
+                <!-- GAME_OPTIONS:BEGIN memo 自動生成 — games.json が正本 -->
                 <option value="valo">VALORANT / CS2</option>
                 <option value="apex">Apex Legends</option>
                 <option value="ow">Overwatch 2</option>
@@ -284,6 +287,7 @@
                 <option value="delta">Delta Force</option>
                 <option value="cod">CoD</option>
                 <option value="pubg">PUBG</option>
+                <!-- GAME_OPTIONS:END -->
             </select>
         </div>
         <div class="row">
@@ -577,6 +581,43 @@ const isBackendAvailable = () => supabaseClient !== null;
 let currentUser = null;
 let currentDiagResult = null;
 
+// --- ゲームタイトル定義 ---------------------------------------------------
+// 正本はリポジトリ直下の games.json。ここは静的サイト用の埋め込みコピーで、
+// `node tools/sync-games.mjs` が自動生成する。手で編集しないこと。
+// ズレは `node tools/sync-games.mjs --check`（CI で実行）が検出する。
+/* GAMES:BEGIN */
+const GAMES = [
+    { "key": "valo", "name": "VALORANT / CS2", "formLabel": "VALORANT / CS2", "scale": 1, "curve": { "type": "constant", "value": 1 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "" }, "inputRange": [0.05, 3] },
+    { "key": "apex", "name": "Apex Legends", "formLabel": "Apex Legends", "scale": 3.18, "curve": { "type": "atan", "base": 1.48, "coef": -0.25 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "" }, "inputRange": [0.2, 10] },
+    { "key": "ow", "name": "Overwatch 2", "formLabel": "Overwatch 2", "scale": 10.6, "curve": { "type": "atan", "base": 1.35, "coef": 0.45 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "%" }, "inputRange": [0.5, 30] },
+    { "key": "fn", "name": "Fortnite", "formLabel": "Fortnite / フォートナイト", "scale": 12.6, "curve": { "type": "atan", "base": 1.3, "coef": 0.4 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "%" }, "inputRange": [1, 40] },
+    { "key": "delta", "name": "Delta Force", "formLabel": "Delta Force / デルタフォース", "scale": 7.8, "curve": { "type": "constant", "value": 1.08 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "" }, "inputRange": [0.5, 25] },
+    { "key": "cod", "name": "CoD", "formLabel": "CoD / アリーナ系", "scale": 10.6, "curve": { "type": "constant", "value": 1.08 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "" }, "inputRange": [0.5, 30] },
+    { "key": "pubg", "name": "PUBG", "formLabel": "PUBG / 広域バトロワ", "scale": 1, "curve": { "type": "constant", "value": 0.9 }, "sensTransform": "pubgLog", "display": { "integer": true, "suffix": "" }, "inputRange": [1, 100] }
+];
+/* GAMES:END */
+
+const GAME_BY_KEY = Object.fromEntries(GAMES.map(g => [g.key, g]));
+/** 未知のキーが来ても落ちないよう、既定タイトル（先頭）へフォールバックする。 */
+const gameDef = (key) => GAME_BY_KEY[key] || GAMES[0];
+
+/**
+ * ダイナミクスカーブ。train_model.py の game_curve() と必ず同一の値を返すこと。
+ * 実測ベースでFIX済みのため、係数は games.json 側でのみ管理する。
+ */
+function gameCurve(subTotal, gameKey) {
+    const curve = gameDef(gameKey).curve;
+    if (curve.type === 'atan') {
+        const dev = (subTotal - 178.25) / 50.0;
+        const atanNorm = Math.atan(dev) / (Math.PI / 2);
+        return curve.base + curve.coef * atanNorm;
+    }
+    return curve.value;
+}
+
+// タイトルごとに現実的な入力レンジ（明らかな誤入力・悪戯を弾く）
+const SENS_INPUT_RANGE = Object.fromEntries(GAMES.map(g => [g.key, g.inputRange]));
+
 let dynamicConfig = {
     base_edpi: 230,
     height_factor: 0.005,
@@ -600,20 +641,11 @@ let dynamicConfig = {
     // --- ゲームタイトル別パラメータ ---
     // scale_*  : エンジン固有の単位変換定数（実測ベースの固定値）
     // game_*_trim : 学習で動く補正倍率（既定 1.00 = 現行カーブそのまま）
-    scale_valo: 1.00,
-    scale_apex: 3.18,
-    scale_ow: 10.60,
-    scale_fn: 12.60,
-    scale_delta: 7.80,
-    scale_cod: 10.60,
-    scale_pubg: 1.00,
-    game_valo_trim: 1.00,
-    game_apex_trim: 1.00,
-    game_ow_trim: 1.00,
-    game_fn_trim: 1.00,
-    game_delta_trim: 1.00,
-    game_cod_trim: 1.00,
-    game_pubg_trim: 1.00
+    // いずれも GAMES（games.json）から生成する。タイトル追加時にここを触る必要はない。
+    ...Object.fromEntries(GAMES.flatMap(g => [
+        [`scale_${g.key}`, g.scale],
+        [`game_${g.key}_trim`, 1.00],
+    ]))
 };
 
 // app_config から取り込んだ値が数値として妥当なときだけ採用する
@@ -626,14 +658,8 @@ function getConfigNum(key, fallback) {
 function sensToNumericString(val, gameKey) {
     const num = parseFloat(val);
     if (!isFinite(num)) return null;
-    return String(gameKey === 'pubg' ? Math.round(num) : Math.round(num * 1000) / 1000);
+    return String(gameDef(gameKey).display.integer ? Math.round(num) : Math.round(num * 1000) / 1000);
 }
-
-// タイトルごとに現実的な入力レンジ（明らかな誤入力・悪戯を弾く）
-const SENS_INPUT_RANGE = {
-    valo: [0.05, 3.0], apex: [0.2, 10.0], ow: [0.5, 30.0], fn: [1.0, 40.0],
-    delta: [0.5, 25.0], cod: [0.5, 30.0], pubg: [1, 100]
-};
 
 function saveUserParams() {
     const params = {
@@ -700,11 +726,11 @@ function getSensDisplayString(sensVal, gameKey) {
     // 旧形式（"6.50%" のような単位付き文字列）も数値としてパースできるようにする
     const num = parseFloat(String(sensVal).replace('%', '').trim());
     if (!isFinite(num)) return '-';
-    if (gameKey === 'pubg') {
+    const def = gameDef(gameKey);
+    if (def.display.integer) {
         return Math.round(num).toString();
     }
-    const formatted = formatSens(num);
-    return (gameKey === 'fn' || gameKey === 'ow') ? `${formatted}%` : formatted;
+    return `${formatSens(num)}${def.display.suffix}`;
 }
 
 function updateUserStatusUI() {
@@ -804,24 +830,10 @@ function calculateEDPI() {
     let subTotal = baseEDPI * (1 + bodyFactor + neuroFactor + armFactor + weightFactor + pivotFactor);
 
     const gameVal = document.getElementById('game').value;
-    const gameNames = {
-        valo: 'VALORANT / CS2', apex: 'Apex Legends', ow: 'Overwatch 2',
-        fn: 'Fortnite', delta: 'Delta Force', cod: 'CoD', pubg: 'PUBG'
-    };
+    const def = gameDef(gameVal);
 
     // ダイナミクスカーブ（タイトル固有の形。実測ベースでFIX済み）
-    const dev = (subTotal - 178.25) / 50.0;
-    const atanNorm = Math.atan(dev) / (Math.PI / 2);
-    const gameCurves = {
-        valo:  1.00,
-        apex:  1.48 - 0.25 * atanNorm,
-        ow:    1.35 + 0.45 * atanNorm,
-        fn:    1.30 + 0.40 * atanNorm,
-        delta: 1.08,
-        cod:   1.08,
-        pubg:  0.90
-    };
-    const curve = (gameCurves[gameVal] !== undefined) ? gameCurves[gameVal] : 1.00;
+    const curve = gameCurve(subTotal, gameVal);
     // 学習で動く補正倍率。データが貯まるまでは 1.00 なので現行の挙動と完全に一致する
     const gameFactor = curve * getConfigNum(`game_${gameVal}_trim`, 1.00);
 
@@ -829,7 +841,7 @@ function calculateEDPI() {
     const baseSens = (finalEDPI / currentDpi);
     let rawSens;
 
-    if (gameVal === 'pubg') {
+    if (def.sensTransform === 'pubgLog') {
         const ratio = baseSens / 0.30;
         rawSens = Math.max(1, Math.min(100, Math.round(50 + 25 * Math.log2(ratio))));
     } else {
@@ -839,7 +851,7 @@ function calculateEDPI() {
     const finalSensStr = getSensDisplayString(rawSens, gameVal);
 
     currentDiagResult = {
-        game: gameVal, gameName: gameNames[gameVal], dpi: currentDpi,
+        game: gameVal, gameName: def.name, dpi: currentDpi,
         // DB には単位記号なしの数値文字列で保存する（学習側で確実にパースできるようにするため）
         finalSens: sensToNumericString(rawSens, gameVal),
         height: height, dexterity: neuroVal, armThickness: armVal, mouseWeight: weightVal, aimPart: pivotVal,
@@ -847,17 +859,17 @@ function calculateEDPI() {
     };
 
     const t = translations[currentLang];
-    document.getElementById('resultGameTitle').innerText = gameNames[gameVal];
+    document.getElementById('resultGameTitle').innerText = def.name;
     document.getElementById('resultValue').innerText = finalSensStr;
     document.getElementById('resultDesc').innerHTML = `${t.calcDpiText} ${currentDpi} DPI`;
     
     let shareText = "";
     if (currentLang === 'ja') {
-        shareText = `【ロングケープの定理】\n${gameNames[gameVal]}の最適インゲーム感度は「${finalSensStr}」と診断されました！\n（計算基準DPI: ${currentDpi}）\n\n自分の身体特性から最適感度を診断👇\n${SITE_URL}\n\n#ロングケープの定理 #${gameVal.toUpperCase()}`;
+        shareText = `【ロングケープの定理】\n${def.name}の最適インゲーム感度は「${finalSensStr}」と診断されました！\n（計算基準DPI: ${currentDpi}）\n\n自分の身体特性から最適感度を診断👇\n${SITE_URL}\n\n#ロングケープの定理 #${gameVal.toUpperCase()}`;
     } else if (currentLang === 'ko') {
-        shareText = `【롱케이프의 정리】\n${gameNames[gameVal]}의 최적 인게임 감도는 「${finalSensStr}」로 진단되었습니다!\n(계산 기준 DPI: ${currentDpi})\n\n신체 특성 기반 최적 감도 진단👇\n${SITE_URL}\n\n#롱케이프의정리 #${gameVal.toUpperCase()}`;
+        shareText = `【롱케이프의 정리】\n${def.name}의 최적 인게임 감도는 「${finalSensStr}」로 진단되었습니다!\n(계산 기준 DPI: ${currentDpi})\n\n신체 특성 기반 최적 감도 진단👇\n${SITE_URL}\n\n#롱케이프의정리 #${gameVal.toUpperCase()}`;
     } else {
-        shareText = `[Long Cape Theorem]\nMy optimal sensitivity for ${gameNames[gameVal]} is "${finalSensStr}"!\n(Based on ${currentDpi} DPI)\n\nDiagnose your optimal sens based on physical traits👇\n${SITE_URL}\n\n#LongCapeTheorem #${gameVal.toUpperCase()}`;
+        shareText = `[Long Cape Theorem]\nMy optimal sensitivity for ${def.name} is "${finalSensStr}"!\n(Based on ${currentDpi} DPI)\n\nDiagnose your optimal sens based on physical traits👇\n${SITE_URL}\n\n#LongCapeTheorem #${gameVal.toUpperCase()}`;
     }
 
     document.getElementById('xShareBtn').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;

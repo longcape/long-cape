@@ -131,6 +131,46 @@ SUPABASE_SERVICE_ROLE_KEY=xxxx python train_model.py
 
 実データを書き換えるため、動作確認だけの場合は Supabase 側のバックアップを取ってから実行すること。
 
+## テスト
+
+感度計算はこのサービスの中身そのものなので、機能を追加しても**出力が 1 件も変わらないこと**を毎回確認する。
+
+```bash
+node tests/regression.mjs
+```
+
+`tests/baseline.csv` に固定した 8,064 パターン（7 タイトル × 身体パラメータの全組み合わせ ＋ DPI・境界値）を再計算し、差分があれば失敗する。`index.html` は変更せず、最小限の DOM スタブ経由で本番と同じ `calculateEDPI()` を呼んでいる。
+
+係数や計算式を**意図的に**変えたときだけベースラインを更新し、差分を必ずレビューする。
+
+```bash
+node tests/regression.mjs --update
+```
+
+`index.html`（JS）と `train_model.py`（Python）は同じ関数形を共有しなければならない。この一致は次で検証する。
+
+```bash
+python tests/cross_check.py
+```
+
+いずれも push / PR 時に GitHub Actions（`.github/workflows/test.yml`）で自動実行される。
+
+## ゲームタイトルの追加・変更
+
+タイトル定義の正本は **`games.json`** の 1 か所だけ。以前は `index.html` と `train_model.py` の 7 か所を個別に直す必要があったが、現在は次の手順で足りる。
+
+```bash
+# 1. games.json にタイトルを追加する
+# 2. index.html の生成ブロックへ反映する
+node tools/sync-games.mjs
+# 3. 既存タイトルの計算が変わっていないことを確認する
+node tests/regression.mjs
+```
+
+`index.html` の `/* GAMES:BEGIN */`〜`/* GAMES:END */` と `<!-- GAME_OPTIONS:BEGIN -->`〜`<!-- GAME_OPTIONS:END -->` は自動生成なので手で編集しない。`train_model.py` は `sensitivity_model.py` 経由で `games.json` を直接読むため、同期は不要。
+
+ズレは CI（`node tools/sync-games.mjs --check`）が検出する。
+
 ---
 
 本ツールは各ゲームタイトルの開発・運営元とは関係のない非公式のファンメイドツールです。

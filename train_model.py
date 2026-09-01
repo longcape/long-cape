@@ -29,6 +29,14 @@ import pandas as pd
 from sklearn.linear_model import Ridge
 from supabase import create_client
 
+# ゲームタイトル定義と感度計算の純粋関数は sensitivity_model へ集約している。
+# 定義の正本は games.json（index.html と共有）。
+from sensitivity_model import (
+    DEFAULT_SCALE,
+    GAMES,
+    invert_to_subtotal,
+)
+
 # --- 1. Supabase 接続 -------------------------------------------------------
 SUPABASE_URL = "https://gmhayutirvdaesneulgr.supabase.co"
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -38,18 +46,6 @@ if not SUPABASE_KEY:
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-GAMES = ["valo", "apex", "ow", "fn", "delta", "cod", "pubg"]
-
-# index.html と共有する単位変換スケール（ゲームエンジン固有の定数）
-DEFAULT_SCALE = {
-    "valo": 1.00,
-    "apex": 3.18,
-    "ow": 10.60,
-    "fn": 12.60,
-    "delta": 7.80,
-    "cod": 10.60,
-    "pubg": 1.00,  # PUBG は対数スケールのため個別処理
-}
 
 # 診断結果の保存ログ（＝本ツールの出力）に付くメモ。学習からは必ず除外する。
 DIAG_OUTPUT_MEMOS = {"long cape theory", "ロングケープの定理"}
@@ -115,48 +111,6 @@ def to_number(series):
         series.astype(str).str.replace("%", "", regex=False).str.strip(),
         errors="coerce",
     )
-
-
-def game_curve(sub_total, game):
-    """index.html の gameFactor と同一のカーブ。"""
-    dev = (sub_total - 178.25) / 50.0
-    a = np.arctan(dev) / (np.pi / 2)
-    if game == "apex":
-        return 1.48 - 0.25 * a
-    if game == "ow":
-        return 1.35 + 0.45 * a
-    if game == "fn":
-        return 1.30 + 0.40 * a
-    if game in ("delta", "cod"):
-        return 1.08
-    if game == "pubg":
-        return 0.90
-    return 1.00
-
-
-def invert_to_subtotal(sens, dpi, game, scale, trim):
-    """観測された in-game 感度から、身体由来の基準 eDPI（subTotal）を逆算する。
-
-    gameCurve が subTotal に依存するため、不動点反復で解く（数回で十分収束する）。
-    """
-    if game == "pubg":
-        # index.html: sens = clamp(round(50 + 25*log2(baseSens/0.30)))
-        base_sens = 0.30 * (2.0 ** ((sens - 50.0) / 25.0))
-        target_edpi = base_sens * dpi
-    else:
-        target_edpi = sens * dpi / scale
-
-    sub = target_edpi  # 初期値（gameCurve=1 と仮定）
-    for _ in range(40):
-        denom = game_curve(sub, game) * trim
-        if denom <= 0:
-            return np.nan
-        nxt = target_edpi / denom
-        if abs(nxt - sub) < 1e-6:
-            sub = nxt
-            break
-        sub = nxt
-    return sub
 
 
 def apply_rate_limit(current_val, target_val, max_change_rate=0.10, min_step=0.01):

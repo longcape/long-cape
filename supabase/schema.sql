@@ -48,11 +48,48 @@ create table if not exists public.calc_logs (
     rating              text default 'good',
     is_locked           boolean not null default false,
     is_deleted_by_user  boolean not null default false,
-    created_at          timestamptz not null default now()
+    created_at          timestamptz not null default now(),
+
+    -- ▼ 2026-09-01 追加。すべて nullable で、既存行・既存コードには影響しない。
+    source              text,          -- 行の出どころ。下記 2-A 参照
+    session_id          text,          -- 同一セッション（1 回の試行錯誤）をまとめる識別子
+    input_params        jsonb,         -- 入力条件のスナップショット。項目追加時に migration を不要にする
+    config_version      timestamptz,   -- 診断時点の app_config.updated_at（後から再計算するため）
+    client_lang         text           -- 表示言語（ja / en / ko）
 );
+
+-- ---------------------------------------------------------------------
+-- 2-A. 既存環境への追加（このファイルを再実行しても安全）
+--
+-- create table if not exists は既存テーブルに列を足さないため、
+-- 本番へは下記の alter が必要。いずれも nullable かつデフォルト無しなので
+-- 既存行の書き換えは発生せず、実行は一瞬で終わる。
+--
+-- 【重要】列を追加する前にフロント側から書き込むと insert が失敗する。
+--   適用順序: このファイルを本番へ適用する → その後で index.html 側の書き込みを追加する。
+--   2026-09-01 時点では index.html はこれらの列へ一切書き込んでいない。
+--
+-- source に入れる想定値（現在は memo 文字列で判別しており、表記揺れに弱い）:
+--   'diagnosis_auto'   … 診断フォームの「現在の感度」自動収集（学習に使う）
+--   'memo'             … 感度メモタブからの保存（学習に使う）
+--   'diagnosis_result' … 診断結果そのものの保存（自己強化ループ防止のため学習に使わない）
+--   'import'           … 将来の外部データ取込
+-- 値が入り始めたら train_model.py の教師データ選別を memo 判定から source 判定へ
+-- 切り替える。切替は「source が null の行は従来どおり memo で判定」する併用から始める。
+-- ---------------------------------------------------------------------
+alter table public.calc_logs add column if not exists source         text;
+alter table public.calc_logs add column if not exists session_id     text;
+alter table public.calc_logs add column if not exists input_params   jsonb;
+alter table public.calc_logs add column if not exists config_version timestamptz;
+alter table public.calc_logs add column if not exists client_lang    text;
 
 create index if not exists calc_logs_user_idx    on public.calc_logs (user_id, created_at desc);
 create index if not exists calc_logs_learn_idx   on public.calc_logs (game, is_custom, created_at);
+-- 学習ジョブが source で絞り込めるようになったとき用
+create index if not exists calc_logs_source_idx  on public.calc_logs (source, game, created_at);
+
+-- 追加した列は行単位の RLS で保護されるため、既存ポリシーの変更は不要。
+-- （Postgres の RLS は列単位ではなく行単位で効く）
 
 alter table public.calc_logs enable row level security;
 
