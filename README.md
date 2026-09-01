@@ -14,11 +14,17 @@ contact.html        お問い合わせ
 robots.txt          クロール許可
 sitemap.xml         サイトマップ
 ads.txt             AdSense の販売者情報
+ogp-image.png       リンク共有時のサムネイル（1200x630）
+assets/ogp-source.html  上記画像の生成元。文言を変えたらブラウザで開いて 1200x630 で撮り直す
 manifest.json       PWA マニフェスト
 train_model.py      係数の自動学習ジョブ（GitHub Actions から週次実行）
 requirements.txt    学習ジョブの依存パッケージ
 supabase/schema.sql テーブル定義と RLS ポリシー（手動で適用が必要）
+CLAUDE_HANDOFF_PACKAGE/HANDOFF.md  引継ぎ資料。進捗・未完了タスク・再開手順の集約先
 ```
+
+> **作業を引き継ぐ場合は、まず [`CLAUDE_HANDOFF_PACKAGE/HANDOFF.md`](CLAUDE_HANDOFF_PACKAGE/HANDOFF.md) を読んでください。**
+> 現在の進捗・未完了タスク・既知の問題・再開手順がそこに集約されています。
 
 ---
 
@@ -103,7 +109,21 @@ finalEDPI  = subTotal × ダイナミクスカーブ(subTotal) × game_<title>_t
 > 公開リポジトリのスケジュール実行は、60 日間コミットが無いと自動停止する。
 > 学習を止めたくない場合は定期的にコミットするか、Actions 画面から手動で再有効化する。
 
-### 3. Google AdSense
+### 3. アクセス解析（Vercel Web Analytics）
+
+各ページに計測スクリプトを設置済み。**Vercel の管理画面で有効化するまでは計測されない**ので、
+プロジェクト → `Analytics` タブ → `Enable` を押すこと。
+
+```html
+<script defer src="/_vercel/insights/script.js"></script>
+```
+
+有効化前はこのスクリプトが 404 になるが、`defer` で読み込むだけなのでページの動作には影響しない。
+
+検索経由の流入を伸ばすなら、あわせて **Google Search Console** に登録しておくとよい。
+どの検索語で表示され、何回クリックされたかが分かる（Vercel Analytics では分からない情報）。
+
+### 4. Google AdSense
 
 - `ads.txt` は配置済み。
 - 手動の広告ユニットを使う場合は、`index.html` の `ADSENSE_SLOT_ID` に
