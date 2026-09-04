@@ -552,6 +552,50 @@
             context.filenameTimestampMeaning = 'unknown';
         }
 
+        // --- シナリオの同一性。
+        // 実測（3.9.8）で、**同じシナリオを感度を変えて2回**実行したところ Hash は一致した。
+        // 一方、別シナリオでは異なる。したがって Hash は「シナリオ定義の識別子」であって
+        // 設定値のハッシュではない。表示名は改名されうるので、比較の鍵には Hash を使う。
+        if (context.sourceHash) {
+            context.scenarioKey = context.sourceHash;
+            context.scenarioKeySource = 'footer_hash';
+        } else {
+            context.scenarioKey = null;
+            context.scenarioKeySource = 'unavailable';
+        }
+
+        // --- 難易度が一定だったか。
+        // 実測で、適応型シナリオでは Avg Target Scale が 1.0 以外（1.367143）になり、
+        // 固定シナリオでは 1.0 だった。難易度が動いたセッションは水準間比較に使えない。
+        //
+        // これは **片方向の判定**である。1.0 以外なら「変動した」と断定できるが、
+        // 1.0 でも標的の速度・距離など他の次元が動いていないことまでは保証しない。
+        // シナリオ名に "Adapt" が入っているかで判定するようなことはしない（名前は当てにならない）。
+        var targetScale = toNumber(context.avgTargetScale);
+        var timeDilation = toNumber(context.avgTimeDilation);
+        context.avgTargetScale = targetScale;
+        context.avgTimeDilation = timeDilation;
+        if (targetScale !== null && targetScale !== 1) {
+            context.difficultyVaried = true;
+            context.difficultyVariedBasis = 'avg_target_scale=' + targetScale;
+        } else if (timeDilation !== null && timeDilation !== 1) {
+            context.difficultyVaried = true;
+            context.difficultyVariedBasis = 'avg_time_dilation=' + timeDilation;
+        } else {
+            context.difficultyVaried = false;
+            context.difficultyVariedBasis = targetScale === null
+                ? 'no_signal_available'
+                : 'avg_target_scale=1_and_avg_time_dilation=1';
+        }
+        if (context.difficultyVaried) {
+            unresolved.push({
+                field: 'session_comparability',
+                reason: 'difficulty_varied_within_session',
+                note: 'このセッションは難易度が固定されていないため、感度水準の比較に使えない。'
+                    + '根拠: ' + context.difficultyVariedBasis
+            });
+        }
+
         // --- DPI の出どころ
         //
         // 【重要・実測で判明】KovaaK の DPI 欄は **ユーザーが手で入力する設定値**であって、
@@ -586,14 +630,47 @@
         candidatesExtra.forEach(function (c) { candidates.push(c); });
         if (fHoriz !== null) candidates.push({ origin: 'footer', value: fHoriz });
 
-        if (candidates.length > 0) {
+        // 【実測で決着】G-1 で、ゲーム内表示を 0.215 と 0.4 の2値に設定して export を取得し、
+        // フッターの Horiz Sens がどちらもその表示値と一致することを確認した。
+        // 想定していた「武器行とフッターで100倍違う」問題は、現行形式では起きない。
+        // 現行の武器行に感度列は存在しないため、出どころはフッター1つに定まる。
+        var vertSens = toNumber(parsed.footer['vert sens']);
+        if (candidates.length === 1 && candidates[0].origin === 'footer') {
+            context.inGameSens = fHoriz;
+            context.inGameSensVert = vertSens;
+            context.inGameSensSource = 'footer_horiz_sens';
+            context.inGameSensBasis = 'verified_against_ui_2026-09-04:0.215,0.4/kovaak_3.9.8';
+            context.inGameSensAxesDiffer = (vertSens !== null && vertSens !== fHoriz);
+        } else if (candidates.length > 1) {
+            context.inGameSens = null;
+            context.inGameSensSource = 'ambiguous';
             unresolved.push({
                 field: 'in_game_sens',
-                reason: candidates.length > 1 ? 'horiz_sens_multiple_sources' : 'horiz_sens_single_source_unverified',
+                reason: 'horiz_sens_multiple_sources',
                 candidates: candidates,
-                note: '実ファイル検証まで in_game_sens を確定しない（Phase C.5 未確定事項2）'
+                note: '感度の出どころが複数あり値が食い違う。自動で選ばない。'
+            });
+        } else {
+            context.inGameSens = null;
+            context.inGameSensSource = 'missing';
+            unresolved.push({
+                field: 'in_game_sens',
+                reason: 'horiz_sens_not_found',
+                candidates: [],
+                note: 'フッターに Horiz Sens が無い。'
             });
         }
+
+        // --- Sens Increment は感度の出どころにしない。
+        // 実測2点（0.215→0.214877、0.4→0.399771）で Horiz Sens に対する比が
+        // 0.9994279 で一定だった。つまり「丸める前の真の感度」ではなく、
+        // 一定係数で結ばれた別の量である。意味が未確定なので記録だけして使わない。
+        var sensIncrement = toNumber(context.sensIncrement);
+        context.sensIncrement = sensIncrement;
+        if (sensIncrement !== null && fHoriz) {
+            context.sensIncrementRatio = sensIncrement / fHoriz;
+        }
+        context.sensIncrementUsage = 'recorded_only_meaning_unconfirmed';
         if (dpi !== null) {
             unresolved.push({
                 field: 'dpi_verified',
@@ -604,14 +681,18 @@
             });
         }
 
-        var cmBlockers = ['in_game_sens'];
+        // cm/360 のブロック要因。G-1 で in_game_sens は解消したので、
+        // 残るのは実機DPIの確認だけになった。それでも**自動確定はしない**。
+        var cmBlockers = [];
+        if (context.inGameSens === null || context.inGameSens === undefined) cmBlockers.push('in_game_sens');
         if (dpi === null) cmBlockers.push('dpi_missing');
         else cmBlockers.push('dpi_unverified');
         unresolved.push({
             field: 'cm360',
             reason: 'blocked_by:' + cmBlockers.join(','),
-            note: 'cm/360 は in_game_sens と実機DPIの両方が確定するまで自動算出しない。'
+            note: 'cm/360 は実機DPIがユーザー確認で確定するまで自動算出しない。'
                 + 'DPIが2倍違えば cm/360 も2倍ずれる。'
+                + '感度そのもの（Horiz Sens）は G-1 で確定済み。'
         });
 
         return { metrics: metrics, weapons: weapons, context: context, unresolved: unresolved };
@@ -817,7 +898,8 @@
         parserVersion: PARSER_VERSION,
         normalizationVersion: NORMALIZATION_VERSION,
         productionReady: false,
-        notProductionReadyReason: '実ファイル未検証（fixtureのみ）／in_game_sens 未確定',
+        notProductionReadyReason: '実ファイル4件で schema・感度欄・シナリオ識別子を確認済み。'
+            + '残件は実機DPIのユーザー確認と、metric ごとの reliability policy 未設定',
 
         FORMATS: FORMATS,
         accepts: { extensions: ['.csv'], maxBytes: 2 * 1024 * 1024, maxFiles: 500 },

@@ -183,20 +183,20 @@ check('正規化: 旧形式は DPI が無く dpiSource=unknown', async () => {
 check('正規化: 適応型シナリオの値を context に取り込む', async () => {
     const r = await app.run([readFixture(F.oddName)], { importedAt: 'T' });
     const c = r.sessions[0].context;
-    eq(c.avgTargetScale, '1.2', 'Avg Target Scale');
-    eq(c.avgTimeDilation, '0.9', 'Avg Time Dilation');
+    eq(c.avgTargetScale, 1.2, 'Avg Target Scale（数値化される）');
+    eq(c.avgTimeDilation, 0.9, 'Avg Time Dilation');
 });
 
 // ------------------------------- 5. 禁止事項（Horiz Sens / cm360 / 保存）
 
-check('禁止事項: Horiz Sens を正規化せず candidates として残す', async () => {
+check('出どころが複数あって食い違う場合は感度を確定しない', async () => {
     const r = await app.run([readFixture(F.current)], { importedAt: 'T' });
     const s = r.sessions[0];
 
     ok(!s.metrics.some((m) => /horiz|sens/.test(m.metricKey)),
         'Horiz Sens が metric として正規化されていないこと');
-    ok(s.context.in_game_sens === undefined && s.context.inGameSens === undefined,
-        'in_game_sens が確定されていないこと');
+    eq(s.context.inGameSens, null, '食い違うときは感度を確定しない');
+    eq(s.context.inGameSensSource, 'ambiguous', '出どころが定まらないことを明示する');
 
     const u = s.unresolved.find((x) => x.field === 'in_game_sens');
     ok(u, 'in_game_sens が unresolved に記録されていること');
@@ -423,7 +423,7 @@ check('実構造: 設定値をフッターから取得する', async () => {
     eq(c.sensScale, 'Valorant', 'Sens Scale は名前であって数値ではない');
     eq(c.fovScale, 'Valorant', 'FOVScale');
     eq(c.resolution, '1920x1080', 'Resolution');
-    eq(c.sensIncrement, '0.214877', 'Sens Increment');
+    eq(c.sensIncrement, 0.214877, 'Sens Increment（数値化される）');
 });
 
 check('実構造: 武器行のヘッダのみの列で警告を出さない', async () => {
@@ -475,15 +475,17 @@ check('実構造: TTK の s 接尾辞を数値化できる', async () => {
     eq(r.warnings.length, 0, '警告なしで通る');
 });
 
-check('実構造: Horiz Sens は1箇所しか無く、100倍差は存在しない', async () => {
+check('実構造: Horiz Sens は1箇所しか無く、G-1 で確定した', async () => {
     const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
-    const u = r.sessions[0].unresolved.find((x) => x.field === 'in_game_sens');
-    ok(u, '未確定として記録される');
-    eq(u.candidates.length, 1, '候補は1つだけ');
-    eq(u.candidates[0].origin, 'footer', 'フッター由来');
-    eq(u.reason, 'horiz_sens_single_source_unverified', '単一ソースだが未検証');
-    // それでも確定はしない
-    ok(r.sessions[0].context.inGameSens === undefined, 'まだ確定させない');
+    const s0 = r.sessions[0];
+    ok(!s0.unresolved.some((x) => x.field === 'in_game_sens'),
+        'G-1 の実機照合により未確定ではなくなる');
+    eq(s0.context.inGameSens, 0.215, 'フッターの Horiz Sens をそのまま採用');
+    eq(s0.context.inGameSensSource, 'footer_horiz_sens', '出どころを明示');
+    ok(/0\.215,0\.4/.test(s0.context.inGameSensBasis), '照合に使った実測値が根拠に残る');
+    eq(s0.context.inGameSensAxesDiffer, false, '縦横が同じ');
+    ok(!s0.metrics.some((m) => /horiz|sens/.test(m.metricKey)),
+        '感度そのものは metric 化しない');
 });
 
 check('実構造: ファイルのDPIと実機DPIが違いうることを前提にする', async () => {
@@ -517,6 +519,86 @@ check('プレビュー: バッチ全体の要約を返す', async () => {
     eq(p.dpi.needsUserConfirmation, 2, '解析できた全件で確認が必要');
     eq(p.period.tzKnown, false, 'タイムゾーンは不明のまま');
     ok(p.unresolvedFields.in_game_sens >= 1, 'in_game_sens が未確定として集計される');
+});
+
+// --------------------------- 10. G-1（実 KovaaK 3.9.8 照合）で判明したこと
+
+check('G-1: Sens Increment は感度の出どころにしない', async () => {
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    const c = r.sessions[0].context;
+    eq(c.sensIncrementUsage, 'recorded_only_meaning_unconfirmed', '記録のみで使わない');
+    // 実測2点で比が一定（0.9994279）だった。丸め前の値ではない。
+    ok(Math.abs(c.sensIncrementRatio - 0.9994279) < 1e-6,
+        `Horiz Sens との比が実測どおり: ${c.sensIncrementRatio}`);
+    eq(c.inGameSens, 0.215, '感度として採用されるのは Horiz Sens のほう');
+});
+
+check('G-1: Hash をシナリオの識別子として使う', async () => {
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    const c = r.sessions[0].context;
+    eq(c.scenarioKey, c.sourceHash, 'Hash をそのまま鍵にする');
+    eq(c.scenarioKeySource, 'footer_hash', '出どころを明示');
+    ok(c.scenarioKey && c.scenarioKey !== c.scenarioFromFooter,
+        '表示名ではなく Hash を使う');
+});
+
+check('G-1: 難易度が動いたセッションは比較対象から外す', async () => {
+    const base = readFixture(F.real);
+    const varied = { name: base.name, text: base.text.replace('Avg Target Scale:,1.0', 'Avg Target Scale:,1.367143') };
+    const r = await app.run([varied], { importedAt: 'T' });
+    const s0 = r.sessions[0];
+    eq(s0.context.difficultyVaried, true, '変動したと判定');
+    ok(/1\.367143/.test(s0.context.difficultyVariedBasis), '根拠に実測値が残る');
+    const u = s0.unresolved.find((x) => x.field === 'session_comparability');
+    ok(u, '比較可能性が未確定として記録される');
+    eq(u.reason, 'difficulty_varied_within_session', '理由');
+});
+
+check('G-1: 難易度が一定なら比較対象に残す', async () => {
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    const s0 = r.sessions[0];
+    eq(s0.context.difficultyVaried, false, '一定と判定');
+    ok(!s0.unresolved.some((x) => x.field === 'session_comparability'),
+        '比較可能性は阻害されない');
+});
+
+check('G-1: シナリオ名から適応型を推測しない', async () => {
+    const base = readFixture(F.real);
+    // 名前に Adapt を含めても、Avg Target Scale が 1.0 なら変動とは断定しない
+    const renamed = {
+        name: 'SmallFlicks Valorant Adapt - Challenge - 2026.09.04-23.31.46 Stats.csv',
+        text: base.text
+    };
+    const r = await app.run([renamed], { importedAt: 'T' });
+    eq(r.sessions[0].context.difficultyVaried, false, '名前では判定しない');
+});
+
+check('G-1: cm/360 を阻むのは実機DPIだけになった', async () => {
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    const cm = r.sessions[0].unresolved.find((x) => x.field === 'cm360');
+    ok(cm, 'cm/360 はなお自動確定しない');
+    ok(!/in_game_sens/.test(cm.reason), '感度はもう阻害要因ではない');
+    ok(/dpi_unverified/.test(cm.reason), '残る阻害要因は実機DPIの確認');
+});
+
+check('G-1: DPIが無ければ感度が確定していても cm/360 は出さない', async () => {
+    const base = readFixture(F.real);
+    const noDpi = { name: base.name, text: base.text.replace(/DPI:,\d+/, 'DPI:,') };
+    const r = await app.run([noDpi], { importedAt: 'T' });
+    const s0 = r.sessions[0];
+    eq(s0.context.inGameSens, 0.215, '感度は確定している');
+    const cm = s0.unresolved.find((x) => x.field === 'cm360');
+    ok(/dpi_missing/.test(cm.reason), 'DPI欠落を理由として記録');
+});
+
+check('G-1: 縦横で感度が違う場合を検出する', async () => {
+    const base = readFixture(F.real);
+    const asym = { name: base.name, text: base.text.replace('Vert Sens:,0.215', 'Vert Sens:,0.3') };
+    const r = await app.run([asym], { importedAt: 'T' });
+    const c = r.sessions[0].context;
+    eq(c.inGameSens, 0.215, '横を代表値にする');
+    eq(c.inGameSensVert, 0.3, '縦も保持する');
+    eq(c.inGameSensAxesDiffer, true, '差があることを記録');
 });
 
 // ------------------------------------------------------------- 結果出力

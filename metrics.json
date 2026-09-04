@@ -11,9 +11,12 @@
     "2026-09-04: KovaaK 3.9.8 の実 export で値と単位を確認した metric に value_confirmed_in_real_export を付与した。",
     "確認しただけでは rated にしない。意味・正規化・reliability policy まで確定したものだけ段階的に rated へ変える。",
     "2026-09-04: KovaaK ファイル内の DPI は KovaaK 側の手入力設定であり、実機DPIとは限らない。",
-    "実測で「ファイル400 / 実機800」の食い違いを確認。cm/360 が2倍ずれるため、DPIは必ずユーザー確認を経る。"
+    "実測で「ファイル400 / 実機800」の食い違いを確認。cm/360 が2倍ずれるため、DPIは必ずユーザー確認を経る。",
+    "2026-09-04 G-1: 実 KovaaK 3.9.8 の export 4件で値と単位を確認した。staged_promotion_checks に5項目の達成状況を残す。5項目すべてが true になるまで rated にしない。",
+    "2026-09-04 G-1: 感度そのもの（Horiz Sens）はゲーム内表示値と一致することを2値（0.215 / 0.4）で確認したが、metric 化はしない。context.inGameSens として保持する。",
+    "2026-09-04 G-1: KovaaK の DPI 欄は手入力の設定値であり、実ファイル4件のうち3件で実機DPI（800）と食い違っていた。この誤差はそのまま cm/360 の2倍のずれになるため、DPI はユーザー確認を必須とする。"
   ],
-  "registry_version": "1.3.0",
+  "registry_version": "1.4.0",
   "metrics": [
     {
       "metric_key": "kovaak.score",
@@ -29,9 +32,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "KovaaKのシナリオ内スコア。シナリオ間で比較可能な絶対値ではない。"
@@ -50,9 +60,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "ラン内のキル数。"
@@ -71,9 +88,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "ラン内のデス数。"
@@ -92,9 +116,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "交戦時間。長さの指標であり良し悪しではない。"
@@ -113,9 +144,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "命中数。"
@@ -134,9 +172,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "平均Time To Kill。**実ファイルで単位は秒であることを確認**（従来 ms と想定していたのは誤り）。小さいほど速い。"
@@ -155,9 +200,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "平均FPS。環境情報であり技能指標ではない。"
@@ -176,9 +228,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "与ダメージ。"
@@ -197,9 +256,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "被ダメージ。"
@@ -218,9 +284,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "空中撃ち成功数。"
@@ -239,9 +312,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "空中撃ちされた数。"
@@ -260,9 +340,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "直撃数。"
@@ -281,9 +368,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "被直撃数。"
@@ -302,9 +396,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "移動距離。"
@@ -323,9 +424,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "武器ごとの発射数。"
@@ -344,9 +452,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "武器ごとの命中数。"
@@ -365,9 +480,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "武器ごとの与ダメージ。"
@@ -386,9 +508,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
-        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "武器ごとの最大可能ダメージ。"
@@ -601,8 +730,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "外した回数。実ファイル 3.9.8 のフッターで確認。"
@@ -621,8 +758,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "撃ちすぎの回数。"
@@ -641,8 +786,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "リロード回数。"
@@ -661,8 +814,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "KovaaK 内のポイント。意味未確認。"
@@ -681,8 +842,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "シナリオの残り時間。"
@@ -701,8 +870,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "一時停止した回数。実測で 2 を確認。"
@@ -721,8 +898,16 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "value_confirmed_but_policy_not_set",
-        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+        "reason": "value_and_unit_confirmed_meaning_pending",
+        "note": "実ファイル4件（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy が未確定のため unrated のまま。5項目すべてを満たしたものだけ G-2 で個別に rated へ変える。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8 / 実ファイル4件",
+        "staged_promotion_checks": {
+          "1_value_confirmed": true,
+          "2_meaning_confirmed": false,
+          "3_unit_confirmed": true,
+          "4_normalization_confirmed": false,
+          "5_reliability_policy_set": false
+        }
       },
       "normalization_method": "none",
       "description": "一時停止の合計秒数。実測で 65 を確認。"
