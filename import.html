@@ -360,8 +360,11 @@
             ['colInGameSens', function (r) { return r.horizSens === null ? '—' : esc(r.horizSens); }],
             ['colFov', function (r) { return esc(r.fov === null ? '—' : r.fov); }],
             ['colCm360', function (r) {
-                return r.cm360Blocked ? '<span class="blocked">' + esc(T('cm360Blocked')) + '</span>'
-                    : (r.cm360 === null ? '—' : esc(r.cm360));
+                if (r.cm360Blocked) return '<span class="blocked">' + esc(T('cm360Blocked')) + '</span>';
+                if (r.cm360 !== null) return esc(r.cm360);
+                // 換算が未検証のスケール。**推測しないので数字を出さない。**
+                return '<span class="blocked" title="'
+                    + esc(T('cm360NotVerified', { scale: r.sensScale || '?' })) + '">—</span>';
             }],
             ['colScore', function (r) { return r.score === null ? '—' : esc(r.score); }],
             ['colKills', function (r) { return r.kills === null ? '—' : esc(r.kills); }],
@@ -384,13 +387,28 @@
         }).join('');
         $('rowsTable').innerHTML = head + '<tbody>' + body + rej + '</tbody>';
 
+        // 換算が未検証のスケールがあれば、数字が出ない理由をまとめて説明する
+        var unverified = {};
+        view.rows.forEach(function (r) {
+            if (!r.cm360Blocked && r.cm360 === null && r.sensScale) unverified[r.sensScale] = true;
+        });
+        var unvNames = Object.keys(unverified);
+        var scopeNote = unvNames.length === 0 ? ''
+            : '<div class="note warn"><b>' + esc(T('cm360ScopeTitle')) + '</b><br>'
+              + esc(T('cm360ScopeBody'))
+              + '<br><span class="hint">' + unvNames.map(function (nm) {
+                    return esc(T('cm360NotVerified', { scale: nm }));
+                }).join(' / ') + '</span></div>';
+
         var ex = U.buildExcludedView(state.run.sessions || []);
-        $('excludedNote').innerHTML = ex.length === 0 ? '' :
-            '<div class="note warn"><b>' + esc(T('excludedCount', { n: ex.length })) + '</b><br>'
-            + ex.map(function (x) {
-                return esc(x.scenario) + ' — ' + esc(T('excludedReason'))
-                    + '<br><span class="hint">' + esc(T('excludedKeptNote')) + '</span>';
-            }).join('<br>') + '</div>';
+        var exNote = ex.length === 0 ? ''
+            : '<div class="note warn"><b>' + esc(T('excludedCount', { n: ex.length })) + '</b><br>'
+              + ex.map(function (x) {
+                    return esc(x.scenario) + ' — ' + esc(T('excludedReason'))
+                        + '<br><span class="hint">' + esc(T('excludedKeptNote')) + '</span>';
+                }).join('<br>') + '</div>';
+
+        $('excludedNote').innerHTML = scopeNote + exNote;
 
         $('warnBox').classList.toggle('hidden', view.warnings.length === 0);
         $('warnBody').innerHTML = view.warnings.length === 0
