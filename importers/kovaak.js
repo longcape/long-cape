@@ -61,12 +61,15 @@
         'avg ttk': { metricKey: 'kovaak.avg_ttk', unit: 'ms' }
     };
 
-    /** 武器行のうち session レベルの指標として扱う列。 */
+    /**
+     * 武器行の指標。**weapon レベル**の記録として全行を保持する。
+     * Adapter は代表武器を選ばず、合算もしない。集約は Derived 層の責務。
+     */
     var WEAPON_METRIC_MAP = {
-        'shots': { metricKey: 'kovaak.shots', unit: 'count' },
-        'hits': { metricKey: 'kovaak.hits', unit: 'count' },
-        'damage done': { metricKey: 'kovaak.damage_done_weapon', unit: 'damage' },
-        'damage possible': { metricKey: 'kovaak.damage_possible', unit: 'damage' }
+        'shots': { metricKey: 'kovaak.weapon.shots', unit: 'count' },
+        'hits': { metricKey: 'kovaak.weapon.hits', unit: 'count' },
+        'damage done': { metricKey: 'kovaak.weapon.damage_done', unit: 'damage' },
+        'damage possible': { metricKey: 'kovaak.weapon.damage_possible', unit: 'damage' }
     };
 
     /**
@@ -119,20 +122,28 @@
     }
 
     /**
-     * 内容ハッシュ（FNV-1a 64bit 相当を32bit×2で構成）。
-     * 暗号学的強度は無い。重複検知の用途にのみ使う。
-     * 本番では SubtleCrypto の SHA-256 へ差し替える前提で、algo名を明示して返す。
+     * raw_content_hash — 元ファイルの実バイト列に対する SHA-256。
+     *
+     * 【logical_fingerprint とは別物】
+     * raw_content_hash は「バイト列が同一か」だけを見る。ファイル名や改行コードが
+     * 違えば別のハッシュになる。同一runなのに表現が違う場合を検知する
+     * logical_fingerprint は意味ベースの別概念で、Phase D では実装しない。
+     * この2つを同じ列・同じ意味として扱ってはいけない。
      */
-    function contentHash(text) {
-        var h1 = 0x811c9dc5, h2 = 0x01000193;
-        for (var i = 0; i < text.length; i++) {
-            var c = text.charCodeAt(i);
-            h1 = (h1 ^ c) >>> 0;
-            h1 = Math.imul(h1, 0x01000193) >>> 0;
-            h2 = (h2 + c) >>> 0;
-            h2 = Math.imul(h2, 0x85ebca6b) >>> 0;
+    async function rawContentHash(bytesOrText) {
+        var data;
+        if (typeof bytesOrText === 'string') {
+            data = new TextEncoder().encode(bytesOrText);
+        } else {
+            data = bytesOrText;
         }
-        return ('00000000' + h1.toString(16)).slice(-8) + ('00000000' + h2.toString(16)).slice(-8);
+        var digest = await crypto.subtle.digest('SHA-256', data);
+        var out = '';
+        var view = new Uint8Array(digest);
+        for (var i = 0; i < view.length; i++) {
+            out += ('00' + view[i].toString(16)).slice(-2);
+        }
+        return out;
     }
 
     function warn(list, level, code, message, extra) {
@@ -288,7 +299,7 @@
     /**
      * 1ファイルを解析する。例外は投げない。
      */
-    function parseFile(file, detection, warnings, unknownFields) {
+    async function parseFile(file, detection, warnings, unknownFields) {
         var text = stripBom(String(file.text || ''));
         var blocks = splitBlocks(text);
         var fn = parseFileName(file.name);
@@ -340,8 +351,8 @@
             weaponHeaders: weapon.headers,
             weaponRows: weapon.rows,
             footer: footer,
-            contentHash: contentHash(text),
-            contentHashAlgo: 'fnv1a64-prototype'
+            rawContentHash: await rawContentHash(text),
+            rawContentHashAlgo: 'sha-256'
         };
     }
 
@@ -407,35 +418,77 @@
             }
         }
 
-        // --- 武器行（先頭1行のみを session 代表として扱う。複数武器は未対応として警告）
-        if (parsed.weaponRows.length > 1) {
-            warn(warnings, 'info', 'multiple_weapon_rows',
-                '武器行が複数あります。プロトタイプでは先頭行のみを使用します',
-                { file: parsed.fileName, count: parsed.weaponRows.length });
-        }
-        var wrow = parsed.weaponRows[0];
-        if (wrow) {
+        // --- 武器行: **全件を weapon レベルの記録として保持する**
+        //
+        // Adapter は代表武器を選ばず、合算もしない（Phase D 承認時の指示）。
+        //   Raw weapon rows → Normalized weapon-level records → Derived aggregation
+        // 集約・重み付け・代表値の決定は Long Cape 独自計算であり Derived 層の責務。
+        //
+        // なお設定列（Sens Scale / FOV / ADS 等）は武器ではなく **セッションの測定条件** を
+        // 表すため、行をまたいで同一であることを確認したうえで context へ入れる。
+        // これは「代表武器の選択」ではない。
+        var weapons = [];
+        var sessionContextFromRows = {};
+        var contextConflicts = {};
+
+        parsed.weaponRows.forEach(function (wrow, rowIndex) {
+            var wMetrics = [];
+            var wName = null;
+
             parsed.weaponHeaders.forEach(function (h) {
                 if (h === '' || h === undefined) return;          // 区切りの空列
                 var lk = h.trim().toLowerCase();
-                if (lk === 'weapon') { context.weapon = wrow[h]; return; }
+
+                if (lk === 'weapon') { wName = wrow[h]; return; }
                 if (lk === 'horiz sens' || lk === 'vert sens') return; // candidates 側で扱う
-                if (lk === 'crosshair' || lk === 'crosshair scale' || lk === 'crosshair color') return; // 表示設定。取り込まない
+                if (lk === 'crosshair' || lk === 'crosshair scale' || lk === 'crosshair color') return; // 表示設定
 
                 if (WEAPON_METRIC_MAP[lk]) {
                     var d = WEAPON_METRIC_MAP[lk];
                     var v = toNumber(wrow[h]);
                     if (v === null) {
-                        warn(warnings, 'warn', 'value_not_numeric', '武器行の値を数値化できません: ' + h, { file: parsed.fileName, raw: wrow[h] });
+                        warn(warnings, 'warn', 'value_not_numeric',
+                            '武器行の値を数値化できません: ' + h,
+                            { file: parsed.fileName, weaponRow: rowIndex, raw: wrow[h] });
                     } else {
-                        metrics.push({ metricKey: d.metricKey, value: v, unit: d.unit, rawText: String(wrow[h]) });
+                        wMetrics.push({ metricKey: d.metricKey, value: v, unit: d.unit, rawText: String(wrow[h]) });
                     }
                 } else if (WEAPON_CONTEXT_KEYS[lk]) {
-                    context[WEAPON_CONTEXT_KEYS[lk]] = wrow[h];
+                    // セッション条件。行をまたいで食い違えば警告し、先勝ちで保持する
+                    var ck = WEAPON_CONTEXT_KEYS[lk];
+                    if (sessionContextFromRows.hasOwnProperty(ck)) {
+                        if (sessionContextFromRows[ck] !== wrow[h]) contextConflicts[ck] = true;
+                    } else {
+                        sessionContextFromRows[ck] = wrow[h];
+                    }
                 } else {
-                    unknownFields.push({ section: 'weapon', key: h, sample: String(wrow[h]).slice(0, 32), file: parsed.fileName });
+                    unknownFields.push({
+                        section: 'weapon', key: h,
+                        sample: String(wrow[h]).slice(0, 32), file: parsed.fileName
+                    });
                 }
             });
+
+            weapons.push({
+                index: rowIndex,
+                weapon: wName,
+                metrics: wMetrics
+            });
+        });
+
+        for (var ck2 in sessionContextFromRows) {
+            if (sessionContextFromRows.hasOwnProperty(ck2)) context[ck2] = sessionContextFromRows[ck2];
+        }
+        for (var cf in contextConflicts) {
+            if (!contextConflicts.hasOwnProperty(cf)) continue;
+            warn(warnings, 'warn', 'weapon_row_context_conflict',
+                '武器行によってセッション条件の値が異なります: ' + cf,
+                { file: parsed.fileName, field: cf });
+        }
+        if (weapons.length > 1) {
+            warn(warnings, 'info', 'multiple_weapons_present',
+                '武器が複数あります。全件を weapon レベルで保持しました（集約はDerived層の責務）',
+                { file: parsed.fileName, count: weapons.length });
         }
 
         // --- Kill ヘッダの未知列を記録（値の正規化はしない）
@@ -454,14 +507,23 @@
 
         // --- Horiz Sens は **正規化しない**（Phase D の禁止事項）
         var candidates = [];
-        var wHoriz = null;
-        if (wrow) {
+        var candidatesExtra = [];
+        var wHorizVals = [];
+        parsed.weaponRows.forEach(function (wr) {
             parsed.weaponHeaders.forEach(function (h) {
-                if (String(h).trim().toLowerCase() === 'horiz sens') wHoriz = toNumber(wrow[h]);
+                if (String(h).trim().toLowerCase() === 'horiz sens') {
+                    var v = toNumber(wr[h]);
+                    if (v !== null && wHorizVals.indexOf(v) < 0) wHorizVals.push(v);
+                }
             });
+        });
+        var wHoriz = wHorizVals.length === 1 ? wHorizVals[0] : null;
+        if (wHorizVals.length > 1) {
+            wHorizVals.forEach(function (v, i) { candidatesExtra.push({ origin: 'weapon_row[' + i + ']', value: v }); });
         }
         var fHoriz = toNumber(parsed.footer['horiz sens']);
         if (wHoriz !== null) candidates.push({ origin: 'weapon_row', value: wHoriz });
+        candidatesExtra.forEach(function (c) { candidates.push(c); });
         if (fHoriz !== null) candidates.push({ origin: 'footer', value: fHoriz });
 
         if (candidates.length > 0) {
@@ -478,7 +540,7 @@
             note: 'in_game_sens が未確定のため cm/360 を自動確定しない'
         });
 
-        return { metrics: metrics, context: context, unresolved: unresolved };
+        return { metrics: metrics, weapons: weapons, context: context, unresolved: unresolved };
     }
 
     // ---------------------------------------------------------- provenance
@@ -491,8 +553,11 @@
             source: adapter.source,
             sourceType: adapter.sourceType,
             sourceIdentifier: parsed.fileName,
-            fileHash: parsed.contentHash,
-            fileHashAlgo: parsed.contentHashAlgo,
+            rawContentHash: parsed.rawContentHash,
+            rawContentHashAlgo: parsed.rawContentHashAlgo,
+            // 意味ベースの識別子。raw_content_hash とは別物で、Phase D では未実装。
+            logicalFingerprint: null,
+            logicalFingerprintStatus: 'not_implemented_phase_d',
             parserVersion: PARSER_VERSION,
             normalizationVersion: NORMALIZATION_VERSION,
             importedAt: importedAt,
@@ -503,10 +568,13 @@
     }
 
     /** 重複判定キー。ファイル名 + シナリオ + Score + 内容ハッシュ。 */
-    function computeExternalId(parsed) {
+    async function computeExternalId(parsed) {
         var scenario = (parsed.fileMeta && parsed.fileMeta.scenario) || '';
         var score = parsed.footer['score'] || '';
-        return contentHash([parsed.fileName, scenario, score, parsed.contentHash].join('|'));
+        // 現段階の重複判定キー。raw_content_hash を含むためバイト列が違えば別IDになる。
+        // ファイル名や改行が違う同一runを同一視する logical_fingerprint は別概念で、
+        // ここでは実装しない（Phase D 承認時の指示）。
+        return await rawContentHash([parsed.fileName, scenario, score, parsed.rawContentHash].join('|'));
     }
 
     // ------------------------------------------------------------ pipeline
@@ -516,7 +584,7 @@
      * @param {{name:string,text:string}[]} files
      * @param {{importedAt?:string}} [opts]
      */
-    function run(files, opts) {
+    async function run(files, opts) {
         opts = opts || {};
         var importedAt = opts.importedAt || new Date().toISOString();
         var warnings = [];
@@ -526,7 +594,9 @@
         var seen = {};
         var duplicatesInBatch = 0;
 
-        (files || []).forEach(function (file) {
+        var fileList = files || [];
+        for (var fi = 0; fi < fileList.length; fi++) {
+            var file = fileList[fi];
             var detection = detectFormat(file);
 
             if (detection.format === FORMATS.UNSUPPORTED) {
@@ -536,16 +606,16 @@
                 });
                 warn(warnings, 'error', 'unsupported_format',
                     '未対応の形式のため解析していません', { file: file.name, reasons: detection.reasons });
-                return; // 推測解析しない
+                continue; // 推測解析しない
             }
             if (detection.format === FORMATS.TIMESERIES) {
                 rejected.push({ file: file.name, format: detection.format, reasons: ['timeseries format not implemented'] });
                 warn(warnings, 'error', 'format_not_implemented',
                     '秒単位データ形式は仕様未確定のため未対応です', { file: file.name });
-                return;
+                continue;
             }
 
-            var parsed = parseFile(file, detection, warnings, unknownFields);
+            var parsed = await parseFile(file, detection, warnings, unknownFields);
             var v = validate(parsed);
             v.warnings.forEach(function (w) { warnings.push(w); });
 
@@ -554,17 +624,17 @@
                 v.errors.forEach(function (e) {
                     warn(warnings, 'error', e.code, e.message, { file: e.file });
                 });
-                return;
+                continue;
             }
 
             var norm = normalize(parsed, warnings, unknownFields);
-            var externalId = computeExternalId(parsed);
+            var externalId = await computeExternalId(parsed);
 
             if (seen[externalId]) {
                 duplicatesInBatch++;
                 warn(warnings, 'info', 'duplicate_in_batch',
                     '同一内容のファイルが複数あります', { file: file.name, firstSeen: seen[externalId] });
-                return;
+                continue;
             }
             seen[externalId] = file.name;
 
@@ -577,11 +647,12 @@
                 tzKnown: false,
                 killRowCount: parsed.killRows.length,
                 metrics: norm.metrics,
+                weapons: norm.weapons,
                 context: norm.context,
                 unresolved: norm.unresolved,
                 provenance: buildProvenance(parsed, adapter, importedAt)
             });
-        });
+        }
 
         return {
             sessions: sessions,
@@ -633,6 +704,15 @@
             scenarios: scenarios,
             formats: formats,
             dpi: { fromFile: dpiKnown, needsUserInput: result.stats.sessionsParsed - dpiKnown },
+            weapons: (function () {
+                var names = {}; var maxPer = 0;
+                result.sessions.forEach(function (s) {
+                    var ws = s.weapons || [];
+                    if (ws.length > maxPer) maxPer = ws.length;
+                    ws.forEach(function (w) { if (w.weapon) names[w.weapon] = (names[w.weapon] || 0) + 1; });
+                });
+                return { distinctWeapons: Object.keys(names), perWeaponSessionCount: names, maxPerSession: maxPer };
+            })(),
             unresolvedFields: (function () {
                 var acc = {};
                 result.sessions.forEach(function (s) {

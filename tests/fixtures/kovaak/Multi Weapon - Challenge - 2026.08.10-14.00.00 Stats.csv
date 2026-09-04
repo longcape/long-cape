@@ -1,0 +1,19 @@
+Kill #,Timestamp,Bot,Weapon,TTK,Shots,Hits,Accuracy,Damage Done,Damage Possible,Efficiency,Cheated,OverShots
+1,2.100,Bot A,rifle,0.30,3,2,66.7,120.0,180.0,0.667,false,0
+2,4.400,Bot B,pistol,0.25,2,2,100.0,80.0,80.0,1.0,false,0
+
+Weapon,Shots,Hits,Damage Done,Damage Possible,,Sens Scale,Horiz Sens,Vert Sens,FOV,Hide Gun,Crosshair,Crosshair Scale,Crosshair Color,ADS Sens,ADS Zoom Scale,Avg Target Scale,Avg Time Dilation
+rifle,6,4,240.0,360.0,,1.0,0.2500,0.2500,103.0,false,dot.png,0.8,00FFFFFF,1.0,1.0,1.0,1.0
+pistol,4,4,160.0,160.0,,1.0,0.2500,0.2500,103.0,false,dot.png,0.8,00FFFFFF,1.0,1.0,1.0,1.0
+smg,2,1,40.0,80.0,,1.0,0.2500,0.2500,103.0,false,dot.png,0.8,00FFFFFF,1.0,1.0,1.0,1.0
+
+Kills:,2
+Deaths:,0
+Fight Time:,20.0
+Horiz Sens:,25.000000
+Vert Sens:,25.000000
+DPI:,1600
+FOV:,103.0
+Score:,777.000000
+Hit Count:,9
+Avg FPS:,300.0
