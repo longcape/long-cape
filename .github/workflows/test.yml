@@ -25,6 +25,9 @@ jobs:
       - name: Metric Registry の同期確認（metrics.json ⇔ metric-registry.js）
         run: node tools/sync-metrics.mjs --check
 
+      - name: Metric Registry seed の drift 検出（metrics.json ⇔ 0002 seed）
+        run: node tools/sync-metric-registry-sql.mjs --check
+
       - name: Algorithm Config の同期確認（algorithm-config.json ⇔ algorithm-config.js）
         run: node tools/sync-algorithm-config.mjs --check
 
