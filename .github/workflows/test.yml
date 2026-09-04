@@ -34,6 +34,9 @@ jobs:
       - name: Profile のテスト（Multi-source Aim Profile プロトタイプ）
         run: node tests/profile.mjs
 
+      - name: Registry / 再推定のテスト（Phase E.5 / F プロトタイプ）
+        run: node tests/re-estimation.mjs
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
