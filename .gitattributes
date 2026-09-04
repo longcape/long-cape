@@ -1,3 +1,7 @@
 # 回帰テストのベースラインは環境差を避けるため常に LF で扱う。
 # Windows で CRLF に変換されると、テストが全行を差分として検出してしまう。
 tests/baseline.csv text eol=lf
+
+# Importer の fixture は「実ファイルの見た目」を保存する意図があるため、
+# 改行コードを git に書き換えさせない。BOM や CRLF の差もテスト対象。
+tests/fixtures/** -text
