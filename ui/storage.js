@@ -188,7 +188,10 @@
             userId: auth.userId,
             parserVersion: input.parserVersion || PARSER_VERSION,
             normalizationVersion: input.normalizationVersion || NORMALIZATION_VERSION,
-            registryVersion: input.registryVersion || null,
+            // NOT NULL の列。渡されなければ Registry 自身の版を使う。
+            // null のまま送ると DB で弾かれる（実 E2E で検出）。
+            registryVersion: input.registryVersion
+                || (root.LC_METRICS && root.LC_METRICS.registryVersion) || 'unknown',
             confirmedDpi: input.confirmedDpi,
             dpiSource: input.dpiSource,
             contextGroup: input.contextGroup,

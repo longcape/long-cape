@@ -141,6 +141,32 @@ check('ログインユーザーの取り込みを保存できる', async () => {
     eq(env.client._db.aim_sessions.length, 2, 'DB 上も2件');
 });
 
+check('NOT NULL の列に必ず値が入る（版を渡さなくても）', async () => {
+    const env = await setup();
+    // registryVersion を渡さない経路。実 E2E で NOT NULL 違反が出た形。
+    const plan = ST.buildSavePlan({
+        auth: { loggedIn: true, userId: A },
+        consent: { profile_storage: true },
+        consentId: env.consentId,
+        sessions: env.sessions,
+        existingSessions: [],
+        confirmedDpi: env.dpi.confirmedDpi,
+        registry: REGISTRY,
+        derivedAccuracyOf: U.derivedAccuracy
+    });
+    ok(plan.batch.registry_version, 'registry_version が入る');
+    ok(plan.batch.parser_version, 'parser_version が入る');
+    ok(plan.batch.normalization_version, 'normalization_version が入る');
+    ok(plan.batch.consent_id, 'consent_id が入る');
+
+    const res = await ST.executeSavePlan(env.client, plan);
+    eq(res.saved, true, '保存できる: ' + (res.message || ''));
+    env.client._db.aim_sessions.forEach((r) => {
+        ok(r.parser_version, 'session の parser_version が入る');
+        ok(r.raw_content_hash, 'raw_content_hash が入る');
+    });
+});
+
 check('元のCSVを保存しない', async () => {
     const env = await setup();
     const plan = planFor(env);

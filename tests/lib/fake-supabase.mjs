@@ -23,6 +23,18 @@ const uuid = (p) => `${p}-${String(++seq).padStart(8, '0')}`;
 
 // migration で定義した column default。実DBと同じ既定値にしておかないと、
 // 「NULL かどうか」で分岐する判定がテストだけ通ってしまう。
+// 実DBの NOT NULL 制約。ここを写しておかないと、テストだけ通って本番で落ちる。
+const NOT_NULL = {
+    user_consents: ['user_id', 'purpose', 'consent_version'],
+    aim_import_batches: ['user_id', 'source', 'parser_version', 'normalization_version',
+                         'registry_version', 'consent_id'],
+    aim_sessions: ['user_id', 'batch_id', 'source', 'raw_content_hash', 'parser_version'],
+    aim_metrics: ['user_id', 'session_id', 'metric_key', 'metric_version', 'unit', 'value'],
+    aim_metric_registry: ['metric_key', 'metric_version', 'unit', 'layer', 'concept',
+                          'comparability_group', 'comparability_rule', 'rating_status',
+                          'recommendation_eligible', 'registry_version']
+};
+
 const DEFAULTS = {
     user_consents: { revoked_at: null, source: 'web_ui' },
     aim_import_batches: { files_received: 0, sessions_parsed: 0, files_rejected: 0 },
@@ -54,6 +66,13 @@ export function createFakeSupabase(options = {}) {
     const OWNED = ['user_consents', 'aim_import_batches', 'aim_sessions', 'aim_metrics'];
 
     function checkInsert(table, row) {
+        // NOT NULL は RLS より先に効く
+        for (const col of NOT_NULL[table] || []) {
+            const v = row[col];
+            if (v === null || v === undefined) {
+                return `NOT NULL: ${table}.${col} に値が必要です`;
+            }
+        }
         if (OWNED.includes(table)) {
             if (auth.role !== 'authenticated' || !auth.userId) {
                 return 'RLS: この操作には認証が必要です（anon には policy がありません）';
