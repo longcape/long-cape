@@ -145,12 +145,59 @@ check('Registry: 汎用の default reliability を持たない', async () => {
 });
 
 check('Registry: unrated は推奨重み 0（情報の存在と信用を分離）', async () => {
-    eq(M.resolveReliability('kovaak.score').status, 'unrated', 'KovaaKは実ファイル未検証のため unrated');
-    eq(M.recommendationWeight('kovaak.score'), 0, '推奨重みは0');
-    eq(M.isRecommendationEligible('kovaak.score'), false, 'eligible ではない');
+    // avg_ttk は G-2 でも保留（C）。意味が未確定のまま。
+    eq(M.resolveReliability('kovaak.avg_ttk').status, 'unrated', '意味未確定のため unrated');
+    eq(M.recommendationWeight('kovaak.avg_ttk'), 0, '推奨重みは0');
+    eq(M.isRecommendationEligible('kovaak.avg_ttk'), false, 'eligible ではない');
 
     eq(M.resolveReliability('manual.benchmark_score').status, 'rated', '手入力は rated');
     ok(M.recommendationWeight('manual.benchmark_score') > 0, '推奨重みが正');
+});
+
+check('Registry: rated と recommendation_eligible は別判定（G-2）', async () => {
+    // G-2 で3件が rated 化されたが、推奨へ入れるのは score だけ。
+    for (const key of ['kovaak.score', 'kovaak.kills', 'kovaak.accuracy']) {
+        eq(M.resolveReliability(key).status, 'rated', `${key} は rated`);
+    }
+    eq(M.isRecommendationEligible('kovaak.score'), true, 'score だけが eligible');
+    ok(M.recommendationWeight('kovaak.score') > 0, 'score は重みを持つ');
+
+    for (const key of ['kovaak.kills', 'kovaak.accuracy']) {
+        eq(M.isRecommendationEligible(key), false, `${key} は保留`);
+        eq(M.recommendationWeight(key), 0, `${key} の重みは0`);
+        const hold = M.get(key).reliability_policy.recommendation_hold;
+        ok(hold && hold.held === true, `${key} に保留理由が記録されている`);
+        ok(hold.verification_required.length === 4, '解除に必要な検証項目が4点');
+    }
+});
+
+check('Registry: 実効 reliability は4軸から算出される派生値（G-2）', async () => {
+    const AXES = ['measurement', 'semantic', 'comparability', 'provenance_integrity'];
+
+    for (const key of ['kovaak.score', 'kovaak.kills', 'kovaak.accuracy']) {
+        const p = M.get(key).reliability_policy;
+        // 正本は4軸
+        for (const a of AXES) {
+            ok(typeof p.axes[a].value === 'number', `${key}.${a} に値がある`);
+            ok(p.axes[a].basis && p.axes[a].basis.length > 0, `${key}.${a} に根拠がある`);
+        }
+        // 単一スカラーを正本として持たない
+        ok(!('value' in p), `${key} は単一スカラーを正本にしていない`);
+        // 派生であることが明示されている
+        eq(p.effective_reliability.derived, true, `${key} の実効値は派生値`);
+        eq(p.effective_reliability.policy, 'conservative_min_v1', `${key} の算出方式が名前で指定されている`);
+
+        // runtime の算出結果が policy と一致する
+        const r = M.resolveReliability(key, 'file_import_kovaak_stats_csv');
+        const min = Math.min(...AXES.map((a) => p.axes[a].value));
+        eq(r.value, min, `${key} の実効値は min(axes)`);
+        eq(r.effectivePolicy, 'conservative_min_v1', 'policy が返る');
+    }
+
+    // provenance を共通のボトルネックにしていないので、metric ごとに実効値が違う
+    const vals = ['kovaak.score', 'kovaak.kills', 'kovaak.accuracy']
+        .map((k) => M.resolveReliability(k, 'file_import_kovaak_stats_csv').value);
+    ok(new Set(vals).size > 1, '3件が同じ値へ潰れていない');
 });
 
 check('Registry: rated でない metric を recommendation_eligible にできない', async () => {
@@ -224,7 +271,9 @@ check('分離: Profile completeness と Recommendation confidence が別概念',
 check('分離: unrated evidence は quality に反映されるが推奨には使えない', async () => {
     const kovaakSession = {
         externalId: 'k1', localTimestamp: '2026-08-01T00:00:00', tzKnown: false,
-        metrics: [{ metricKey: 'kovaak.score', value: 1000, unit: 'score' }],
+        // G-2 で score は rated 化されたので、unrated の例には avg_ttk を使う。
+        // avg_ttk は Kills と共線で意味が未確定のため保留のまま。
+        metrics: [{ metricKey: 'kovaak.avg_ttk', value: 1000, unit: 's' }],
         weapons: [], context: {}, unresolved: [],
         provenance: { source: 'kovaak', sourceType: 'aim_trainer' }
     };
@@ -236,7 +285,7 @@ check('分離: unrated evidence は quality に反映されるが推奨には使
     eq(q.recommendationEligibleCount, 0, '推奨に使えるものは0件');
     eq(q.usableForRecommendation, false, '推奨に使えない');
     // ただし coverage / provenance には出ている
-    ok(prof.inventory.metricCoverage.some((c) => c.metricKey === 'kovaak.score'), 'coverage には出る');
+    ok(prof.inventory.metricCoverage.some((c) => c.metricKey === 'kovaak.avg_ttk'), 'coverage には出る');
 });
 
 // ================================================== Phase F: 再推定エンジン
@@ -250,20 +299,35 @@ check('F: 人工データ（30/32/34/36cm）で真の最適 34cm を当てる', 
     ok(res.recommended_range[0] <= 34 && 34 <= res.recommended_range[1], 'レンジが最適を含む');
 });
 
-check('F: KovaaK の未検証 evidence を推奨計算に使わない', async () => {
+check('F: unrated な KovaaK metric を推奨計算に使わない', async () => {
     const synthetic = makeSessions(STANDARD_LEVELS, { seed: 7 });
     const kovaak = {
         externalId: 'k1', localTimestamp: '2026-08-20T12:00:00', tzKnown: false,
-        metrics: [{ metricKey: 'kovaak.score', value: 99999, unit: 'score' }],
+        // avg_ttk は G-2 でも保留（C）のまま。極端な値を入れても推奨に効いてはいけない。
+        metrics: [{ metricKey: 'kovaak.avg_ttk', value: 99999, unit: 's' }],
         weapons: [], context: { sensitivity: { cm360: 30, verified: true, origin: 'user_input' } },
         unresolved: [], provenance: { source: 'kovaak', sourceType: 'aim_trainer' }
     };
     const res = runEngine([...synthetic, kovaak]);
 
-    // KovaaK の極端な高スコアに引っ張られて 30cm にならないこと
-    eq(res.recommended_cm360, 34, 'KovaaKの値に影響されない');
+    eq(res.recommended_cm360, 34, 'unrated な値に影響されない');
     ok(res.evidence_excluded.unrated > 0, '除外理由が記録される');
     eq(res.source_mix.aim_trainer, undefined, '推奨に使った source に aim_trainer が含まれない');
+});
+
+check('F: rated でも recommendation_hold の metric は推奨計算に使わない', async () => {
+    const synthetic = makeSessions(STANDARD_LEVELS, { seed: 7 });
+    // kills は G-2 で rated になったが、Score との相関が未検証のため保留。
+    const held = {
+        externalId: 'k2', localTimestamp: '2026-08-20T12:00:00', tzKnown: false,
+        metrics: [{ metricKey: 'kovaak.kills', value: 99999, unit: 'count' }],
+        weapons: [], context: { sensitivity: { cm360: 30, verified: true, origin: 'user_input' } },
+        unresolved: [], provenance: { source: 'kovaak', sourceType: 'aim_trainer' }
+    };
+    const res = runEngine([...synthetic, held]);
+
+    eq(res.recommended_cm360, 34, 'rated でも保留中の metric に影響されない');
+    ok(res.evidence_excluded.not_recommendation_eligible > 0, '「eligible でない」として除外される');
 });
 
 check('F: 単純な最高Score選択をしない（不安定な最高値を選ばない）', async () => {
@@ -319,8 +383,13 @@ check('F: 感度が未検証だけのデータでは推奨を出さない', asyn
         provenance: { source: 'kovaak', sourceType: 'aim_trainer' }
     }];
     const res = runEngine(kovaakOnly);
+    // score は rated / eligible だが、感度が未検証なので水準に束ねられない。
+    // evidence があっても比較する水準が無ければ推奨は出さない。
     eq(res.status, 'withheld', '推奨を出さない');
-    ok(res.insufficient_evidence.some((i) => i.code === 'no_usable_evidence'), '使える evidence が無い');
+    eq(res.recommended_cm360, null, '推奨値を作らない');
+    ok(res.insufficient_evidence.length > 0, '不足理由が記録される');
+    ok(res.insufficient_evidence.some((i) => /level/i.test(i.code)),
+        '感度水準が足りないことが理由として出る');
 });
 
 check('F: Recommendation 出力モデルの必須項目が揃う', async () => {

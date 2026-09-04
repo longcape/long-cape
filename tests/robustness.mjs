@@ -79,6 +79,9 @@ function build(specs, opts = {}) {
                 context: {
                     dpi: 800,
                     durationSec: sp.durationSec ?? 60,
+                    // G-2: 比較スコープの鍵は表示名ではなく scenario_identity（KovaaK Hash 相当）
+                    scenarioKey: sp.scenarioKey || null,
+                    difficultyVaried: sp.difficultyVaried === true,
                     sensitivity: { cm360: sp.cm360, verified: true, origin: 'user_input' }
                 },
                 unresolved: [],
@@ -289,7 +292,7 @@ check('15 reliability が異なる Evidence 混在 → 重みが違うことを�
 check('16 unrated Evidence へ巨大値を入れる → 推奨に影響しない', async () => {
     const base = build(std(4), { seed: 16 });
     const poisoned = base.map((s) => s.externalId.includes('-30-')
-        ? { ...s, metrics: [...s.metrics, { metricKey: 'kovaak.score', value: 9999999, unit: 'score' }] }
+        ? { ...s, metrics: [...s.metrics, { metricKey: 'kovaak.avg_ttk', value: 9999999, unit: 's' }] }
         : s);
     const clean = run(base);
     const r = run(poisoned);
@@ -462,7 +465,10 @@ check('A1 集約は同質スコープの中でのみ行う', async () => {
     const l34 = r.levels.find((l) => l.cm360 === 34);
     ok(l34.scopes.length >= 2, '複数のスコープが存在する');
     // 主指標は最も観測数の多いスコープ1つ。別シナリオの値と混ざっていない
-    ok(/scn:S1|scn:S2/.test(l34.factors.performance.metricGroup), 'スコープ名にシナリオが含まれる');
+    // G-2 でスコープ鍵は scenario_identity（Hash）で組むようになった。
+    // identity が無いデータは名前へ退避し、退避したことが鍵に残る。
+    ok(/scn_id:|scn_name_fallback:S1|scn_name_fallback:S2/.test(l34.factors.performance.metricGroup),
+        'スコープ鍵にシナリオの識別子が含まれる');
 });
 
 check('A2 集約戦略を config で差し替えられる', async () => {
@@ -572,10 +578,72 @@ check('range: tolerance の意味が出力に明文化されている', async ()
 
 // -------------------------------------------------------------- 結果出力
 
+// ------------------ G-2: comparison scope と adaptive 除外
+
+check('G2-1 別シナリオの Score を同じスコープへ混ぜない', async () => {
+    // 表示名は同じだが scenario_identity が違う2群。名前が同じでも混ぜてはいけない。
+    const same = build([{ cm360: 34, sessions: 4, scenario: 'Same Name', scenarioKey: 'hash-A' }], { seed: 60 });
+    const other = build([{ cm360: 34, sessions: 4, scenario: 'Same Name', scenarioKey: 'hash-B' }],
+        { seed: 61, top: 9000 }).map((x) => ({ ...x, externalId: x.externalId + '-b' }));
+
+    const r = run([...same, ...other,
+        ...build([{ cm360: 32, sessions: 3, scenario: 'Same Name', scenarioKey: 'hash-A' }], { seed: 62 }),
+        ...build([{ cm360: 36, sessions: 3, scenario: 'Same Name', scenarioKey: 'hash-A' }], { seed: 63 })]);
+
+    const l34 = r.levels.find((l) => l.cm360 === 34);
+    ok(l34.scopes.length >= 2, '表示名が同じでも identity が違えば別スコープになる');
+    const keys = l34.scopes.map((sc) => sc.scope).join(' ');
+    ok(/hash-A/.test(keys) && /hash-B/.test(keys), 'スコープ鍵に scenario_identity が入る');
+    // 主指標が両者の平均になっていない（9000 の群と混ざっていない）
+    ok(l34.factors.performance.value < 5000, '別シナリオの高スコアと混ざっていない');
+});
+
+check('G2-2 scenario_identity があれば表示名の改名に影響されない', async () => {
+    const a = build([{ cm360: 34, sessions: 3, scenario: 'Old Name', scenarioKey: 'hash-X' }], { seed: 64 });
+    const b = build([{ cm360: 34, sessions: 3, scenario: 'New Name', scenarioKey: 'hash-X' }], { seed: 64 })
+        .map((x) => ({ ...x, externalId: x.externalId + '-renamed' }));
+
+    const r = run([...a, ...b,
+        ...build([{ cm360: 32, sessions: 3, scenarioKey: 'hash-X' }], { seed: 65 }),
+        ...build([{ cm360: 36, sessions: 3, scenarioKey: 'hash-X' }], { seed: 66 })]);
+
+    const l34 = r.levels.find((l) => l.cm360 === 34);
+    const keys = l34.scopes.map((sc) => sc.scope).join(' ');
+    ok(!/Old Name|New Name/.test(keys), '表示名はスコープ鍵に使われない');
+    ok(/hash-X/.test(keys), 'identity が鍵になる');
+});
+
+check('G2-3 adaptive セッションを通常の水準比較へ混ぜない', async () => {
+    const normal = build([
+        { cm360: 32, sessions: 3, scenarioKey: 'hash-A' },
+        { cm360: 34, sessions: 3, scenarioKey: 'hash-A' },
+        { cm360: 36, sessions: 3, scenarioKey: 'hash-A' }
+    ], { seed: 67 });
+    // 難易度が動いた（適応型）セッションに極端な高スコアを入れる
+    const adaptive = build([{ cm360: 30, sessions: 4, scenarioKey: 'hash-A', difficultyVaried: true }],
+        { seed: 68, top: 999999 });
+
+    const clean = run(normal);
+    const mixed = run([...normal, ...adaptive]);
+
+    eq(mixed.recommended_cm360, clean.recommended_cm360, '適応型の高スコアに引っ張られない');
+    ok(mixed.evidence_excluded.difficulty_varied > 0, '難易度変動として除外件数が記録される');
+});
+
+check('G2-4 難易度が一定なら除外しない', async () => {
+    const r = run(build([
+        { cm360: 32, sessions: 3, scenarioKey: 'hash-A' },
+        { cm360: 34, sessions: 3, scenarioKey: 'hash-A' },
+        { cm360: 36, sessions: 3, scenarioKey: 'hash-A' }
+    ], { seed: 69 }));
+    ok(!r.evidence_excluded.difficulty_varied, '通常セッションは除外されない');
+});
+
 for (const { name, fn } of pending) {
     try { await fn(); passed++; }
     catch (e) { failures.push({ name, message: e.message }); }
 }
+
 
 const total = passed + failures.length;
 if (failures.length === 0) {

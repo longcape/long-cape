@@ -212,7 +212,12 @@
                     concept: def ? def.concept : null,
                     collectionMethod: collectionMethod,
                     scenario: s.scenario || null,
+                    // 【G-2】比較対象の識別子は表示名ではなく scenario_identity（KovaaK Hash）を使う。
+                    // 表示名は改名されうるが Hash は変わらない。Registry には入れない。
+                    scenarioIdentity: (s.context && s.context.scenarioKey) || null,
                     contextGroup: contextSignature(s),
+                    // 難易度が動いたセッションは水準間比較に使えない
+                    difficultyVaried: !!(s.context && s.context.difficultyVaried),
                     parserVersion: p.parserVersion || null,
                     normalizationVersion: p.normalizationVersion || null,
                     observedAt: s.localTimestamp || null,

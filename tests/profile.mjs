@@ -140,9 +140,16 @@ check('B: Evidence に必須項目が揃う', async () => {
     }
     eq(e.source, 'kovaak');
     eq(e.sourceType, 'aim_trainer');
-    // KovaaK は実ファイル未検証のため Registry 上 unrated
-    eq(e.reliabilityStatus, 'unrated', 'unrated であること');
-    eq(e.reliability, null, '汎用の既定値を与えない');
+    // G-2 で kovaak.score / kills / accuracy だけが rated になった。
+    // それ以外は引き続き unrated。source が同じというだけで信頼度を配らない。
+    if (['kovaak.score', 'kovaak.kills', 'kovaak.accuracy'].indexOf(e.metricKey) >= 0) {
+        eq(e.reliabilityStatus, 'rated', e.metricKey + ' は G-2 で rated');
+        // 4軸の最小値（conservative_min_v1）。Registry には保存されない派生値。
+        ok(typeof e.reliability === 'number', '4軸の min が実効値として解決される');
+    } else {
+        eq(e.reliabilityStatus, 'unrated', 'rated 化されていない metric は unrated のまま');
+        eq(e.reliability, null, '汎用の既定値を与えない');
+    }
 });
 
 check('B: Profile の数字を evidence から逆引きできる', async () => {
@@ -169,10 +176,39 @@ check('B: reliability は Registry が定義したものだけ数値を持つ', 
     const sessions = await sessionsFrom([F.s1]);
     const ev = P.buildEvidence(sessions);
 
-    ok(ev.every((e) => e.reliabilityStatus === 'unrated'), 'すべて unrated');
-    ok(ev.every((e) => e.reliability === null), '数値を持たない');
-    ok(ev.every((e) => e.recommendationWeight === 0), '推奨重みは0');
+    const RATED = ['kovaak.score', 'kovaak.kills', 'kovaak.accuracy'];
     ok(ev.every((e) => e.registered === true), 'Registry に登録はされている');
+    ev.forEach((e) => {
+        if (RATED.indexOf(e.metricKey) >= 0) {
+            eq(e.reliabilityStatus, 'rated', e.metricKey + ' は G-2 で rated');
+            ok(typeof e.reliability === 'number', e.metricKey + ' は数値を持つ');
+        } else {
+            eq(e.reliabilityStatus, 'unrated', e.metricKey + ' は unrated のまま');
+            eq(e.reliability, null, e.metricKey + ' は数値を持たない');
+        }
+    });
+
+    // rated でも Recommendation 投入は別判定。score だけが重みを持つ。
+    ev.forEach((e) => {
+        if (e.metricKey === 'kovaak.score') {
+            ok(e.recommendationWeight > 0, 'score だけが推奨重みを持つ');
+        } else {
+            eq(e.recommendationWeight, 0, e.metricKey + ' の推奨重みは0');
+        }
+    });
+});
+
+check('B: rated でも recommendation_hold なら推奨に入らない', async () => {
+    const sessions = await sessionsFrom([F.s1]);
+    const ev = P.buildEvidence(sessions);
+
+    ['kovaak.kills', 'kovaak.accuracy'].forEach((key) => {
+        const hit = ev.filter((e) => e.metricKey === key);
+        if (hit.length === 0) return;
+        eq(hit[0].reliabilityStatus, 'rated', key + ' は rated');
+        eq(hit[0].recommendationEligible, false, key + ' は Recommendation 投入を保留');
+        eq(hit[0].recommendationWeight, 0, key + ' の重みは0');
+    });
 });
 
 // -------------------------------------------------------- C. Multi-source
@@ -306,9 +342,11 @@ check('F: evidence quality が「推奨に使えるか」を分けて示す', as
     const q = P.buildAimProfile(sessions).confidence.evidenceQuality;
 
     ok(q.evidenceCount > 0, '情報としては存在する');
-    eq(q.ratedCount, 0, 'rated は0件（KovaaK未検証）');
-    eq(q.usableForRecommendation, false, '推奨には使えない');
-    ok(/重みは0/.test(q.note), '重み0であることの説明');
+    // G-2 で score / kills / accuracy が rated 化された。
+    // rated であることと推奨に使えることは別判定なので、両方を確認する。
+    ok(q.ratedCount > 0, 'rated が存在する（G-2 で3件が rated 化された）');
+    ok(q.ratedCount < q.evidenceCount, 'すべてが rated になったわけではない');
+    eq(q.usableForRecommendation, true, 'score が eligible なので推奨に使える');
 });
 
 // ---------------------------------------------------------- 禁止事項

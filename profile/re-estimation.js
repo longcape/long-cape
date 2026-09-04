@@ -101,6 +101,12 @@
     function selectUsableEvidence(evidence) {
         var usable = [], excluded = {};
         (evidence || []).forEach(function (e) {
+            // 【G-2】難易度が変動したセッション（adaptive）は初期 Recommendation から除外する。
+            // データは消さず、除外理由を数えて可視化する。
+            if (e.difficultyVaried === true) {
+                excluded.difficulty_varied = (excluded.difficulty_varied || 0) + 1;
+                return;
+            }
             if (e.recommendationEligible === true && e.reliabilityStatus === 'rated'
                 && typeof e.recommendationWeight === 'number' && e.recommendationWeight > 0) {
                 usable.push(e);
@@ -120,8 +126,19 @@
      */
     function scopeKey(e, config) {
         var conf = baseConfig(config).sourceConflict || {};
+        // 【G-2】comparison_scope_key = comparability_group + scenario_identity + context_group
+        //
+        // comparability_group は Registry 側の静的な「比較ルール」。
+        // scenario_identity（KovaaK Hash）と context_group は Evidence 側の動的な「比較対象識別子」。
+        // 両者を runtime で合成することで、Registry を session 由来の値で汚さずに
+        // 「同一シナリオ内でしか比較しない」を成立させる。
         var parts = [(e.comparabilityGroup || e.metricKey) + '@' + (e.metricVersion || '1')];
-        if (conf.requireSameScenario !== false) parts.push('scn:' + (e.scenario || 'unknown'));
+        if (conf.requireSameScenario !== false) {
+            // 表示名ではなく identity を使う。identity が無い場合は名前へ退避するが、
+            // 別シナリオが同名で混ざる危険があるため、その旨を鍵に残して区別する。
+            if (e.scenarioIdentity) parts.push('scn_id:' + e.scenarioIdentity);
+            else parts.push('scn_name_fallback:' + (e.scenario || 'unknown'));
+        }
         if (conf.requireSameContextGroup === true) parts.push('ctx:' + (e.contextGroup || 'unknown'));
         return parts.join(' | ');
     }
