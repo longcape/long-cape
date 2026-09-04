@@ -20,7 +20,7 @@
     <select id="langSelect" class="lang-select" data-i18n-attr="aria-label:navDiag">
       <option value="ja">日本語</option><option value="en">English</option><option value="ko">한국어</option>
     </select>
-    <label class="devbar"><input type="checkbox" id="devToggle"> <span data-i18n="devMode">開発モード</span></label>
+    <label class="devbar" for="devToggle"><input type="checkbox" id="devToggle" data-i18n-attr="aria-label:devMode"> <span data-i18n="devMode">開発モード</span></label>
   </nav>
 
   <div id="netBanner" class="note warn" role="status" hidden></div>
@@ -130,6 +130,7 @@
 <script src="profile/algorithm-config.js"></script>
 <script src="profile/aim-profile.js"></script>
 <script src="profile/re-estimation.js"></script>
+<script src="profile/recommendation-scope.js"></script>
 <script src="ui/i18n.js"></script>
 <script src="ui/ui-logic.js"></script>
 <script src="ui/samples.js"></script>
@@ -254,7 +255,7 @@
     $('btnLogin').addEventListener('click', function () {
         if (!B.available()) return;
         if (state.loggedIn) B.signOut().then(function () { syncAuth().then(render); });
-        else location.href = B.loginUrl;
+        else location.href = B.loginUrlWithReturn();
     });
 
     // ------------------------------------------------------------- 描画
@@ -293,7 +294,7 @@
         } catch (e) { reest = null; }
 
         var view = U.buildProfileView(aim, sessions, reest);
-        var rec = U.buildRecommendationView(reest, dpi, {});
+        var rec = U.buildRecommendationView(reest, dpi, { evidence: ev });
 
         renderRec(rec, d);
         renderNext(rec.nextBestTest);
@@ -303,6 +304,25 @@
         renderUnresolved(view.unresolved, dpi);
         renderExcluded(view.excludedSessions);
         renderDev(sessions, ev);
+    }
+
+    /**
+     * 推奨が何についてのものかを必ず出す。
+     * Aim テスト上の推奨であって、ゲーム内で最適だと実証したものではない。
+     */
+    function scopeNote(rec) {
+        if (!rec.scope) return '';
+        var layers = rec.scope.layers.layers.map(function (l) {
+            return '<li>' + l.order + '. ' + esc(l.id) + ' — '
+                + (l.available ? esc(T('stateConfirmed')) : esc(T('stateExcluded'))) + '</li>';
+        }).join('');
+        return note('warn', '<b>' + esc(T('recScopeTitle')) + '</b><br>'
+            + esc(T('recScopeDisclaimer'))
+            + '<details class="why" style="margin-top:8px;border:0;padding:0">'
+            + '<summary>' + esc(T('recScopeNotProven')) + '</summary>'
+            + '<div class="body">' + esc(T('recScopeLayers'))
+            + '<ul class="dev-only" style="margin-top:8px;padding-left:18px">' + layers + '</ul>'
+            + '</div></details>');
     }
 
     function kpi(v, k, accent) {
@@ -328,6 +348,7 @@
             var why = rec.reasonCode === 'dpi_unconfirmed' ? T('recWhyDpi') : T('recWhyEvidence');
             $('recCard').innerHTML = banner
                 + '<h2 id="h-rec">' + esc(T('recWithheld')) + '</h2>'
+                + scopeNote(rec)
                 + note('warn', '<b>' + esc(why) + '</b>')
                 + '<h3 style="margin-top:16px">' + esc(T('recWhatToDo')) + '</h3>'
                 + '<div class="stack">' + rec.whatToDo.map(function (t) {
@@ -345,6 +366,7 @@
         var c = rec.composition;
         $('recCard').innerHTML = banner
             + '<h2 id="h-rec">' + esc(T('recNow')) + '</h2>'
+            + scopeNote(rec)
             + '<div class="kpis" style="margin-bottom:8px">'
             + kpi(rec.recommended_cm360 + ' cm', T('recCm360'), true)
             + kpi(rec.recommended_range ? rec.recommended_range[0] + '–' + rec.recommended_range[1] : '—', T('recRange'))
@@ -569,7 +591,7 @@
             $('saveBody').innerHTML = note('warn',
                 esc(gate.reason === 'not_logged_in' ? T('saveNeedLogin') : T('saveNeedConsent'))
                 + (gate.reason === 'not_logged_in'
-                    ? ' <a href="' + esc(B.loginUrl) + '">' + esc(T('loginLink')) + '</a>' : ''));
+                    ? ' <a href="' + esc(B.loginUrlWithReturn()) + '">' + esc(T('loginLink')) + '</a>' : ''));
             return;
         }
 
@@ -692,7 +714,9 @@
     // ------------------------------------------------------------- dev
     function renderDev(sessions, ev) {
         var d = U.devInspect(sessions, ev);
-        $('devBody').innerHTML = '<div class="tablewrap" tabindex="0"><table class="data"><thead><tr>'
+        $('devBody').innerHTML = '<div class="tablewrap" tabindex="0"><table class="data">'
+            + '<caption class="sr-only">' + esc(T('devInternals')) + '</caption>'
+            + '<thead><tr>'
             + '<th scope="col">metric</th><th scope="col">layer</th><th scope="col">rating</th>'
             + '<th scope="col">effective</th><th scope="col">recommendation</th><th scope="col">comparability_group</th>'
             + '</tr></thead><tbody>'

@@ -36,12 +36,50 @@
 
     function signOut() { return client ? client.auth.signOut() : Promise.resolve(); }
 
+    // ---------------------------------------------------------- ログイン導線
+    //
+    // Lab 専用の認証画面は作らず、既存のログイン画面へ送る。
+    // 戻り先は **同一オリジンの Lab ページだけ**に限定する。
+    // 任意の URL を受け取ると、外部サイトへ飛ばされる踏み台になりうるため。
+    var RETURN_ALLOWED = ['import.html', 'profile.html'];
+
+    /** 戻り先として受け入れてよい値か。受け入れられないものは null を返す。 */
+    function sanitizeReturn(value) {
+        if (!value) return null;
+        var v = String(value);
+        // 絶対 URL・プロトコル相対・親ディレクトリ参照はすべて拒否
+        if (/^[a-z][a-z0-9+.-]*:/i.test(v) || v.indexOf('//') === 0 || v.indexOf('..') >= 0) return null;
+        var page = v.split('?')[0].split('#')[0].replace(/^\.?\//, '');
+        return RETURN_ALLOWED.indexOf(page) >= 0 ? page : null;
+    }
+
+    /** いまの画面へ戻ってこられるログイン URL。 */
+    function loginUrlWithReturn() {
+        var here = null;
+        try {
+            here = sanitizeReturn(location.pathname.split('/').pop());
+        } catch (e) { here = null; }
+        return here ? 'index.html?return=' + encodeURIComponent(here) : 'index.html';
+    }
+
+    /** ログイン画面側で使う。戻り先が指定されていれば返す。 */
+    function pendingReturn(search) {
+        var q = search !== undefined ? search : (root.location ? root.location.search : '');
+        var m = /[?&]return=([^&]*)/.exec(q || '');
+        return m ? sanitizeReturn(decodeURIComponent(m[1])) : null;
+    }
+
     root.LC_BACKEND = {
         available: available,
         client: function () { return client; },
         currentUser: currentUser,
         onAuthChange: onAuthChange,
         signOut: signOut,
-        loginUrl: 'index.html'
+        // 互換のため残す。実際の遷移には loginUrlWithReturn() を使う。
+        loginUrl: 'index.html',
+        loginUrlWithReturn: loginUrlWithReturn,
+        pendingReturn: pendingReturn,
+        sanitizeReturn: sanitizeReturn,
+        RETURN_ALLOWED: RETURN_ALLOWED
     };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

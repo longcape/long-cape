@@ -135,6 +135,10 @@
 
             // ---- 推奨
             recNow: '現時点の推奨',
+            recScopeTitle: 'この推奨はAimテストにもとづくものです',
+            recScopeDisclaimer: 'この結果はAimテストでのパフォーマンスに基づくものです。実際のゲームでは、武器、移動、交戦距離、判断などの影響により、最適な感度が異なる場合があります。',
+            recScopeLayers: '現在は「機械的なエイム性能」の層だけを測定しています。実ゲームの成績にもとづく層と、その2つを統合した推奨は、ゲーム内のデータが集まるまで作りません。',
+            recScopeNotProven: 'ゲーム内で最適だと実証したものではありません。',
             recWithheld: 'まだ推奨できません',
             recCm360: '推奨（振り向き）', recRange: '有力な範囲 cm',
             recConfidence: '推奨の確からしさ', recEvidence: '使ったデータ件数',
@@ -348,6 +352,10 @@
             fieldInGameSens: 'In-game sensitivity', fieldComparability: 'Whether this session can be compared',
 
             recNow: 'Current recommendation',
+            recScopeTitle: 'This recommendation comes from aim-test performance',
+            recScopeDisclaimer: 'This result is based on your performance in aim tests. In an actual game, the best sensitivity may differ because of weapons, movement, engagement distance, decision-making and other factors.',
+            recScopeLayers: 'Right now only the mechanical aim layer is measured. A layer based on in-game results, and a recommendation combining the two, are not produced until in-game data exists.',
+            recScopeNotProven: 'It has not been proven optimal inside a game.',
             recWithheld: 'Not enough to recommend yet',
             recCm360: 'Recommended (cm/360)', recRange: 'Likely range (cm)',
             recConfidence: 'Confidence', recEvidence: 'Data used',
@@ -557,6 +565,10 @@
             fieldInGameSens: '게임 내 감도', fieldComparability: '이 세션을 비교에 쓸 수 있는지',
 
             recNow: '현재 추천',
+            recScopeTitle: '이 추천은 에임 테스트 결과에 근거합니다',
+            recScopeDisclaimer: '이 결과는 에임 테스트에서의 퍼포먼스에 기반합니다. 실제 게임에서는 무기, 이동, 교전 거리, 판단 등의 영향으로 최적 감도가 달라질 수 있습니다.',
+            recScopeLayers: '현재는 기계적 에임 성능 계층만 측정하고 있습니다. 실제 게임 성적에 기반한 계층과 둘을 통합한 추천은 게임 내 데이터가 쌓일 때까지 생성하지 않습니다.',
+            recScopeNotProven: '게임 내에서 최적이라고 실증된 것은 아닙니다.',
             recWithheld: '아직 추천할 수 없습니다',
             recCm360: '추천 (360도 거리)', recRange: '유력 범위 cm',
             recConfidence: '추천의 확실성', recEvidence: '사용한 데이터 수',
