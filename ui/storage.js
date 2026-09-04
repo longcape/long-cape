@@ -407,20 +407,127 @@
             .catch(function (e) { return { deleted: false, message: (e && e.message) || String(e) }; });
     }
 
-    /** Export。保存済みがあればそれを、無ければ手元のものを出す。 */
-    function buildExport(sessions, meta) {
+    // ------------------------------------------------------------- Export
+    //
+    // 【方針】内部の生 JSON をそのまま出さない。
+    //   * 版を持つ可搬形式にする（export_version）
+    //   * metric は key / version / unit を必ず添える
+    //   * 来歴（source / parser / normalization / hash）を添える
+    //   * **内部の DB ID、user_id、認証情報、batch_id は出さない**
+    //   * 元の CSV は含まない（そもそも保存していない）
+    var EXPORT_VERSION = '1.0.0';
+
+    /** metric を「意味が分かる形」に整える。単位を落とさない。 */
+    function exportMetric(m, registry) {
+        var def = registry && registry[m.metricKey];
         return {
-            format: 'long-cape-export',
-            format_version: '1',
-            exported_at: new Date().toISOString(),
-            source: (meta && meta.source) || 'local',
-            parser_version: (meta && meta.parserVersion) || PARSER_VERSION,
-            normalization_version: (meta && meta.normalizationVersion) || NORMALIZATION_VERSION,
-            registry_version: (meta && meta.registryVersion) || null,
-            note: '元のCSVは含まれません。保存していないためです。',
-            session_count: (sessions || []).length,
-            sessions: sessions || []
+            metric_key: m.metricKey,
+            metric_version: (def && def.metric_version) || m.metricVersion || '1',
+            unit: m.unit || (def && def.unit) || null,
+            value: m.value
         };
+    }
+
+    function exportSession(s, registry) {
+        var c = s.context || {}, p = s.provenance || {};
+        return {
+            scenario: {
+                name: s.scenario || null,
+                // 表示名は改名されうるので、比較の鍵になる識別子も出す
+                identity: c.scenarioKey || null
+            },
+            observed_at: {
+                local: s.localTimestamp || null,
+                timezone: c.observedAtTz || null,
+                // timezone が不明なことを隠さない
+                timezone_status: s.tzKnown ? 'known' : 'unknown'
+            },
+            measurement_context: {
+                dpi_confirmed: c.confirmedDpi !== undefined ? c.confirmedDpi : null,
+                dpi_in_file: typeof c.dpi === 'number' ? c.dpi : null,
+                dpi_source: c.dpiSource || null,
+                sens_scale: c.sensScale || null,
+                in_game_sens: c.inGameSens !== undefined ? c.inGameSens : null,
+                fov: c.fov !== undefined ? c.fov : null,
+                cm_per_360: c.sensitivity && typeof c.sensitivity.cm360 === 'number'
+                    ? c.sensitivity.cm360 : null
+            },
+            comparability: {
+                difficulty_varied: c.difficultyVaried === true,
+                difficulty_varied_basis: c.difficultyVariedBasis || null,
+                usable_for_sensitivity_comparison: c.difficultyVaried !== true
+            },
+            provenance: {
+                source: p.source || s.source || null,
+                source_type: p.sourceType || null,
+                raw_content_hash: p.rawContentHash || null,
+                raw_file_included: false,
+                parser_version: p.parserVersion || null,
+                normalization_version: p.normalizationVersion || null,
+                logical_fingerprint: p.logicalFingerprint || null,
+                logical_fingerprint_status: p.logicalFingerprintStatus || null,
+                imported_at: p.importedAt || null
+            },
+            metrics: (s.metrics || []).map(function (m) { return exportMetric(m, registry); }),
+            weapons: (s.weapons || []).map(function (w) {
+                return {
+                    weapon: w.weapon || null,
+                    metrics: (w.metrics || []).map(function (m) { return exportMetric(m, registry); })
+                };
+            })
+        };
+    }
+
+    /**
+     * 可搬な Export を作る。保存済みでも手元のものでも同じ形式で出す。
+     * **内部 DB ID・user_id・認証情報は含めない。**
+     */
+    function buildExport(sessions, meta) {
+        var m = meta || {};
+        var list = sessions || [];
+        return {
+            format: 'long-cape-aim-export',
+            export_version: EXPORT_VERSION,
+            exported_at: new Date().toISOString(),
+            generator: {
+                app: 'long-cape',
+                origin: m.source === 'stored' ? 'saved_profile' : 'local_preview',
+                parser_version: m.parserVersion || PARSER_VERSION,
+                normalization_version: m.normalizationVersion || NORMALIZATION_VERSION,
+                registry_version: m.registryVersion || null,
+                algorithm_version: m.algorithmVersion || null
+            },
+            contents: {
+                includes_raw_files: false,
+                includes_account_identifiers: false,
+                includes_credentials: false,
+                note: '元のCSVは含まれません（保存していないため）。'
+                    + 'アカウントの識別子や認証情報も含めていません。'
+            },
+            profile_summary: m.profileSummary || null,
+            session_count: list.length,
+            sessions: list.map(function (s) { return exportSession(s, m.registry); })
+        };
+    }
+
+    /** Export に出してはいけない鍵。テストと実装の両方から参照する。 */
+    var EXPORT_FORBIDDEN_KEYS = [
+        'user_id', 'batch_id', 'session_id', 'storedId', 'id',
+        'access_token', 'refresh_token', 'apikey', 'password', 'consent_id'
+    ];
+
+    /** 禁止キーが混ざっていないか自分で検査する。 */
+    function auditExport(payload) {
+        var found = [];
+        (function walk(v, pathStr) {
+            if (v === null || typeof v !== 'object') return;
+            if (Array.isArray(v)) { v.forEach(function (x, i) { walk(x, pathStr + '[' + i + ']'); }); return; }
+            Object.keys(v).forEach(function (k) {
+                if (EXPORT_FORBIDDEN_KEYS.indexOf(k) >= 0) found.push(pathStr + '.' + k);
+                walk(v[k], pathStr + '.' + k);
+            });
+        })(payload, '$');
+        return { clean: found.length === 0, offendingKeys: found };
     }
 
     root.LC_STORAGE = {
@@ -438,6 +545,9 @@
         loadSessions: loadSessions,
         rehydrate: rehydrate,
         deleteAll: deleteAll,
-        buildExport: buildExport
+        buildExport: buildExport,
+        auditExport: auditExport,
+        EXPORT_VERSION: EXPORT_VERSION,
+        EXPORT_FORBIDDEN_KEYS: EXPORT_FORBIDDEN_KEYS
     };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

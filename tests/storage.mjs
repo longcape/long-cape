@@ -392,16 +392,57 @@ check('アカウント削除で個人データが完全に消える', async () =
     ok(env.client._db.aim_metric_registry.length > 0, 'Registry は残る（個人データではない）');
 });
 
+check('Export は版付きの可搬形式である', async () => {
+    const env = await setup();
+    await ST.executeSavePlan(env.client, planFor(env));
+    const loaded = await ST.loadSessions(env.client, A);
+    const ex = ST.buildExport(loaded.sessions, { source: 'stored', registry: REGISTRY, registryVersion: '1.5.0' });
+
+    eq(ex.format, 'long-cape-aim-export', '形式名');
+    ok(ex.export_version, '版がある');
+    ok(ex.exported_at, '出力時刻がある');
+    ok(ex.generator.parser_version && ex.generator.normalization_version, '解釈の版がある');
+    eq(ex.contents.includes_raw_files, false, '原本を含まない');
+    eq(ex.contents.includes_account_identifiers, false, 'アカウント識別子を含まない');
+
+    const s0 = ex.sessions[0];
+    ok(s0.scenario && 'identity' in s0.scenario, 'シナリオ識別子');
+    ok(s0.observed_at.timezone_status, 'timezone の状態を明示');
+    ok(s0.provenance.raw_content_hash && s0.provenance.parser_version, '来歴');
+    ok(s0.metrics.length > 0, 'metric がある');
+    s0.metrics.forEach((m) => {
+        ok(m.metric_key, 'metric key');
+        ok(m.metric_version, 'metric version');
+        ok(m.unit !== undefined, 'unit');
+        ok(typeof m.value === 'number', 'value');
+    });
+});
+
+check('Export に内部IDや認証情報を含めない', async () => {
+    const env = await setup();
+    await ST.executeSavePlan(env.client, planFor(env));
+    const loaded = await ST.loadSessions(env.client, A);
+    const ex = ST.buildExport(loaded.sessions, { source: 'stored', registry: REGISTRY });
+
+    const audit = ST.auditExport(ex);
+    eq(audit.clean, true, '禁止キーが無い: ' + audit.offendingKeys.join(', '));
+    const text = JSON.stringify(ex);
+    ok(!text.includes(A), 'user_id が入っていない');
+    ST.EXPORT_FORBIDDEN_KEYS.forEach((k) => {
+        ok(!new RegExp('\"' + k + '\"s*:').test(text), k + ' が入っていない');
+    });
+});
+
 check('Export に元CSVを含めない', async () => {
     const env = await setup();
     await ST.executeSavePlan(env.client, planFor(env));
     const loaded = await ST.loadSessions(env.client, A);
-    const ex = ST.buildExport(loaded.sessions, { source: 'stored', registryVersion: '1.5.0' });
+    const ex = ST.buildExport(loaded.sessions, { source: 'stored', registry: REGISTRY, registryVersion: '1.5.0' });
 
     eq(ex.session_count, 2, '件数');
-    ok(/元のCSVは含まれません/.test(ex.note), '含まれないことを明示');
+    ok(/元のCSVは含まれません/.test(ex.contents.note), '含まれないことを明示');
     ok(!JSON.stringify(ex).includes('Kill #'), 'CSV 本文が入っていない');
-    ok(ex.parser_version && ex.registry_version, '来歴が入っている');
+    ok(ex.generator.parser_version && ex.generator.registry_version, '来歴が入っている');
 });
 
 check('Export はログインしていなくても作れる', async () => {

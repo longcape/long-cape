@@ -138,6 +138,40 @@ check('DPIを確認すると「要確認」が解消して「確認済み」に�
     eq(after.stateCounts.confirmed, after.rows.length, '件数にも反映される');
 });
 
+check('換算定義は必要な情報が揃っていないと使えない', async () => {
+    const a = U.auditSensScales();
+    ok(a.ok, '定義の不備: ' + a.problems.join(' / '));
+
+    // 必須項目が全部そろっている
+    Object.keys(U.SENS_SCALE).forEach((k) => {
+        U.SCALE_REQUIRED.forEach((f) => {
+            ok(U.SENS_SCALE[k][f] !== undefined, k + '.' + f + ' がある');
+        });
+        ok(U.SENS_SCALE[k].testVectors.length >= 2, k + ' に既知の検証値が2点以上');
+    });
+});
+
+check('換算の往復が一致する', async () => {
+    Object.keys(U.SENS_SCALE).forEach((k) => {
+        U.SENS_SCALE[k].testVectors.forEach((v) => {
+            const cm = U.cm360(k, v.sens, v.dpi);
+            eq(cm.available, true, k + ' の換算ができる');
+            ok(Math.abs(cm.value - v.cm360) < 0.15, k + ': ' + cm.value + ' ≒ ' + v.cm360);
+            const back = U.sensFromCm360(k, cm.value, v.dpi);
+            ok(Math.abs(back.value - v.sens) / v.sens < 0.005, k + ': 往復で戻る');
+        });
+    });
+});
+
+check('表記ゆれを吸収するが、未登録のスケールは推測しない', async () => {
+    eq(U.cm360('Valorant', 0.4, 800).value, U.cm360('cs2', 0.4, 800).value, '別名でも同じ');
+    ['Apex', 'Overwatch', 'Fortnite', 'PUBG', ''].forEach((name) => {
+        const r = U.cm360(name, 3, 800);
+        eq(r.available, false, name + ' は換算しない');
+        ok(!('value' in r), name + ' の推測値を作らない');
+    });
+});
+
 // ============================================ 2. adaptive を推奨へ混ぜない
 
 check('adaptive セッションが推奨へ混ざらない', async () => {

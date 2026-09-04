@@ -351,7 +351,7 @@ check('Export はログイン前後どちらでも作れて、元CSVを含まな
 
     [before, after].forEach((ex) => {
         ok(!JSON.stringify(ex).includes('Kill #'), 'CSV 本文が入っていない');
-        ok(/元のCSVは含まれません/.test(ex.note), '含まれないことを明示');
+        ok(/元のCSVは含まれません/.test(ex.contents.note), '含まれないことを明示');
     });
 });
 

@@ -99,14 +99,85 @@
     // ------------------------------------------------------------- cm/360
     //
     // 感度スケールごとの換算定数。**推測で増やさない。**
-    // 実測で裏取りできたものだけをここに置き、それ以外は「換算しない」を返す。
+    //
+    // 【追加の条件】新しいスケールをここへ足すには、次を必ず揃える。
+    //   1. conversionSource   … どこから得た換算か（実測 / ゲーム同梱の設定 / 公式資料）
+    //   2. formula            … 使う式そのもの
+    //   3. degPerCountAtSens1 … 係数
+    //   4. version            … その換算の版（ゲーム側が変えたら上げる）
+    //   5. testVectors        … 既知の (sens, dpi) → cm の組。最低2点
+    //   6. 往復テスト         … cm から sens を戻して一致すること（tests/ui.mjs が検査）
+    // 1つでも欠けたら tools と テストが弾く。**曖昧なまま足せない。**
     var SENS_SCALE = {
         valorant: {
+            id: 'valorant',
+            aliases: ['valorant', 'cs2', 'cs:go', 'csgo', 'counter-strike'],
             degPerCountAtSens1: 0.06996,
+            formula: 'cm360 = 2.54 * 360 / (sens * degPerCountAtSens1 * dpi)',
+            conversionSource: 'measured_against_real_export',
+            version: '1',
             verifiedAt: '2026-09-04',
-            basis: 'ゲーム内感度 0.4 / DPI 800 で 40.8cm となり、VALORANT の既知の値と一致することを実測で確認した。'
+            basis: 'KovaaK 3.9.8 の実 export で、ゲーム内感度 0.4 / DPI 800 のとき 40.8cm となり、'
+                + 'VALORANT で広く知られた値と一致することを確認した。',
+            testVectors: [
+                { sens: 0.4, dpi: 800, cm360: 40.8 },
+                { sens: 0.215, dpi: 400, cm360: 152.0 },
+                { sens: 0.215, dpi: 800, cm360: 76.0 }
+            ]
         }
     };
+
+    /** 表記ゆれを吸収してスケール定義を引く。無ければ null（推測しない）。 */
+    function resolveScale(name) {
+        var key = String(name || '').toLowerCase().trim();
+        if (SENS_SCALE[key]) return SENS_SCALE[key];
+        var hit = null;
+        Object.keys(SENS_SCALE).forEach(function (k) {
+            if ((SENS_SCALE[k].aliases || []).indexOf(key) >= 0) hit = SENS_SCALE[k];
+        });
+        return hit;
+    }
+
+    /** 換算定義に必要な項目が揃っているか。欠けていたら使わせない。 */
+    var SCALE_REQUIRED = ['degPerCountAtSens1', 'formula', 'conversionSource',
+                          'version', 'basis', 'testVectors'];
+
+    function auditSensScales() {
+        var problems = [];
+        Object.keys(SENS_SCALE).forEach(function (k) {
+            var d = SENS_SCALE[k];
+            SCALE_REQUIRED.forEach(function (f) {
+                if (d[f] === undefined || d[f] === null || d[f] === '') {
+                    problems.push(k + ': ' + f + ' がありません');
+                }
+            });
+            if (!d.testVectors || d.testVectors.length < 2) {
+                problems.push(k + ': testVectors が2点未満です');
+            }
+            (d.testVectors || []).forEach(function (v, i) {
+                var got = cm360(k, v.sens, v.dpi);
+                if (!got.available) { problems.push(k + '[' + i + ']: 換算できません'); return; }
+                if (Math.abs(got.value - v.cm360) > 0.15) {
+                    problems.push(k + '[' + i + ']: 期待 ' + v.cm360 + ' / 実際 ' + got.value);
+                }
+                // 往復（cm から sens へ戻す）
+                var back = sensFromCm360(k, v.cm360, v.dpi);
+                if (!back.available || Math.abs(back.value - v.sens) / v.sens > 0.005) {
+                    problems.push(k + '[' + i + ']: 往復が一致しません（' + (back.value || '—') + '）');
+                }
+            });
+        });
+        return { ok: problems.length === 0, problems: problems };
+    }
+
+    /** cm/360 から感度へ戻す。往復テストのために用意する。 */
+    function sensFromCm360(sensScale, cm, dpi) {
+        var def = resolveScale(sensScale);
+        if (!def || typeof cm !== 'number' || typeof dpi !== 'number' || cm <= 0 || dpi <= 0) {
+            return { available: false, reason: 'scale_not_verified' };
+        }
+        return { available: true, value: 2.54 * 360 / (cm * def.degPerCountAtSens1 * dpi) };
+    }
 
     /**
      * 振り向き（cm/360）。
@@ -116,7 +187,7 @@
         if (typeof sens !== 'number' || typeof dpi !== 'number' || sens <= 0 || dpi <= 0) {
             return { available: false, reason: 'missing_input' };
         }
-        var def = SENS_SCALE[String(sensScale || '').toLowerCase()];
+        var def = resolveScale(sensScale);
         if (!def) {
             return {
                 available: false, reason: 'scale_not_verified',
@@ -649,7 +720,10 @@
         CONSENT_PURPOSES: CONSENT_PURPOSES,
 
         cm360: cm360,
+        sensFromCm360: sensFromCm360,
+        auditSensScales: auditSensScales,
         SENS_SCALE: SENS_SCALE,
+        SCALE_REQUIRED: SCALE_REQUIRED,
         resolveDpi: resolveDpi,
         isBlockedByDpi: isBlockedByDpi,
         derivedAccuracy: derivedAccuracy,

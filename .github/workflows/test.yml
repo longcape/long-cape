@@ -49,6 +49,9 @@ jobs:
       - name: UI ロジックのテスト（G-3 prototype）
         run: node tests/ui.mjs
 
+      - name: 多言語の整合テスト（ja / en / ko）
+        run: node tests/i18n.mjs
+
       - name: 保存・読込・削除のテスト（G-5）
         run: node tests/storage.mjs
 

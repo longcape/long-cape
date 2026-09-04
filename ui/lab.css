@@ -148,3 +148,43 @@ body.devmode tr.dev-only { display: table-row !important; }
 .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .78rem; }
 .hidden { display: none !important; }
 .stack > * + * { margin-top: 10px; }
+
+/* ---------------------------------------------------------- アクセシビリティ */
+.skiplink { position: absolute; left: -9999px; top: 0; background: var(--accent-color); color: #08111f;
+            padding: 10px 16px; border-radius: 0 0 8px 0; font-weight: bold; z-index: 100; }
+.skiplink:focus { left: 0; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+           overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* フォーカスが必ず見えるようにする。outline を消さない。 */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+summary:focus-visible, [tabindex]:focus-visible, .drop:focus-visible {
+    outline: 3px solid var(--accent-color);
+    outline-offset: 2px;
+}
+.tablewrap:focus-visible { outline: 3px solid var(--accent-color); outline-offset: 2px; }
+
+.lang-select { padding: 5px 8px; font-size: .8rem; background: var(--panel); color: var(--text-main);
+               border: 1px solid var(--accent-color); border-radius: 6px; cursor: pointer; }
+
+/* consent-item の label をクリック領域にする */
+.consent-item label { cursor: pointer; }
+.consent-item .t { display: inline-block; }
+
+/* 動きを減らす設定を尊重する */
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+}
+
+/* mobile でのズームを妨げない（user-scalable を禁止していない） */
+@media (max-width: 600px) {
+    body { padding: 12px; }
+    .kpis { gap: 16px; }
+    .kpi .v { font-size: 1.35rem; }
+}
+
+/* 長い英数字（ファイルパス・ハッシュ）が画面幅を押し広げないようにする。
+   モバイルで body が横スクロールしてしまうのを防ぐ。 */
+.mono, .hint, .chip, .note, td, .devtag { overflow-wrap: anywhere; }
+.wrap, main, .card { max-width: 100%; min-width: 0; }
