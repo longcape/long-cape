@@ -1,0 +1,677 @@
+/**
+ * KovaaK Adapter — Phase D read-only prototype
+ * =============================================
+ *
+ * ファイル選択 → format detection → parse → validation → normalization →
+ * provenance → preview のうち、Adapter が担う部分を実装する。
+ *
+ * 【この版の制約（Phase D の禁止事項）】
+ *   - 本番DBへ保存しない。DBのことを一切知らない
+ *   - Recommendation へ投入しない
+ *   - `Horiz Sens` を正規化しない（値が2箇所で約100倍違い未解決のため）
+ *   - cm/360 を自動確定しない
+ *   - 実ファイル検証を通していないため production-ready ではない
+ *
+ * 【設計上の不変条件】
+ *   - 純粋関数。ネットワークにも DOM にも触らない
+ *   - 例外を投げない。問題は warnings / errors に積む
+ *   - 未知formatは推測解析せず unsupported_format で停止する
+ *   - 未知の列は捨てず unknownFields に記録するだけ。勝手に指標化しない
+ *
+ * ブラウザでは <script> で読み込んで globalThis.LC_IMPORTERS へ登録される。
+ * Node のテストからは vm で評価して同じオブジェクトを取り出す。
+ */
+(function (root) {
+    'use strict';
+
+    // ---------------------------------------------------------------- 定数
+
+    var FORMATS = {
+        LEGACY: 'legacy_stats_csv',
+        CURRENT: 'current_stats_csv',
+        TIMESERIES: 'performance_timeseries',
+        UNSUPPORTED: 'unsupported_format'
+    };
+
+    var PARSER_VERSION = '0.1.0';        // ファイルの読み方
+    var NORMALIZATION_VERSION = '0.1.0'; // 読んだ値の意味づけ
+
+    var FILENAME_SEP = ' - Challenge - ';
+    var FILENAME_SUFFIX = ' Stats.csv';
+
+    /**
+     * フッター／サマリのキー → session レベルの metric_key。
+     * ここに無いキーは unknownFields へ回す。勝手に指標化しない。
+     * `Horiz Sens` / `Vert Sens` は意図的に含めない（第0節の禁止事項）。
+     */
+    var FOOTER_METRIC_MAP = {
+        'kills': { metricKey: 'kovaak.kills', unit: 'count' },
+        'deaths': { metricKey: 'kovaak.deaths', unit: 'count' },
+        'fight time': { metricKey: 'kovaak.fight_time', unit: 's' },
+        'score': { metricKey: 'kovaak.score', unit: 'score' },
+        'hit count': { metricKey: 'kovaak.hit_count', unit: 'count' },
+        'avg fps': { metricKey: 'kovaak.avg_fps', unit: 'fps' },
+        'damage done': { metricKey: 'kovaak.damage_done', unit: 'damage' },
+        'damage taken': { metricKey: 'kovaak.damage_taken', unit: 'damage' },
+        'midairs': { metricKey: 'kovaak.midairs', unit: 'count' },
+        'midaired': { metricKey: 'kovaak.midaired', unit: 'count' },
+        'directs': { metricKey: 'kovaak.directs', unit: 'count' },
+        'directed': { metricKey: 'kovaak.directed', unit: 'count' },
+        'distance traveled': { metricKey: 'kovaak.distance_traveled', unit: 'unit' },
+        'avg ttk': { metricKey: 'kovaak.avg_ttk', unit: 'ms' }
+    };
+
+    /** 武器行のうち session レベルの指標として扱う列。 */
+    var WEAPON_METRIC_MAP = {
+        'shots': { metricKey: 'kovaak.shots', unit: 'count' },
+        'hits': { metricKey: 'kovaak.hits', unit: 'count' },
+        'damage done': { metricKey: 'kovaak.damage_done_weapon', unit: 'damage' },
+        'damage possible': { metricKey: 'kovaak.damage_possible', unit: 'damage' }
+    };
+
+    /**
+     * 測定条件（metric ではなく session の属性へ入る）。
+     * `horiz sens` / `vert sens` は candidates として別扱いにするためここに入れない。
+     */
+    var FOOTER_CONTEXT_KEYS = {
+        'dpi': 'dpi',
+        'fov': 'fov',
+        'resolution': 'resolution',
+        'resolution scale': 'resolutionScale',
+        'scenario': 'scenarioFromFooter',
+        'game version': 'sourceAppVersion',
+        'hash': 'sourceHash'
+    };
+
+    var WEAPON_CONTEXT_KEYS = {
+        'sens scale': 'sensScale',
+        'fov': 'fovFromWeaponRow',
+        'ads sens': 'adsSens',
+        'ads zoom scale': 'adsZoomScale',
+        'avg target scale': 'avgTargetScale',
+        'avg time dilation': 'avgTimeDilation',
+        'hide gun': 'hideGun'
+    };
+
+    // ------------------------------------------------------------ 小道具
+
+    function stripBom(text) {
+        return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+    }
+
+    /** CRLF / CR / LF を LF へ揃える。改行コードで結果が変わらないようにする。 */
+    function normalizeEol(text) {
+        return String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    }
+
+    /** 引用符を考慮しない単純なCSV分割。KovaaKの出力に引用符は観測されていない。 */
+    function splitCsvLine(line) {
+        return line.split(',').map(function (c) { return c.trim(); });
+    }
+
+    function toNumber(raw) {
+        if (raw === undefined || raw === null) return null;
+        var s = String(raw).trim();
+        if (s === '' || s === '-' || s.toLowerCase() === 'n/a') return null;
+        s = s.replace('%', '');
+        var n = Number(s);
+        return isFinite(n) ? n : null;
+    }
+
+    /**
+     * 内容ハッシュ（FNV-1a 64bit 相当を32bit×2で構成）。
+     * 暗号学的強度は無い。重複検知の用途にのみ使う。
+     * 本番では SubtleCrypto の SHA-256 へ差し替える前提で、algo名を明示して返す。
+     */
+    function contentHash(text) {
+        var h1 = 0x811c9dc5, h2 = 0x01000193;
+        for (var i = 0; i < text.length; i++) {
+            var c = text.charCodeAt(i);
+            h1 = (h1 ^ c) >>> 0;
+            h1 = Math.imul(h1, 0x01000193) >>> 0;
+            h2 = (h2 + c) >>> 0;
+            h2 = Math.imul(h2, 0x85ebca6b) >>> 0;
+        }
+        return ('00000000' + h1.toString(16)).slice(-8) + ('00000000' + h2.toString(16)).slice(-8);
+    }
+
+    function warn(list, level, code, message, extra) {
+        var w = { level: level, code: code, message: message };
+        if (extra) for (var k in extra) if (extra.hasOwnProperty(k)) w[k] = extra[k];
+        list.push(w);
+        return w;
+    }
+
+    // ------------------------------------------------------- ファイル名解析
+
+    /**
+     * `<scenario> - Challenge - <YYYY.MM.DD-HH.MM.SS> Stats.csv`
+     * シナリオ名自体に ' - ' を含みうるため、**右から**分割する。
+     */
+    function parseFileName(name) {
+        if (typeof name !== 'string' || name.slice(-FILENAME_SUFFIX.length) !== FILENAME_SUFFIX) {
+            return { ok: false, reason: 'suffix_mismatch' };
+        }
+        var body = name.slice(0, -FILENAME_SUFFIX.length);
+        var idx = body.lastIndexOf(FILENAME_SEP);
+        if (idx < 0) return { ok: false, reason: 'separator_missing' };
+
+        var scenario = body.slice(0, idx);
+        var ts = body.slice(idx + FILENAME_SEP.length);
+        var m = /^(\d{4})\.(\d{2})\.(\d{2})-(\d{2})\.(\d{2})\.(\d{2})$/.exec(ts);
+        if (!m) return { ok: false, reason: 'timestamp_unparsable', scenario: scenario, rawTimestamp: ts };
+
+        return {
+            ok: true,
+            scenario: scenario,
+            // タイムゾーン情報が無いため、ここでは文字列として保持し UTC 断定をしない
+            localTimestamp: m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':' + m[6],
+            tzKnown: false
+        };
+    }
+
+    // -------------------------------------------------------- ブロック分割
+
+    /** 空行で区切られたブロックへ分ける。 */
+    function splitBlocks(text) {
+        return normalizeEol(stripBom(text))
+            .split(/\n\s*\n/)
+            .map(function (b) { return b.replace(/\s+$/, ''); })
+            .filter(function (b) { return b.trim() !== ''; });
+    }
+
+    function blockLines(block) {
+        return block.split('\n').filter(function (l) { return l.trim() !== ''; });
+    }
+
+    // ------------------------------------------------------ format detection
+
+    /**
+     * 形式を判別する。推測で解析しないための入口。
+     * @returns {{format:string, confidence:number, signals:string[], reasons:string[]}}
+     */
+    function detectFormat(file) {
+        var signals = [];
+        var reasons = [];
+        var name = file && file.name;
+        var text = (file && file.text) || '';
+
+        var fn = parseFileName(name);
+        if (fn.ok) signals.push('filename_matches_challenge_stats');
+        else reasons.push('filename: ' + fn.reason);
+
+        var blocks = splitBlocks(text);
+        if (blocks.length === 0) {
+            return { format: FORMATS.UNSUPPORTED, confidence: 0, signals: signals, reasons: reasons.concat(['empty_file']) };
+        }
+
+        var first = blockLines(blocks[0])[0] || '';
+        var hasKillHeader = first.indexOf('Kill #,') === 0;
+        if (hasKillHeader) signals.push('kill_header_present');
+        else reasons.push('first block does not start with "Kill #,"');
+
+        var lower = normalizeEol(text).toLowerCase();
+        var hasAccuracyCol = hasKillHeader && first.toLowerCase().indexOf('accuracy') >= 0;
+        var hasDpiFooter = /(^|\n)dpi:,/.test(lower);
+        var hasLegacyMarkers = /(^|\n)(scenario:|game version:|input lag:)/.test(lower);
+
+        if (hasAccuracyCol) signals.push('kill_header_has_accuracy');
+        if (hasDpiFooter) signals.push('footer_has_dpi');
+        if (hasLegacyMarkers) signals.push('legacy_markers_present');
+
+        // Kill 行の Timestamp が経過秒か時刻表記かは世代の決定打
+        var tsStyle = null;
+        if (hasKillHeader) {
+            var rows = blockLines(blocks[0]);
+            if (rows.length > 1) {
+                var cells = splitCsvLine(rows[1]);
+                var tsIdx = splitCsvLine(first).map(function (h) { return h.toLowerCase(); }).indexOf('timestamp');
+                var tsVal = tsIdx >= 0 ? cells[tsIdx] : undefined;
+                if (tsVal !== undefined) {
+                    if (/^\d+(\.\d+)?$/.test(tsVal)) { tsStyle = 'elapsed_seconds'; signals.push('timestamp_elapsed_seconds'); }
+                    else if (/^\d{1,2}:\d{2}:\d{2}[:.]\d{1,3}$/.test(tsVal)) { tsStyle = 'clock'; signals.push('timestamp_clock'); }
+                    else reasons.push('timestamp style unrecognized: ' + tsVal);
+                }
+            }
+        }
+
+        if (!hasKillHeader) {
+            return { format: FORMATS.UNSUPPORTED, confidence: 0, signals: signals, reasons: reasons };
+        }
+
+        // 現行（3.9.x）: Accuracy 列 or DPI フッター or 経過秒
+        var currentScore = (hasAccuracyCol ? 1 : 0) + (hasDpiFooter ? 1 : 0) + (tsStyle === 'elapsed_seconds' ? 1 : 0);
+        // 旧: legacy マーカー or 時刻表記
+        var legacyScore = (hasLegacyMarkers ? 1 : 0) + (tsStyle === 'clock' ? 1 : 0);
+
+        if (currentScore >= 2 && currentScore > legacyScore) {
+            return { format: FORMATS.CURRENT, confidence: Math.min(1, currentScore / 3), signals: signals, reasons: reasons };
+        }
+        if (legacyScore >= 1 && legacyScore > currentScore) {
+            return { format: FORMATS.LEGACY, confidence: Math.min(1, legacyScore / 2), signals: signals, reasons: reasons };
+        }
+
+        // どちらとも決められない → 推測しない
+        reasons.push('signals insufficient to decide generation (current=' + currentScore + ', legacy=' + legacyScore + ')');
+        return { format: FORMATS.UNSUPPORTED, confidence: 0, signals: signals, reasons: reasons };
+    }
+
+    // --------------------------------------------------------------- parse
+
+    /** `Key:,Value` 形式の行をマップにする。 */
+    function parseKeyValueBlock(block) {
+        var out = {};
+        blockLines(block).forEach(function (line) {
+            var cells = splitCsvLine(line);
+            var key = cells[0] || '';
+            if (key.slice(-1) !== ':') return;
+            out[key.slice(0, -1).trim().toLowerCase()] = cells.length > 1 ? cells.slice(1).join(',').trim() : '';
+        });
+        return out;
+    }
+
+    function parseTableBlock(block) {
+        var lines = blockLines(block);
+        if (lines.length === 0) return { headers: [], rows: [] };
+        var headers = splitCsvLine(lines[0]);
+        var rows = [];
+        for (var i = 1; i < lines.length; i++) {
+            var cells = splitCsvLine(lines[i]);
+            var row = {};
+            for (var j = 0; j < headers.length; j++) row[headers[j]] = cells[j];
+            row.__cellCount = cells.length;
+            rows.push(row);
+        }
+        return { headers: headers, rows: rows };
+    }
+
+    /**
+     * 1ファイルを解析する。例外は投げない。
+     */
+    function parseFile(file, detection, warnings, unknownFields) {
+        var text = stripBom(String(file.text || ''));
+        var blocks = splitBlocks(text);
+        var fn = parseFileName(file.name);
+
+        var killBlock = null, weaponBlock = null;
+        var kvBlocks = [];
+
+        blocks.forEach(function (b) {
+            var head = blockLines(b)[0] || '';
+            if (head.indexOf('Kill #,') === 0) killBlock = b;
+            else if (head.indexOf('Weapon,') === 0) weaponBlock = b;
+            else kvBlocks.push(b);
+        });
+
+        var kills = killBlock ? parseTableBlock(killBlock) : { headers: [], rows: [] };
+        var weapon = weaponBlock ? parseTableBlock(weaponBlock) : { headers: [], rows: [] };
+
+        // 旧形式は Summary / Settings が別ブロック、現行は平坦フッター。
+        // どちらも Key:,Value なので統合して読む（キー衝突は後勝ちにせず先勝ちで記録）。
+        var footer = {};
+        kvBlocks.forEach(function (b) {
+            var kv = parseKeyValueBlock(b);
+            for (var k in kv) {
+                if (!kv.hasOwnProperty(k)) continue;
+                if (footer.hasOwnProperty(k) && footer[k] !== kv[k]) {
+                    warn(warnings, 'warn', 'duplicate_footer_key',
+                        'フッターに同じキーが異なる値で複数回現れました: ' + k,
+                        { file: file.name, first: footer[k], second: kv[k] });
+                    continue;
+                }
+                footer[k] = kv[k];
+            }
+        });
+
+        // 壊れた行の検出（列数がヘッダと合わない）
+        kills.rows.forEach(function (r, i) {
+            if (r.__cellCount !== kills.headers.length) {
+                warn(warnings, 'warn', 'kill_row_column_mismatch',
+                    'Kill行の列数がヘッダと一致しません', { file: file.name, line: i + 2, expected: kills.headers.length, actual: r.__cellCount });
+            }
+        });
+
+        return {
+            fileName: file.name,
+            fileMeta: fn,
+            format: detection.format,
+            killHeaders: kills.headers,
+            killRows: kills.rows,
+            weaponHeaders: weapon.headers,
+            weaponRows: weapon.rows,
+            footer: footer,
+            contentHash: contentHash(text),
+            contentHashAlgo: 'fnv1a64-prototype'
+        };
+    }
+
+    // ---------------------------------------------------------- validation
+
+    function validate(parsed) {
+        var errors = [];
+        var warnings = [];
+
+        if (!parsed.fileMeta || !parsed.fileMeta.ok) {
+            errors.push({ code: 'filename_unparsable', message: 'ファイル名から シナリオ名と日時 を取得できません', file: parsed.fileName });
+        }
+        if (toNumber(parsed.footer['score']) === null) {
+            errors.push({ code: 'score_missing', message: 'フッターに有効な Score がありません', file: parsed.fileName });
+        }
+        if (parsed.killRows.length === 0) {
+            warnings.push({ level: 'warn', code: 'no_kill_rows', message: 'Kill行がありません', file: parsed.fileName });
+        }
+
+        // Kills と Kill行数の整合（不一致でも取込は止めない）
+        var killsDeclared = toNumber(parsed.footer['kills']);
+        if (killsDeclared !== null && parsed.killRows.length > 0 && killsDeclared !== parsed.killRows.length) {
+            warnings.push({
+                level: 'warn', code: 'kill_count_mismatch',
+                message: 'Kills の宣言値と Kill行数が一致しません', file: parsed.fileName,
+                declared: killsDeclared, rows: parsed.killRows.length
+            });
+        }
+
+        return { ok: errors.length === 0, errors: errors, warnings: warnings };
+    }
+
+    // -------------------------------------------------------- normalization
+
+    /**
+     * Normalized 層のみを作る。**Derived は一切計算しない。**
+     * accuracy / cm360 / score_per_min 等の導出はこの段階では行わない。
+     */
+    function normalize(parsed, warnings, unknownFields) {
+        var metrics = [];
+        var context = {};
+        var unresolved = [];
+
+        // --- フッター
+        for (var key in parsed.footer) {
+            if (!parsed.footer.hasOwnProperty(key)) continue;
+            var raw = parsed.footer[key];
+
+            if (key === 'horiz sens' || key === 'vert sens') continue; // 後段で candidates として扱う
+
+            if (FOOTER_METRIC_MAP[key]) {
+                var def = FOOTER_METRIC_MAP[key];
+                var v = toNumber(raw);
+                if (v === null) {
+                    warn(warnings, 'warn', 'value_not_numeric', 'フッターの値を数値化できません: ' + key, { file: parsed.fileName, raw: raw });
+                } else {
+                    metrics.push({ metricKey: def.metricKey, value: v, unit: def.unit, rawText: String(raw) });
+                }
+            } else if (FOOTER_CONTEXT_KEYS[key]) {
+                context[FOOTER_CONTEXT_KEYS[key]] = raw;
+            } else {
+                unknownFields.push({ section: 'footer', key: key, sample: String(raw).slice(0, 32), file: parsed.fileName });
+            }
+        }
+
+        // --- 武器行（先頭1行のみを session 代表として扱う。複数武器は未対応として警告）
+        if (parsed.weaponRows.length > 1) {
+            warn(warnings, 'info', 'multiple_weapon_rows',
+                '武器行が複数あります。プロトタイプでは先頭行のみを使用します',
+                { file: parsed.fileName, count: parsed.weaponRows.length });
+        }
+        var wrow = parsed.weaponRows[0];
+        if (wrow) {
+            parsed.weaponHeaders.forEach(function (h) {
+                if (h === '' || h === undefined) return;          // 区切りの空列
+                var lk = h.trim().toLowerCase();
+                if (lk === 'weapon') { context.weapon = wrow[h]; return; }
+                if (lk === 'horiz sens' || lk === 'vert sens') return; // candidates 側で扱う
+                if (lk === 'crosshair' || lk === 'crosshair scale' || lk === 'crosshair color') return; // 表示設定。取り込まない
+
+                if (WEAPON_METRIC_MAP[lk]) {
+                    var d = WEAPON_METRIC_MAP[lk];
+                    var v = toNumber(wrow[h]);
+                    if (v === null) {
+                        warn(warnings, 'warn', 'value_not_numeric', '武器行の値を数値化できません: ' + h, { file: parsed.fileName, raw: wrow[h] });
+                    } else {
+                        metrics.push({ metricKey: d.metricKey, value: v, unit: d.unit, rawText: String(wrow[h]) });
+                    }
+                } else if (WEAPON_CONTEXT_KEYS[lk]) {
+                    context[WEAPON_CONTEXT_KEYS[lk]] = wrow[h];
+                } else {
+                    unknownFields.push({ section: 'weapon', key: h, sample: String(wrow[h]).slice(0, 32), file: parsed.fileName });
+                }
+            });
+        }
+
+        // --- Kill ヘッダの未知列を記録（値の正規化はしない）
+        parsed.killHeaders.forEach(function (h) {
+            var known = ['Kill #', 'Timestamp', 'Bot', 'Weapon', 'TTK', 'Shots', 'Hits',
+                'Accuracy', 'Damage Done', 'Damage Possible', 'Efficiency', 'Cheated', 'OverShots'];
+            if (known.indexOf(h) < 0 && h !== '') {
+                unknownFields.push({ section: 'kill', key: h, sample: '', file: parsed.fileName });
+            }
+        });
+
+        // --- DPI の出どころ
+        var dpi = toNumber(context.dpi);
+        context.dpi = dpi;
+        context.dpiSource = dpi === null ? 'unknown' : 'file';
+
+        // --- Horiz Sens は **正規化しない**（Phase D の禁止事項）
+        var candidates = [];
+        var wHoriz = null;
+        if (wrow) {
+            parsed.weaponHeaders.forEach(function (h) {
+                if (String(h).trim().toLowerCase() === 'horiz sens') wHoriz = toNumber(wrow[h]);
+            });
+        }
+        var fHoriz = toNumber(parsed.footer['horiz sens']);
+        if (wHoriz !== null) candidates.push({ origin: 'weapon_row', value: wHoriz });
+        if (fHoriz !== null) candidates.push({ origin: 'footer', value: fHoriz });
+
+        if (candidates.length > 0) {
+            unresolved.push({
+                field: 'in_game_sens',
+                reason: candidates.length > 1 ? 'horiz_sens_multiple_sources' : 'horiz_sens_single_source_unverified',
+                candidates: candidates,
+                note: '実ファイル検証まで in_game_sens を確定しない（Phase C.5 未確定事項2）'
+            });
+        }
+        unresolved.push({
+            field: 'cm360',
+            reason: 'blocked_by_in_game_sens',
+            note: 'in_game_sens が未確定のため cm/360 を自動確定しない'
+        });
+
+        return { metrics: metrics, context: context, unresolved: unresolved };
+    }
+
+    // ---------------------------------------------------------- provenance
+
+    /**
+     * Phase B 最終条件4。原本を保存しない場合でも来歴を必ず残す。
+     */
+    function buildProvenance(parsed, adapter, importedAt) {
+        return {
+            source: adapter.source,
+            sourceType: adapter.sourceType,
+            sourceIdentifier: parsed.fileName,
+            fileHash: parsed.contentHash,
+            fileHashAlgo: parsed.contentHashAlgo,
+            parserVersion: PARSER_VERSION,
+            normalizationVersion: NORMALIZATION_VERSION,
+            importedAt: importedAt,
+            consentId: null,          // プロトタイプでは同意を取得しない
+            rawStored: false,
+            notStoredReason: 'phase_d_prototype_no_persistence'
+        };
+    }
+
+    /** 重複判定キー。ファイル名 + シナリオ + Score + 内容ハッシュ。 */
+    function computeExternalId(parsed) {
+        var scenario = (parsed.fileMeta && parsed.fileMeta.scenario) || '';
+        var score = parsed.footer['score'] || '';
+        return contentHash([parsed.fileName, scenario, score, parsed.contentHash].join('|'));
+    }
+
+    // ------------------------------------------------------------ pipeline
+
+    /**
+     * 複数ファイルを一括処理する。DBにも本番にも一切触れない。
+     * @param {{name:string,text:string}[]} files
+     * @param {{importedAt?:string}} [opts]
+     */
+    function run(files, opts) {
+        opts = opts || {};
+        var importedAt = opts.importedAt || new Date().toISOString();
+        var warnings = [];
+        var unknownFields = [];
+        var sessions = [];
+        var rejected = [];
+        var seen = {};
+        var duplicatesInBatch = 0;
+
+        (files || []).forEach(function (file) {
+            var detection = detectFormat(file);
+
+            if (detection.format === FORMATS.UNSUPPORTED) {
+                rejected.push({
+                    file: file.name, format: detection.format,
+                    reasons: detection.reasons, signals: detection.signals
+                });
+                warn(warnings, 'error', 'unsupported_format',
+                    '未対応の形式のため解析していません', { file: file.name, reasons: detection.reasons });
+                return; // 推測解析しない
+            }
+            if (detection.format === FORMATS.TIMESERIES) {
+                rejected.push({ file: file.name, format: detection.format, reasons: ['timeseries format not implemented'] });
+                warn(warnings, 'error', 'format_not_implemented',
+                    '秒単位データ形式は仕様未確定のため未対応です', { file: file.name });
+                return;
+            }
+
+            var parsed = parseFile(file, detection, warnings, unknownFields);
+            var v = validate(parsed);
+            v.warnings.forEach(function (w) { warnings.push(w); });
+
+            if (!v.ok) {
+                rejected.push({ file: file.name, format: detection.format, errors: v.errors });
+                v.errors.forEach(function (e) {
+                    warn(warnings, 'error', e.code, e.message, { file: e.file });
+                });
+                return;
+            }
+
+            var norm = normalize(parsed, warnings, unknownFields);
+            var externalId = computeExternalId(parsed);
+
+            if (seen[externalId]) {
+                duplicatesInBatch++;
+                warn(warnings, 'info', 'duplicate_in_batch',
+                    '同一内容のファイルが複数あります', { file: file.name, firstSeen: seen[externalId] });
+                return;
+            }
+            seen[externalId] = file.name;
+
+            sessions.push({
+                externalId: externalId,
+                format: detection.format,
+                formatConfidence: detection.confidence,
+                scenario: (parsed.fileMeta && parsed.fileMeta.scenario) || null,
+                localTimestamp: (parsed.fileMeta && parsed.fileMeta.localTimestamp) || null,
+                tzKnown: false,
+                killRowCount: parsed.killRows.length,
+                metrics: norm.metrics,
+                context: norm.context,
+                unresolved: norm.unresolved,
+                provenance: buildProvenance(parsed, adapter, importedAt)
+            });
+        });
+
+        return {
+            sessions: sessions,
+            rejected: rejected,
+            warnings: warnings,
+            unknownFields: unknownFields,
+            stats: {
+                filesReceived: (files || []).length,
+                sessionsParsed: sessions.length,
+                filesRejected: rejected.length,
+                duplicatesInBatch: duplicatesInBatch
+            }
+        };
+    }
+
+    /**
+     * 取込前プレビュー。ここで表示して、保存はしない。
+     */
+    function buildPreview(result) {
+        var scenarios = {};
+        var formats = {};
+        var earliest = null, latest = null;
+
+        result.sessions.forEach(function (s) {
+            scenarios[s.scenario] = (scenarios[s.scenario] || 0) + 1;
+            formats[s.format] = (formats[s.format] || 0) + 1;
+            if (s.localTimestamp) {
+                if (!earliest || s.localTimestamp < earliest) earliest = s.localTimestamp;
+                if (!latest || s.localTimestamp > latest) latest = s.localTimestamp;
+            }
+        });
+
+        var errors = result.warnings.filter(function (w) { return w.level === 'error'; });
+        var warns = result.warnings.filter(function (w) { return w.level === 'warn'; });
+
+        var dpiKnown = result.sessions.filter(function (s) { return s.context.dpiSource === 'file'; }).length;
+
+        return {
+            summary: {
+                filesReceived: result.stats.filesReceived,
+                sessionsParsed: result.stats.sessionsParsed,
+                filesRejected: result.stats.filesRejected,
+                duplicatesInBatch: result.stats.duplicatesInBatch,
+                errorCount: errors.length,
+                warningCount: warns.length,
+                unknownFieldCount: result.unknownFields.length
+            },
+            period: { earliest: earliest, latest: latest, tzKnown: false },
+            scenarios: scenarios,
+            formats: formats,
+            dpi: { fromFile: dpiKnown, needsUserInput: result.stats.sessionsParsed - dpiKnown },
+            unresolvedFields: (function () {
+                var acc = {};
+                result.sessions.forEach(function (s) {
+                    s.unresolved.forEach(function (u) { acc[u.field] = (acc[u.field] || 0) + 1; });
+                });
+                return acc;
+            })(),
+            persistence: {
+                willSave: false,
+                reason: 'Phase D prototype — 本番DB保存とRecommendation投入は禁止されている'
+            }
+        };
+    }
+
+    // ------------------------------------------------------------- 公開
+
+    var adapter = {
+        source: 'kovaak',
+        sourceType: 'aim_trainer',
+        parserVersion: PARSER_VERSION,
+        normalizationVersion: NORMALIZATION_VERSION,
+        productionReady: false,
+        notProductionReadyReason: '実ファイル未検証（fixtureのみ）／in_game_sens 未確定',
+
+        FORMATS: FORMATS,
+        accepts: { extensions: ['.csv'], maxBytes: 2 * 1024 * 1024, maxFiles: 500 },
+
+        // 各段階を個別に呼べるようにしてテストしやすくする
+        parseFileName: parseFileName,
+        detectFormat: detectFormat,
+        parseFile: parseFile,
+        validate: validate,
+        normalize: normalize,
+        computeExternalId: computeExternalId,
+        buildProvenance: buildProvenance,
+        run: run,
+        buildPreview: buildPreview
+    };
+
+    root.LC_IMPORTERS = root.LC_IMPORTERS || {};
+    root.LC_IMPORTERS.kovaak = adapter;
+})(typeof globalThis !== 'undefined' ? globalThis : this);

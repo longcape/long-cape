@@ -25,6 +25,9 @@ jobs:
       - name: 感度計算の回帰テスト（JS / 8064 パターン）
         run: node tests/regression.mjs
 
+      - name: Importer のテスト（KovaaK Adapter プロトタイプ）
+        run: node tests/importers.mjs
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

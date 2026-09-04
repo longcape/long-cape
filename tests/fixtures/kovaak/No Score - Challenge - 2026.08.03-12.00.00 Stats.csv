@@ -1,0 +1,10 @@
+Kill #,Timestamp,Bot,Weapon,TTK,Shots,Hits,Accuracy,Damage Done,Damage Possible,Efficiency,Cheated,OverShots
+1,1.000,Bot,rifle,0.2,1,1,100.0,60.0,60.0,1.0,false,0
+
+Weapon,Shots,Hits,Damage Done,Damage Possible,,Sens Scale,Horiz Sens,Vert Sens,FOV,Hide Gun,Crosshair,Crosshair Scale,Crosshair Color,ADS Sens,ADS Zoom Scale,Avg Target Scale,Avg Time Dilation
+rifle,1,1,60.0,60.0,,1.0,0.5,0.5,90.0,false,dot.png,0.8,00FFFFFF,1.0,1.0,1.0,1.0
+
+Kills:,1
+Deaths:,0
+DPI:,400
+Hit Count:,1
