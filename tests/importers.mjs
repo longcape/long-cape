@@ -45,7 +45,9 @@ const F = {
     notKovaak: 'not-a-kovaak-file.csv',
     multiWeapon: 'Multi Weapon - Challenge - 2026.08.10-14.00.00 Stats.csv',
     sameSens: 'Tile Frenzy - Challenge - 2026.08.11-09.30.00 Stats.csv',
-    otherSens: 'Tile Frenzy - Challenge - 2026.08.12-09.30.00 Stats.csv'
+    otherSens: 'Tile Frenzy - Challenge - 2026.08.12-09.30.00 Stats.csv',
+    // 実 KovaaK 3.9.8 の構造を保った匿名・合成データ（現行形式の基準）
+    real: 'Synthetic Intro Scenario - Challenge - 2026.09.04-23.05.48 Stats.csv'
 };
 
 // ------------------------------------------------------------ テスト基盤
@@ -115,7 +117,7 @@ check('検出: 現行形式を current と判定', async () => {
 check('検出: 旧形式を legacy と判定', async () => {
     const d = app.detectFormat(readFixture(F.legacy));
     eq(d.format, app.FORMATS.LEGACY, 'format');
-    ok(d.signals.includes('legacy_markers_present'), 'legacyマーカーを検出');
+    ok(d.signals.includes('section_markers_present'), 'セクションマーカーを検出');
     ok(d.signals.includes('timestamp_clock'), '時刻表記を検出');
 });
 
@@ -379,6 +381,99 @@ check('ハッシュ: raw_content_hash と logical_fingerprint を混同しない
     // 同一runの検知は logical_fingerprint の責務であり、まだ実装していない
     eq(a.logicalFingerprint, null);
     eq(a.logicalFingerprintStatus, 'not_implemented_phase_d');
+});
+
+// ================= 実 KovaaK 3.9.8 の構造（2026-09-04 実測に基づく）
+
+check('実構造: 3.9.8 を current と判定し、ゲーム版を signal に載せる', async () => {
+    const d = app.detectFormat(readFixture(F.real));
+    eq(d.format, app.FORMATS.CURRENT, 'format');
+    ok(d.signals.includes('footer_has_dpi'), 'DPI で世代を判別する');
+    ok(d.signals.includes('footer_has_sens_increment'), 'Sens Increment を検出');
+    ok(d.signals.includes('footer_has_resolution'), 'Resolution を検出');
+    // 3.9.8 は Kill/Weapon/Summary/Settings の4ブロック構成を保っている
+    ok(d.signals.includes('section_markers_present'), 'セクションマーカーも同時に持つ');
+    ok(d.signals.includes('timestamp_clock'), 'Timestamp は時刻表記');
+    ok(d.signals.some((x) => x.startsWith('game_version:3.9.8')), 'ゲーム版を記録');
+});
+
+check('実構造: Timestamp が時刻表記でも世代判別を誤らない', async () => {
+    // かつては「経過秒＝現行」と誤って想定していた。実ファイルは時刻表記。
+    const d = app.detectFormat(readFixture(F.real));
+    ok(!d.signals.includes('timestamp_elapsed_seconds'), '経過秒ではない');
+    eq(d.format, app.FORMATS.CURRENT, 'それでも current と判定する');
+});
+
+check('実構造: 設定値をフッターから取得する', async () => {
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    const c = r.sessions[0].context;
+    eq(c.dpi, 400, 'DPI');
+    eq(c.dpiSource, 'file', 'DPIの出どころ');
+    eq(c.fov, '103.0', 'FOV');
+    eq(c.sensScale, 'Valorant', 'Sens Scale は名前であって数値ではない');
+    eq(c.fovScale, 'Valorant', 'FOVScale');
+    eq(c.resolution, '1920x1080', 'Resolution');
+    eq(c.sensIncrement, '0.214877', 'Sens Increment');
+});
+
+check('実構造: 武器行のヘッダのみの列で警告を出さない', async () => {
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    eq(r.warnings.filter((w) => w.code === 'value_not_numeric').length, 0,
+        '設定名だけが並ぶ列を欠損として警告しない');
+    eq(r.unknownFields.length, 0, '未知フィールドが出ない');
+    const w = r.sessions[0].weapons[0];
+    eq(w.weapon, 'Full auto', '武器名');
+    eq(w.metrics.length, 4, '武器統計は4件');
+});
+
+check('実構造: 新しいフッター項目を取り込む', async () => {
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    const s = r.sessions[0];
+    eq(metricOf(s, 'kovaak.miss_count'), 30, 'Miss Count');
+    eq(metricOf(s, 'kovaak.total_overshots'), 3, 'Total Overshots');
+    eq(metricOf(s, 'kovaak.reloads'), 0, 'Reloads');
+    eq(metricOf(s, 'kovaak.pause_count'), 0, 'Pause Count');
+    eq(metricOf(s, 'kovaak.time_remaining'), 0, 'Time Remaining');
+});
+
+check('実構造: ファイル名の日時は終了時刻で、開始時刻はフッターにある', async () => {
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    const s = r.sessions[0];
+    eq(s.localTimestamp, '2026-09-04T23:05:48', 'ファイル名の日時');
+    eq(s.context.challengeStartClock, '23:04:00.000', 'Challenge Start');
+    eq(s.context.filenameTimestampMeaning, 'challenge_end', 'ファイル名は終了時刻');
+});
+
+check('実構造: 改行コードが混在していても解析できる', async () => {
+    const raw = fs.readFileSync(path.join(FIXTURE_DIR, F.real), 'utf8');
+    const CR = String.fromCharCode(13), LF = String.fromCharCode(10);
+    let crlf = 0, lfOnly = 0;
+    for (let i = 0; i < raw.length; i++) {
+        if (raw[i] !== LF) continue;
+        if (i > 0 && raw[i - 1] === CR) crlf++; else lfOnly++;
+    }
+    ok(crlf > 0 && lfOnly > 0, 'fixture 自体が混在していること（実ファイルと同じ）');
+
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    eq(r.stats.sessionsParsed, 1, '混在でも解析できる');
+});
+
+check('実構造: TTK の s 接尾辞を数値化できる', async () => {
+    // Kill 行の TTK は "7.649000s" のような表記
+    eq(app.detectFormat(readFixture(F.real)).format, app.FORMATS.CURRENT);
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    eq(r.warnings.length, 0, '警告なしで通る');
+});
+
+check('実構造: Horiz Sens は1箇所しか無く、100倍差は存在しない', async () => {
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    const u = r.sessions[0].unresolved.find((x) => x.field === 'in_game_sens');
+    ok(u, '未確定として記録される');
+    eq(u.candidates.length, 1, '候補は1つだけ');
+    eq(u.candidates[0].origin, 'footer', 'フッター由来');
+    eq(u.reason, 'horiz_sens_single_source_unverified', '単一ソースだが未検証');
+    // それでも確定はしない
+    ok(r.sessions[0].context.inGameSens === undefined, 'まだ確定させない');
 });
 
 // ------------------------------------------------------------- 9. preview

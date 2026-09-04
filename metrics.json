@@ -7,9 +7,11 @@
     "reliability は metric × source × collection_method で判断する。source が同じというだけで",
     "同じ信頼度を与えてはいけない（測定条件の事実情報と、記憶や自己評価による性能情報を区別する）。",
     "recommendation_eligible が false の metric は Profile には載るが Recommendation には使わない。",
-    "変更したら node tools/sync-metrics.mjs を実行し、CI の --check を通すこと。"
+    "変更したら node tools/sync-metrics.mjs を実行し、CI の --check を通すこと。",
+    "2026-09-04: KovaaK 3.9.8 の実 export で値と単位を確認した metric に value_confirmed_in_real_export を付与した。",
+    "確認しただけでは rated にしない。意味・正規化・reliability policy まで確定したものだけ段階的に rated へ変える。"
   ],
-  "registry_version": "1.1.0",
+  "registry_version": "1.2.0",
   "metrics": [
     {
       "metric_key": "kovaak.score",
@@ -25,8 +27,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "KovaaKのシナリオ内スコア。シナリオ間で比較可能な絶対値ではない。"
@@ -45,8 +48,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "ラン内のキル数。"
@@ -65,8 +69,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "ラン内のデス数。"
@@ -85,8 +90,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "交戦時間。長さの指標であり良し悪しではない。"
@@ -105,8 +111,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "命中数。"
@@ -116,7 +123,7 @@
       "source": "kovaak",
       "concept": "speed",
       "category": "session",
-      "unit": "ms",
+      "unit": "s",
       "data_type": "number",
       "higher_is_better": false,
       "layer": "normalized",
@@ -125,11 +132,12 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
-      "description": "平均Time To Kill。小さいほど速い。"
+      "description": "平均Time To Kill。**実ファイルで単位は秒であることを確認**（従来 ms と想定していたのは誤り）。小さいほど速い。"
     },
     {
       "metric_key": "kovaak.avg_fps",
@@ -145,8 +153,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "平均FPS。環境情報であり技能指標ではない。"
@@ -165,8 +174,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "与ダメージ。"
@@ -185,8 +195,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "被ダメージ。"
@@ -205,8 +216,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "空中撃ち成功数。"
@@ -225,8 +237,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "空中撃ちされた数。"
@@ -245,8 +258,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "直撃数。"
@@ -265,8 +279,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "被直撃数。"
@@ -285,8 +300,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "移動距離。"
@@ -305,8 +321,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "武器ごとの発射数。"
@@ -325,8 +342,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "武器ごとの命中数。"
@@ -345,8 +363,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "武器ごとの与ダメージ。"
@@ -365,8 +384,9 @@
       "recommendation_eligible": false,
       "reliability_policy": {
         "status": "unrated",
-        "reason": "real_export_not_validated",
-        "note": "実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ちのため引き続き unrated。",
+        "value_confirmed_in_real_export": "2026-09-04 / KovaaK 3.9.8"
       },
       "normalization_method": "none",
       "description": "武器ごとの最大可能ダメージ。"
@@ -564,6 +584,146 @@
       },
       "normalization_method": "none",
       "description": "本人の主観的なしっくり度。客観測定値とは別に管理する。"
+    },
+    {
+      "metric_key": "kovaak.miss_count",
+      "source": "kovaak",
+      "concept": "performance",
+      "category": "session",
+      "unit": "count",
+      "data_type": "integer",
+      "higher_is_better": false,
+      "layer": "normalized",
+      "metric_version": "1",
+      "comparability_group": "kovaak_miss_count",
+      "recommendation_eligible": false,
+      "reliability_policy": {
+        "status": "unrated",
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+      },
+      "normalization_method": "none",
+      "description": "外した回数。実ファイル 3.9.8 のフッターで確認。"
+    },
+    {
+      "metric_key": "kovaak.total_overshots",
+      "source": "kovaak",
+      "concept": "precision",
+      "category": "session",
+      "unit": "count",
+      "data_type": "integer",
+      "higher_is_better": false,
+      "layer": "normalized",
+      "metric_version": "1",
+      "comparability_group": "kovaak_total_overshots",
+      "recommendation_eligible": false,
+      "reliability_policy": {
+        "status": "unrated",
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+      },
+      "normalization_method": "none",
+      "description": "撃ちすぎの回数。"
+    },
+    {
+      "metric_key": "kovaak.reloads",
+      "source": "kovaak",
+      "concept": "context",
+      "category": "session",
+      "unit": "count",
+      "data_type": "integer",
+      "higher_is_better": null,
+      "layer": "normalized",
+      "metric_version": "1",
+      "comparability_group": "kovaak_reloads",
+      "recommendation_eligible": false,
+      "reliability_policy": {
+        "status": "unrated",
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+      },
+      "normalization_method": "none",
+      "description": "リロード回数。"
+    },
+    {
+      "metric_key": "kovaak.mbs_points",
+      "source": "kovaak",
+      "concept": "performance",
+      "category": "session",
+      "unit": "score",
+      "data_type": "number",
+      "higher_is_better": true,
+      "layer": "normalized",
+      "metric_version": "1",
+      "comparability_group": "kovaak_mbs_points",
+      "recommendation_eligible": false,
+      "reliability_policy": {
+        "status": "unrated",
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+      },
+      "normalization_method": "none",
+      "description": "KovaaK 内のポイント。意味未確認。"
+    },
+    {
+      "metric_key": "kovaak.time_remaining",
+      "source": "kovaak",
+      "concept": "context",
+      "category": "session",
+      "unit": "s",
+      "data_type": "number",
+      "higher_is_better": null,
+      "layer": "normalized",
+      "metric_version": "1",
+      "comparability_group": "kovaak_time_remaining",
+      "recommendation_eligible": false,
+      "reliability_policy": {
+        "status": "unrated",
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+      },
+      "normalization_method": "none",
+      "description": "シナリオの残り時間。"
+    },
+    {
+      "metric_key": "kovaak.pause_count",
+      "source": "kovaak",
+      "concept": "context",
+      "category": "session",
+      "unit": "count",
+      "data_type": "integer",
+      "higher_is_better": null,
+      "layer": "normalized",
+      "metric_version": "1",
+      "comparability_group": "kovaak_pause_count",
+      "recommendation_eligible": false,
+      "reliability_policy": {
+        "status": "unrated",
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+      },
+      "normalization_method": "none",
+      "description": "一時停止した回数。実測で 2 を確認。"
+    },
+    {
+      "metric_key": "kovaak.pause_duration",
+      "source": "kovaak",
+      "concept": "context",
+      "category": "session",
+      "unit": "s",
+      "data_type": "number",
+      "higher_is_better": null,
+      "layer": "normalized",
+      "metric_version": "1",
+      "comparability_group": "kovaak_pause_duration",
+      "recommendation_eligible": false,
+      "reliability_policy": {
+        "status": "unrated",
+        "reason": "value_confirmed_but_policy_not_set",
+        "note": "実ファイル（3.9.8）で値と単位を確認済み。意味・正規化・reliability policy の確定待ち。"
+      },
+      "normalization_method": "none",
+      "description": "一時停止の合計秒数。実測で 65 を確認。"
     }
   ]
 }

@@ -58,7 +58,15 @@
         'directs': { metricKey: 'kovaak.directs', unit: 'count' },
         'directed': { metricKey: 'kovaak.directed', unit: 'count' },
         'distance traveled': { metricKey: 'kovaak.distance_traveled', unit: 'unit' },
-        'avg ttk': { metricKey: 'kovaak.avg_ttk', unit: 'ms' }
+        // 実ファイル（3.9.8）で確認した単位。Avg TTK は秒であってミリ秒ではない。
+        'avg ttk': { metricKey: 'kovaak.avg_ttk', unit: 's' },
+        'miss count': { metricKey: 'kovaak.miss_count', unit: 'count' },
+        'total overshots': { metricKey: 'kovaak.total_overshots', unit: 'count' },
+        'reloads': { metricKey: 'kovaak.reloads', unit: 'count' },
+        'mbs points': { metricKey: 'kovaak.mbs_points', unit: 'score' },
+        'time remaining': { metricKey: 'kovaak.time_remaining', unit: 's' },
+        'pause count': { metricKey: 'kovaak.pause_count', unit: 'count' },
+        'pause duration': { metricKey: 'kovaak.pause_duration', unit: 's' }
     };
 
     /**
@@ -79,11 +87,21 @@
     var FOOTER_CONTEXT_KEYS = {
         'dpi': 'dpi',
         'fov': 'fov',
+        'fovscale': 'fovScale',
         'resolution': 'resolution',
         'resolution scale': 'resolutionScale',
         'scenario': 'scenarioFromFooter',
         'game version': 'sourceAppVersion',
-        'hash': 'sourceHash'
+        'hash': 'sourceHash',
+        // 3.9.8 では設定が武器行ではなくフッターにある
+        'sens scale': 'sensScale',
+        'sens increment': 'sensIncrement',
+        'avg target scale': 'avgTargetScale',
+        'avg time dilation': 'avgTimeDilation',
+        'input lag': 'inputLag',
+        'max fps (config)': 'maxFps',
+        'hide gun': 'hideGun',
+        'challenge start': 'challengeStartClock'
     };
 
     var WEAPON_CONTEXT_KEYS = {
@@ -116,7 +134,10 @@
         if (raw === undefined || raw === null) return null;
         var s = String(raw).trim();
         if (s === '' || s === '-' || s.toLowerCase() === 'n/a') return null;
+        // 実ファイルで観測された単位付き表記に対応する。
+        //   TTK: "7.649000s"  /  旧形式の感度: "6.50%"
         s = s.replace('%', '');
+        if (/^-?[0-9.]+s$/.test(s)) s = s.slice(0, -1);
         var n = Number(s);
         return isFinite(n) ? n : null;
     }
@@ -222,16 +243,25 @@
         else reasons.push('first block does not start with "Kill #,"');
 
         var lower = normalizeEol(text).toLowerCase();
+
+        // 実ファイル（3.9.8）で確認した判別材料。
+        // 旧来の想定と違い、3.9.x は Kill/Weapon/Summary/Settings の4ブロック構成を
+        // 保ったまま Accuracy 列とフッターの DPI 等が増えている。したがって
+        // 「セクション構成」や「Timestamp書式」では世代を判別できない。
+        // 決定打はフッターに DPI: があるかどうか。
         var hasAccuracyCol = hasKillHeader && first.toLowerCase().indexOf('accuracy') >= 0;
         var hasDpiFooter = /(^|\n)dpi:,/.test(lower);
+        var hasSensIncrement = /(^|\n)sens increment:,/.test(lower);
+        var hasResolution = /(^|\n)resolution:,/.test(lower);
         var hasLegacyMarkers = /(^|\n)(scenario:|game version:|input lag:)/.test(lower);
 
         if (hasAccuracyCol) signals.push('kill_header_has_accuracy');
         if (hasDpiFooter) signals.push('footer_has_dpi');
-        if (hasLegacyMarkers) signals.push('legacy_markers_present');
+        if (hasSensIncrement) signals.push('footer_has_sens_increment');
+        if (hasResolution) signals.push('footer_has_resolution');
+        if (hasLegacyMarkers) signals.push('section_markers_present');
 
-        // Kill 行の Timestamp が経過秒か時刻表記かは世代の決定打
-        var tsStyle = null;
+        // Kill 行の Timestamp 書式は世代判別に使わない。実ファイルは時刻表記だった。
         if (hasKillHeader) {
             var rows = blockLines(blocks[0]);
             if (rows.length > 1) {
@@ -239,31 +269,37 @@
                 var tsIdx = splitCsvLine(first).map(function (h) { return h.toLowerCase(); }).indexOf('timestamp');
                 var tsVal = tsIdx >= 0 ? cells[tsIdx] : undefined;
                 if (tsVal !== undefined) {
-                    if (/^\d+(\.\d+)?$/.test(tsVal)) { tsStyle = 'elapsed_seconds'; signals.push('timestamp_elapsed_seconds'); }
-                    else if (/^\d{1,2}:\d{2}:\d{2}[:.]\d{1,3}$/.test(tsVal)) { tsStyle = 'clock'; signals.push('timestamp_clock'); }
+                    if (/^\d+(\.\d+)?$/.test(tsVal)) signals.push('timestamp_elapsed_seconds');
+                    else if (/^\d{1,2}:\d{2}:\d{2}[:.]\d{1,3}$/.test(tsVal)) signals.push('timestamp_clock');
                     else reasons.push('timestamp style unrecognized: ' + tsVal);
                 }
             }
         }
 
+        // ゲーム版を拾う（判別ではなく記録用）
+        var gv = /(^|\n)game version:,([^\n\r]*)/.exec(lower);
+        if (gv) signals.push('game_version:' + gv[2].trim());
+
         if (!hasKillHeader) {
             return { format: FORMATS.UNSUPPORTED, confidence: 0, signals: signals, reasons: reasons };
         }
 
-        // 現行（3.9.x）: Accuracy 列 or DPI フッター or 経過秒
-        var currentScore = (hasAccuracyCol ? 1 : 0) + (hasDpiFooter ? 1 : 0) + (tsStyle === 'elapsed_seconds' ? 1 : 0);
-        // 旧: legacy マーカー or 時刻表記
-        var legacyScore = (hasLegacyMarkers ? 1 : 0) + (tsStyle === 'clock' ? 1 : 0);
-
-        if (currentScore >= 2 && currentScore > legacyScore) {
-            return { format: FORMATS.CURRENT, confidence: Math.min(1, currentScore / 3), signals: signals, reasons: reasons };
-        }
-        if (legacyScore >= 1 && legacyScore > currentScore) {
-            return { format: FORMATS.LEGACY, confidence: Math.min(1, legacyScore / 2), signals: signals, reasons: reasons };
+        // 現行（3.9.x）: フッターに DPI がある
+        if (hasDpiFooter) {
+            var extra = (hasAccuracyCol ? 1 : 0) + (hasSensIncrement ? 1 : 0) + (hasResolution ? 1 : 0);
+            return {
+                format: FORMATS.CURRENT,
+                confidence: Math.min(1, 0.7 + extra * 0.1),
+                signals: signals, reasons: reasons
+            };
         }
 
-        // どちらとも決められない → 推測しない
-        reasons.push('signals insufficient to decide generation (current=' + currentScore + ', legacy=' + legacyScore + ')');
+        // 旧: DPI が無く、セクションマーカーはある
+        if (hasLegacyMarkers) {
+            return { format: FORMATS.LEGACY, confidence: 0.7, signals: signals, reasons: reasons };
+        }
+
+        reasons.push('footer に DPI: が無く、旧形式のマーカーも見つからないため世代を決められない');
         return { format: FORMATS.UNSUPPORTED, confidence: 0, signals: signals, reasons: reasons };
     }
 
@@ -397,11 +433,14 @@
         var unresolved = [];
 
         // --- フッター
+        var IGNORED_FOOTER_KEYS = { 'crosshair': 1, 'crosshair scale': 1, 'crosshair color': 1 };
+
         for (var key in parsed.footer) {
             if (!parsed.footer.hasOwnProperty(key)) continue;
             var raw = parsed.footer[key];
 
             if (key === 'horiz sens' || key === 'vert sens') continue; // 後段で candidates として扱う
+            if (IGNORED_FOOTER_KEYS[key]) continue;                    // 表示設定。分析に使わない
 
             if (FOOTER_METRIC_MAP[key]) {
                 var def = FOOTER_METRIC_MAP[key];
@@ -442,6 +481,10 @@
                 if (lk === 'weapon') { wName = wrow[h]; return; }
                 if (lk === 'horiz sens' || lk === 'vert sens') return; // candidates 側で扱う
                 if (lk === 'crosshair' || lk === 'crosshair scale' || lk === 'crosshair color') return; // 表示設定
+
+                // 3.9.8 の武器行はヘッダに設定名が並ぶが、データ行には武器統計しか無い。
+                // 値が存在しない列は欠損ではなく「その版では使われていない列」なので警告しない。
+                if (wrow[h] === undefined || String(wrow[h]).trim() === '') return;
 
                 if (WEAPON_METRIC_MAP[lk]) {
                     var d = WEAPON_METRIC_MAP[lk];
@@ -499,6 +542,15 @@
                 unknownFields.push({ section: 'kill', key: h, sample: '', file: parsed.fileName });
             }
         });
+
+        // --- 時刻の意味。実ファイルで確認したところ、**ファイル名の日時は終了時刻**で、
+        // 開始時刻はフッターの Challenge Start にある（時刻のみで日付を含まない）。
+        if (context.challengeStartClock) {
+            context.challengeStartClockOnly = context.challengeStartClock;
+            context.filenameTimestampMeaning = 'challenge_end';
+        } else {
+            context.filenameTimestampMeaning = 'unknown';
+        }
 
         // --- DPI の出どころ
         var dpi = toNumber(context.dpi);
