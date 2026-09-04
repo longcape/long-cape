@@ -497,7 +497,8 @@
                 origin: m.source === 'stored' ? 'saved_profile' : 'local_preview',
                 parser_version: m.parserVersion || PARSER_VERSION,
                 normalization_version: m.normalizationVersion || NORMALIZATION_VERSION,
-                registry_version: m.registryVersion || null,
+                registry_version: m.registryVersion
+                    || (root.LC_METRICS && root.LC_METRICS.registryVersion) || null,
                 algorithm_version: m.algorithmVersion || null
             },
             contents: {

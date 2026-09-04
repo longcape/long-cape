@@ -426,6 +426,10 @@
         var o = opts || {};
         var blockedByDpi = isBlockedByDpi(dpiState, 'recommendation');
 
+
+        // 【必須】この推奨が何についてのものかを必ず添える。
+        // Aim テスト上の推奨であって、ゲーム内で最適だと実証したものではない。
+        var scope = root.LC_REC_SCOPE ? root.LC_REC_SCOPE.scopeOf(o.evidence || []) : null;
         if (blockedByDpi) {
             return {
                 kind: 'recommendation_view', status: 'withheld',
@@ -439,6 +443,7 @@
                 }],
                 recommended_cm360: null, recommended_range: null,
                 nextBestTest: null,
+                scope: scope,
                 dataSource: o.dataSource || null
             };
         }
@@ -460,6 +465,7 @@
                 recommended_cm360: null, recommended_range: null,
                 nextBestTest: buildNextBestTestView(r.next_best_test),
                 evidenceCount: r.evidence_count || 0,
+                scope: scope,
                 dataSource: o.dataSource || null
             };
         }
@@ -480,6 +486,7 @@
             nextBestTest: buildNextBestTestView(r.next_best_test),
             // 「スコアが高い＝最適」ではないことを構造として持たせる
             composition: compositionExplainer(r),
+            scope: scope,
             dataSource: o.dataSource || null
         };
     }

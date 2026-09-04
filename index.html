@@ -158,6 +158,25 @@
         <button class="tab-btn admin-tab" id="adminTabBtn" style="display:none;" onclick="switchTab('admin')" data-i18n="tabAdmin">👑 全データ閲覧(開発者)</button>
     </div>
 
+    <!-- ===================================================================
+         Stage B: 測定ラボへの入口。
+         問題が起きたときは **この1ブロックを消せば入口が閉じる**。
+         DB もデータもそのまま残るので、利用者のデータは失われない。
+         =================================================================== -->
+    <a href="import.html" id="labEntry" style="display:flex; align-items:center; gap:12px;
+       text-decoration:none; color:inherit; background:#0f172a;
+       border:1px solid var(--accent-color); border-radius:12px;
+       padding:14px 16px; margin-bottom:24px;">
+        <span style="font-size:1.4rem" aria-hidden="true">📊</span>
+        <span style="flex:1">
+            <span style="display:block; font-weight:bold; color:var(--accent-color); font-size:0.95rem;"
+                  data-i18n="labEntryTitle">測定ラボ（β）— KovaaK の記録を取り込む</span>
+            <span style="display:block; font-size:0.78rem; color:var(--text-sub); line-height:1.6;"
+                  data-i18n="labEntryDesc">Aimテストの記録から、あなたに合う感度を測定しながら絞り込みます。ログインなしで試せます。</span>
+        </span>
+        <span style="color:var(--accent-color); font-size:1.1rem" aria-hidden="true">→</span>
+    </a>
+
     <!-- TAB 1: 診断フォーム -->
     <div id="tabDiag" class="tab-content active">
         <div class="form-group">
@@ -373,7 +392,15 @@
     <div class="modal-body">
         <h3 style="margin-bottom:12px;" id="modalTitle" data-i18n="modalTitle">アカウントログイン / 会員登録</h3>
         <p style="font-size:0.8rem; color:var(--text-sub); margin-bottom:16px;" data-i18n="modalSub">保存機能のご利用には無料会員登録が必要です。</p>
-        
+
+        <!-- 取り込み画面から来たときだけ出す。何ができるようになるかを具体的に書く。 -->
+        <div id="labReturnNote" style="display:none; font-size:0.82rem; line-height:1.7;
+             background:#0f172a; border-left:3px solid var(--accent-color);
+             border-radius:0 8px 8px 0; padding:12px 14px; margin-bottom:16px;">
+            <b data-i18n="labLoginWhy">ログインすると、測定履歴の保存・再読込・継続的なプロフィール更新ができます。</b><br>
+            <span style="color:var(--text-sub)" data-i18n="labLoginNoNeed">ログインしなくても、取り込みと結果の確認はそのまま使えます。</span>
+        </div>
+
         <div class="form-group">
             <label><span data-i18n="modalUsername">ユーザー名（ニックネーム）</span> <span class="optional-label" data-i18n="modalOpt" style="color:var(--text-sub);">(新規登録時)</span></label>
             <input type="text" id="authUsername" placeholder="例: エイムマスター">
@@ -427,6 +454,8 @@ const translations = {
         btnCustomSave: "感度メモを直接保存する", logsTitle: "📋 マイ感度ログ（保存履歴）",
         logsEmptyGuest: "保存された感度データはありません（要ログイン）", logsEmpty: "保存されたデータはまだありません。",
         proBanner: "🔒 保存数が上限（5件）に達しています。新しいログを保存すると未ロックの古い順に自動更新されます。",
+        labEntryTitle: "測定ラボ（β）— KovaaK の記録を取り込む", labEntryDesc: "Aimテストの記録から、あなたに合う感度を測定しながら絞り込みます。ログインなしで試せます。",
+        labLoginWhy: "ログインすると、測定履歴の保存・再読込・継続的なプロフィール更新ができます。", labLoginNoNeed: "ログインしなくても、取り込みと結果の確認はそのまま使えます。", labNavLink: "📊 測定ラボ（データ取り込み）",
         modalTitle: "アカウントログイン / 会員登録", modalSub: "保存機能のご利用には無料会員登録が必要です。",
         modalUsername: "ユーザー名（ニックネーム）", modalOpt: "(新規登録時)", modalEmail: "メールアドレス",
         modalPassword: "パスワード", modalPassOpt: "(半角6文字以上)", modalBtnLogin: "ログイン",
@@ -471,6 +500,8 @@ const translations = {
         labelCustomRating: "Sensitivity Satisfaction / Rating",
         ratingGod: "🏆 Perfect (Main Sens)", ratingGood: "🧪 Testing / In Adjustment", ratingBad: "❌ Bad / Discarded (Excluded)",
         btnCustomSave: "Save Sensitivity Memo", logsTitle: "📋 My Sensitivity Logs", logsEmptyGuest: "No saved data (Login required)", logsEmpty: "No saved data found.", proBanner: "🔒 Log limit reached (5 max). New logs will overwrite the oldest unlocked log.",
+        labEntryTitle: "Measurement Lab (beta) — import your KovaaK stats", labEntryDesc: "Narrow down the sensitivity that suits you by measuring, using your aim-test records. No sign-in needed to try it.",
+        labLoginWhy: "Signing in lets you save your measurement history, load it back, and keep your profile updated over time.", labLoginNoNeed: "Importing and reviewing results works without signing in.", labNavLink: "📊 Measurement Lab (import data)",
         modalTitle: "Account Login / Sign Up", modalSub: "Free account required to save settings.", modalUsername: "Username", modalOpt: "(Sign Up)", modalEmail: "Email", modalPassword: "Password", modalPassOpt: "(Min. 6 chars)", modalBtnLogin: "Login", modalBtnSignup: "Sign Up", modalBtnCancel: "Cancel", tagDiag: "Diagnosis", tagCustom: "Custom Memo", calcDpiText: "• Base DPI:",
         seoTitle1: "What is Long Cape Theorem?",
         seoBody1: "Copying a pro player's sensitivity rarely works, because arm length, joint range of motion and mouse weight differ from person to person. Long Cape Theorem is a free tool that works backwards from your physical and environmental parameters — height, arm thickness, dexterity, mouse weight and aiming pivot — to the in-game sensitivity you can theoretically control best. No account required.",
@@ -511,6 +542,8 @@ const translations = {
         ratingGod: "🏆 인생 감도 (주요 감도)", ratingGood: "🧪 테스트 중 / 미세調整", ratingBad: "❌ 맞지 않음 / 폐기 (학습 제외)",
         btnCustomSave: "감도 메모 직접 저장하기", logsTitle: "📋 마이 감도 로그",
         logsEmptyGuest: "저장된 감도 데이터가 없습니다 (로그인 필요)", logsEmpty: "저장된 데이터가 없습니다.", proBanner: "🔒 저장 한도(5건)에 도달했습니다. 새 로그 저장 시 잠금 해제된 오래된 데이터부터 자동 갱신됩니다.",
+        labEntryTitle: "측정 랩 (베타) — KovaaK 기록 가져오기", labEntryDesc: "에임 테스트 기록으로 자신에게 맞는 감도를 측정하며 좁혀 갑니다. 로그인 없이 사용해 볼 수 있습니다.",
+        labLoginWhy: "로그인하면 측정 기록 저장·다시 불러오기·지속적인 프로필 갱신이 가능합니다.", labLoginNoNeed: "로그인하지 않아도 가져오기와 결과 확인은 그대로 사용할 수 있습니다.", labNavLink: "📊 측정 랩 (데이터 가져오기)",
         modalTitle: "계정 로그인 / 회원가입", modalSub: "저장 기능을 이용하려면 무료 회원가입이 필요합니다.", modalUsername: "사용자 이름", modalOpt: "(신규 가입 시)", modalEmail: "이메일 주소", modalPassword: "비밀번호", modalPassOpt: "(6자 이상)", modalBtnLogin: "로그인", modalBtnSignup: "회원가입", modalBtnCancel: "취소", tagDiag: "이론 진단", tagCustom: "수동 메모", calcDpiText: "• 계산 기준 DPI:",
         seoTitle1: "롱케이프의 정리란?",
         seoBody1: "잘하는 사람과 같은 감도로 맞춰도 자신에게는 맞지 않는 경우가 많습니다. 팔 길이도, 관절 가동 범위도, 사용하는 마우스의 무게도 사람마다 다르기 때문입니다. 롱케이프의 정리는 신장·팔 두께·손재주·마우스 무게·에임의 지점이라는 신체적·환경적 파라미터에서 역산하여, 그 사람이 이론상 가장 잘 제어할 수 있는 인게임 감도를 산출하는 무료 도구입니다. 회원가입 없이 이용할 수 있습니다.",
@@ -764,11 +797,33 @@ function updateUserStatusUI() {
     loadUserParams();
 }
 
+// ---------------------------------------------------------------------
+// Lab（取り込み / プロフィール）からログインへ来たときの戻り先。
+//
+// `?return=` は **同一オリジンの Lab ページ名だけ**を受け付ける。
+// 任意の URL を受け取ると外部サイトへの踏み台になりうるため、
+// 許可した2ページ以外は無視して通常どおり index に留まる。
+// ---------------------------------------------------------------------
+const LAB_RETURN_ALLOWED = ['import.html', 'profile.html'];
+
+function labReturnTarget() {
+    const m = /[?&]return=([^&]*)/.exec(location.search || '');
+    if (!m) return null;
+    let v;
+    try { v = decodeURIComponent(m[1]); } catch (e) { return null; }
+    if (/^[a-z][a-z0-9+.-]*:/i.test(v) || v.indexOf('//') === 0 || v.indexOf('..') >= 0) return null;
+    const page = v.split('?')[0].split('#')[0].replace(/^\.?\//, '');
+    return LAB_RETURN_ALLOWED.includes(page) ? page : null;
+}
+
 if (isBackendAvailable()) supabaseClient.auth.onAuthStateChange(async (event, session) => {
     currentUser = session ? session.user : null;
     updateUserStatusUI();
     if (currentUser) {
         await syncPendingResult();
+        // ログインできたら、来た画面へ戻す
+        const back = labReturnTarget();
+        if (back) { location.replace(back); return; }
     }
     loadLogs();
 });
@@ -1206,10 +1261,25 @@ async function handleAuth(type) {
     }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     loadUserParams();
     changeLanguage(currentLang);
     fetchLatestConfig();
+
+    // Lab から「ログインしてください」で来た場合の扱い
+    const back = labReturnTarget();
+    if (back && isBackendAvailable()) {
+        const { data } = await supabaseClient.auth.getUser().catch(() => ({ data: {} }));
+        if (data && data.user) {
+            // すでにログイン済みなら、そのまま戻す
+            location.replace(back);
+            return;
+        }
+        // まだなら、入力欄をすぐ出す
+        const note = document.getElementById('labReturnNote');
+        if (note) note.style.display = 'block';
+        openAuthModal();
+    }
 
     if (!isBackendAvailable()) {
         const authBtn = document.getElementById('authBtn');

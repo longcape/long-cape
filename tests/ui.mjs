@@ -31,6 +31,15 @@ function load() {
     return ctx;
 }
 
+function loadBackend() {
+    const c = { console, Math, JSON, Date, Number, String, Boolean, Array, Object,
+                isFinite, isNaN, Promise, Error, location: { pathname: '/profile.html', search: '' } };
+    c.globalThis = c;
+    vm.createContext(c);
+    vm.runInContext(fs.readFileSync(path.join(ROOT, 'ui/backend.js'), 'utf8'), c, { filename: 'ui/backend.js' });
+    return c.LC_BACKEND;
+}
+
 const ctx = load();
 const U = ctx.LC_UI, K = ctx.LC_IMPORTERS.kovaak, P = ctx.LC_PROFILE,
     R = ctx.LC_REESTIMATE, S = ctx.LC_SAMPLES, M = ctx.LC_METRICS;
@@ -461,6 +470,33 @@ check('session-level の命中率は Long Cape の導出値として扱う', asy
     eq(acc.granularity, 'session', 'セッション単位である');
     ok(acc.value > 0 && acc.value <= 1, '0〜1の比である');
     ok(Math.abs(acc.value - acc.hits / acc.shots) < 1e-12, 'hits/shots と一致する');
+});
+
+// ================================ ログイン導線（戻り先の安全性）
+
+check('ログインの戻り先は Lab の2ページだけを受け付ける', async () => {
+    const B = loadBackend();
+    eq(B.sanitizeReturn('import.html'), 'import.html', '取り込み画面');
+    eq(B.sanitizeReturn('profile.html'), 'profile.html', 'プロフィール画面');
+    eq(B.sanitizeReturn('./profile.html'), 'profile.html', '相対指定も受ける');
+    eq(B.sanitizeReturn('profile.html?x=1'), 'profile.html', 'クエリ付きも受ける');
+});
+
+check('外部サイトへ飛ばす指定は拒否する', async () => {
+    const B = loadBackend();
+    ['https://evil.example.com', '//evil.example.com', 'http://evil.example.com/x',
+     'javascript:alert(1)', '../../etc/passwd', '/absolute/path.html',
+     'index.html', 'admin.html', ''].forEach((bad) => {
+        eq(B.sanitizeReturn(bad), null, JSON.stringify(bad) + ' は拒否');
+    });
+});
+
+check('戻り先を URL から取り出せる', async () => {
+    const B = loadBackend();
+    eq(B.pendingReturn('?return=profile.html'), 'profile.html', '素の指定');
+    eq(B.pendingReturn('?a=1&return=import.html&b=2'), 'import.html', '他の引数があっても');
+    eq(B.pendingReturn('?return=' + encodeURIComponent('https://evil.example.com')), null, '外部は無視');
+    eq(B.pendingReturn(''), null, '指定なし');
 });
 
 // ------------------------------------------------------------- 実行
