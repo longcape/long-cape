@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>データ取り込み — ロングケープの定理 Lab</title>
+<link rel="stylesheet" href="ui/lab.css">
+</head>
+<body>
+<a class="skiplink" href="#main">本文へスキップ</a>
+<div class="wrap">
+
+  <nav class="lab-nav" aria-label="Lab">
+    <div class="brand">ロングケープの定理<small data-i18n="brandSub">FPS PERFORMANCE LAB</small></div>
+    <span class="spacer"></span>
+    <a class="navlink on" href="import.html" aria-current="page" data-i18n="navImport">取り込み</a>
+    <a class="navlink" href="profile.html" data-i18n="navProfile">プロフィール</a>
+    <a class="navlink" href="index.html" data-i18n="navDiag">かんたん診断</a>
+    <select id="langSelect" class="lang-select" data-i18n-attr="aria-label:navDiag">
+      <option value="ja">日本語</option><option value="en">English</option><option value="ko">한국어</option>
+    </select>
+    <label class="devbar"><input type="checkbox" id="devToggle"> <span data-i18n="devMode">開発モード</span></label>
+  </nav>
+
+  <div id="netBanner" class="note warn" role="status" hidden></div>
+
+  <main id="main">
+  <h1 data-i18n="importTitle">測定データを取り込む</h1>
+  <p class="lede">
+    <span data-i18n="importLede">KovaaK の記録ファイル（CSV）を読み込みます。</span>
+    <span style="color:var(--ok)" data-i18n="importLedeSafe">ファイルはこの端末の中だけで処理し、送信しません。</span>
+    <span data-i18n="importLedeNoLogin">ログインは不要です。</span>
+  </p>
+
+  <!-- 1. ファイル入力 --------------------------------------------------- -->
+  <section class="card" aria-labelledby="h-step1">
+    <h2 id="h-step1"><span class="step" aria-hidden="true">1</span><span data-i18n="step1">ファイルを選ぶ</span></h2>
+    <div class="drop" id="drop" role="button" tabindex="0"
+         data-i18n-attr="aria-label:dropBig">
+      <div class="big" data-i18n="dropBig">ここにファイルをドラッグ＆ドロップ</div>
+      <div class="sub" data-i18n="dropSub">またはクリックして選択（複数まとめて選べます）</div>
+      <div class="privacy" data-i18n="dropPrivacy">送信しません。この画面の中だけで読み取ります。</div>
+      <input type="file" id="file" accept=".csv" multiple hidden data-i18n-attr="aria-label:dropBig">
+    </div>
+    <p class="hint" style="margin-top:10px">
+      <span data-i18n="dropHint">置き場所の例:</span>
+      <span class="mono">…\steamapps\common\FPSAimTrainer\FPSAimTrainer\stats\</span>
+    </p>
+    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+      <button class="btn ghost sm" id="btnSample" data-i18n="btnSample">サンプルで試す</button>
+      <button class="btn quiet sm" id="btnSampleMixed" data-i18n="btnSampleAdaptive">適応型を含むサンプル</button>
+      <button class="btn quiet sm" id="btnSampleBad" data-i18n="btnSampleBroken">未対応ファイルを含むサンプル</button>
+      <button class="btn quiet sm" id="btnClear" data-i18n="btnClear">クリア</button>
+    </div>
+  </section>
+
+  <div class="card" id="emptyState">
+    <div class="note">
+      <b data-i18n="emptyTitle">まだファイルがありません。</b><br>
+      <span data-i18n="emptyBody">読み込むと、シナリオ・日時・DPI・感度・スコアなどをこの場で確認できます。</span>
+    </div>
+  </div>
+
+  <!-- 2. 読み込み結果 --------------------------------------------------- -->
+  <section class="card hidden" id="summaryCard" aria-labelledby="h-step2">
+    <h2 id="h-step2"><span class="step" aria-hidden="true">2</span><span data-i18n="step2">読み込み結果</span></h2>
+    <div class="kpis" id="kpis"></div>
+    <div class="legend" style="margin-top:14px" id="legend"></div>
+    <div id="formatNote" class="stack" style="margin-top:14px" role="status"></div>
+  </section>
+
+  <!-- 3. DPI 確認 -------------------------------------------------------- -->
+  <section class="card hidden" id="dpiCard" aria-labelledby="h-step3">
+    <h2 id="h-step3"><span class="step" aria-hidden="true">3</span><span data-i18n="step3">マウスのDPIを確認</span></h2>
+    <div id="dpiBody"></div>
+  </section>
+
+  <!-- 4. セッション一覧 --------------------------------------------------- -->
+  <section class="card hidden" id="rowsCard" aria-labelledby="h-step4">
+    <h2 id="h-step4"><span class="step" aria-hidden="true">4</span><span data-i18n="step4">読み取った内容</span></h2>
+    <div class="tablewrap" tabindex="0" role="region" data-i18n-attr="aria-label:step4">
+      <table class="data" id="rowsTable"></table>
+    </div>
+    <div id="excludedNote" class="stack" style="margin-top:14px"></div>
+    <details class="why" id="warnBox">
+      <summary data-i18n="warnToggle">注意メッセージを見る</summary>
+      <div class="body" id="warnBody"></div>
+    </details>
+  </section>
+
+  <section class="card dev-only" aria-labelledby="h-dev">
+    <h2 id="h-dev"><span class="devtag">dev</span><span data-i18n="devInternals">内部の内訳</span></h2>
+    <p class="hint" style="margin-bottom:12px" data-i18n="devHiddenNote">production の画面では表示しません。</p>
+    <div id="devBody"></div>
+  </section>
+
+  <section class="card hidden" id="nextCard" aria-labelledby="h-next">
+    <h2 id="h-next" data-i18n="nextTitle">次へ</h2>
+    <p class="hint" style="margin-bottom:12px" data-i18n="nextBody">取り込んだ内容はこの端末に保持しています。保存はしていません。</p>
+    <a class="btn" href="profile.html" data-i18n="toProfile">プロフィールを見る</a>
+  </section>
+  </main>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="importers/kovaak.js"></script>
+<script src="profile/metric-registry.js"></script>
+<script src="profile/algorithm-config.js"></script>
+<script src="profile/aim-profile.js"></script>
+<script src="profile/re-estimation.js"></script>
+<script src="ui/i18n.js"></script>
+<script src="ui/ui-logic.js"></script>
+<script src="ui/samples.js"></script>
+<script src="ui/storage.js"></script>
+<script src="ui/backend.js"></script>
+<script>
+(function () {
+    'use strict';
+    var U = window.LC_UI, K = window.LC_IMPORTERS.kovaak, I = window.LC_I18N;
+    var T = function (k, p) { return I.t(k, p); };
+
+    var state = { run: null, dpiAnswer: {} };
+
+    var $ = function (id) { return document.getElementById(id); };
+    var esc = function (s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+
+    // ------------------------------------------------------------ 言語
+    var sel = $('langSelect');
+    sel.value = I.getLang();
+    document.documentElement.setAttribute('lang', I.getLang());
+    sel.addEventListener('change', function () { I.setLang(this.value); render(); });
+    I.apply(document);
+
+    // ------------------------------------------------------------ 通信状態
+    function netBanner() {
+        var b = $('netBanner');
+        if (navigator.onLine === false) { b.textContent = T('offlineBanner'); b.hidden = false; }
+        else { b.hidden = true; }
+    }
+    window.addEventListener('online', netBanner);
+    window.addEventListener('offline', netBanner);
+    netBanner();
+
+    // ------------------------------------------------------------ 一時保持
+    function persist() {
+        try {
+            sessionStorage.setItem('lc_sessions', JSON.stringify(state.run ? state.run.sessions : []));
+            sessionStorage.setItem('lc_dpi', JSON.stringify(state.dpiAnswer));
+        } catch (e) { /* プライベートウィンドウ等。動作は変えない。 */ }
+    }
+
+    // ------------------------------------------------------------ 開発モード
+    $('devToggle').addEventListener('change', function () {
+        document.body.classList.toggle('devmode', this.checked);
+        try { localStorage.setItem('lc_dev', this.checked ? '1' : '0'); } catch (e) {}
+    });
+    try {
+        if (localStorage.getItem('lc_dev') === '1') { $('devToggle').checked = true; document.body.classList.add('devmode'); }
+    } catch (e) {}
+
+    // ------------------------------------------------------------ ファイル入力
+    var drop = $('drop'), fileInput = $('file');
+    drop.addEventListener('click', function () { fileInput.click(); });
+    drop.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+    });
+    ['dragenter', 'dragover'].forEach(function (ev) {
+        drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('hot'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+        drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('hot'); });
+    });
+    drop.addEventListener('drop', function (e) {
+        if (e.dataTransfer && e.dataTransfer.files) readFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', function () { readFiles(this.files); });
+
+    $('btnSample').addEventListener('click', function (e) { e.stopPropagation(); ingest(window.LC_SAMPLES.files('normal')); });
+    $('btnSampleMixed').addEventListener('click', function (e) { e.stopPropagation(); ingest(window.LC_SAMPLES.files('adaptive')); });
+    $('btnSampleBad').addEventListener('click', function (e) { e.stopPropagation(); ingest(window.LC_SAMPLES.files('broken')); });
+    $('btnClear').addEventListener('click', function (e) {
+        e.stopPropagation(); state.run = null; state.dpiAnswer = {}; persist(); render();
+    });
+
+    function readFiles(list) {
+        var files = [], pending = list.length;
+        if (pending === 0) return;
+        Array.prototype.forEach.call(list, function (f) {
+            var r = new FileReader();
+            r.onload = function () {
+                files.push({ name: f.name, text: String(r.result) });
+                if (--pending === 0) ingest(files);
+            };
+            r.onerror = function () { if (--pending === 0) ingest(files); };
+            r.readAsText(f);   // 読むだけ。送信は行わない。
+        });
+    }
+
+    function ingest(files) {
+        K.run(files, { importedAt: new Date().toISOString() }).then(function (res) {
+            res.stats = res.stats || {};
+            res.stats.filesReceived = files.length;
+            state.run = res;
+            persist();
+            render();
+        }).catch(function (e) {
+            $('formatNote').innerHTML = '<div class="note error"><b>' + esc(T('errUnknown')) + '</b><br>'
+                + '<span class="hint">' + esc(e.message || e) + '</span></div>';
+            $('summaryCard').classList.remove('hidden');
+        });
+    }
+
+    // ---------------------------------------------------------------- 描画
+    function render() {
+        I.apply(document);
+        var has = !!state.run;
+        $('emptyState').classList.toggle('hidden', has);
+        ['summaryCard', 'dpiCard', 'rowsCard', 'nextCard'].forEach(function (id) {
+            $(id).classList.toggle('hidden', !has);
+        });
+        if (!has) { $('devBody').innerHTML = ''; return; }
+
+        var sessions = state.run.sessions || [];
+        var dpi = U.resolveDpi(sessions, state.dpiAnswer);
+        var view = U.buildImportView(state.run, dpi);
+
+        renderSummary(view);
+        renderDpi(dpi, view);
+        renderRows(view);
+        renderDev(sessions);
+        persist();
+    }
+
+    var STATE_KEY = {
+        confirmed: 'stateConfirmed', needs_check: 'stateNeedsCheck',
+        excluded: 'stateExcluded', unsupported: 'stateUnsupported'
+    };
+    var STATE_DESC = {
+        confirmed: 'stateConfirmedDesc', needs_check: 'stateNeedsCheckDesc',
+        excluded: 'stateExcludedDesc', unsupported: 'stateUnsupportedDesc'
+    };
+    function pill(stateName) {
+        return '<span class="pill ' + U.STATE_LABEL[stateName].tone + '">'
+            + esc(T(STATE_KEY[stateName])) + '</span>';
+    }
+
+    function renderSummary(v) {
+        var s = v.summary;
+        $('kpis').innerHTML = [
+            [s.filesReceived, 'kpiFilesReceived'], [s.parsed, 'kpiParsed'],
+            [s.rejected, 'kpiRejected'], [v.stateCounts.excluded, 'kpiExcluded']
+        ].map(function (p) {
+            return '<div class="kpi"><div class="v">' + esc(p[0]) + '</div><div class="k">'
+                + esc(T(p[1])) + '</div></div>';
+        }).join('');
+
+        $('legend').innerHTML = Object.keys(STATE_KEY).map(function (k) {
+            return '<span class="item">' + pill(k) + '<span>' + esc(T(STATE_DESC[k])) + '</span></span>';
+        }).join('');
+
+        var notes = [];
+        if (v.rejected.length) {
+            notes.push('<div class="note error"><b>' + esc(T('kpiRejected')) + ': ' + v.rejected.length + '</b><br>'
+                + v.rejected.map(function (r) {
+                    return esc(r.file || '?') + ' — ' + esc(r.message)
+                        + (r.note ? '<br><span class="hint">' + esc(T('stateUnsupportedDesc')) + '</span>' : '');
+                }).join('<br>') + '</div>');
+        }
+        if (v.rows.length) {
+            notes.push('<div class="note ok"><b>' + esc(T('notSentTitle')) + '</b> '
+                + esc(T('dropPrivacy')) + '</div>');
+        }
+        $('formatNote').innerHTML = notes.join('');
+    }
+
+    // ------------------------------------------------------------------ DPI
+    function renderDpi(dpi, view) {
+        if (view.rows.length === 0) { $('dpiCard').classList.add('hidden'); return; }
+        var d = dpi.declaredInFile, head;
+
+        if (d.length === 0) {
+            head = '<div class="note warn"><b>' + esc(T('dpiNoRecord')) + '</b><br>' + esc(T('dpiNoRecordBody')) + '</div>';
+        } else if (d.length > 1) {
+            head = '<div class="note warn"><b>' + esc(T('dpiMixed', { list: d.join(' / ') })) + '</b><br>'
+                + esc(T('dpiMixedBody')) + '</div>';
+        } else {
+            head = '<div class="note"><b>' + esc(T('dpiRecorded', { dpi: d[0] })) + '</b><br>'
+                + esc(T('dpiQuestion', { dpi: d[0] })) + '<br>'
+                + '<span class="hint">' + esc(T('dpiNote')) + '</span></div>';
+        }
+
+        var chosen = state.dpiAnswer.answer || null;
+        var opts = '<fieldset class="stack" style="margin-top:14px;border:0;padding:0">'
+            + '<legend class="sr-only">' + esc(T('step3')) + '</legend>'
+            + radio('as_is', T('dpiAsIs'), d.length === 1 ? T('dpiAsIsDesc', { dpi: d[0] }) : '', chosen, d.length !== 1)
+            + radio('override', T('dpiOverride'), T('dpiOverrideDesc'), chosen, false)
+            + '<div id="overrideBox" class="' + (chosen === 'override' ? '' : 'hidden') + '" style="padding-left:28px">'
+            + '<label class="sr-only" for="dpiValue">' + esc(T('dpiOverride')) + '</label>'
+            + '<input type="number" id="dpiValue" min="1" step="1" placeholder="800" value="'
+            + (state.dpiAnswer.value || '') + '" style="width:160px"> '
+            + '<button class="btn sm" id="dpiApply">' + esc(T('dpiApply')) + '</button></div>'
+            + radio('defer', T('dpiDefer'), T('dpiDeferDesc'), chosen, false)
+            + '</fieldset>';
+
+        var status = '<div style="margin-top:16px" role="status">' + pill(dpi.status) + ' '
+            + '<span class="hint">' + esc(dpi.message) + '</span>';
+        if (dpi.blocked.length) {
+            status += '<div class="note warn" style="margin-top:10px"><b>' + esc(T('dpiBlockedTitle')) + '</b><br>'
+                + esc(T('dpiBlockedList')) + '<br><span class="hint">' + esc(T('dpiBlockedWhy')) + '</span></div>';
+        }
+        if (dpi.mismatch) {
+            status += '<div class="note warn" style="margin-top:10px"><b>'
+                + esc(T('dpiMismatchTitle', { file: dpi.mismatch.fileValue })) + '</b><br>'
+                + '<span class="hint">' + esc(T('dpiMismatchBody', { actual: dpi.mismatch.actual })) + '</span></div>';
+        }
+        status += '</div>';
+
+        $('dpiBody').innerHTML = head + opts + status;
+
+        Array.prototype.forEach.call(document.querySelectorAll('input[name=dpiAns]'), function (el) {
+            el.addEventListener('change', function () {
+                state.dpiAnswer = { answer: this.value, value: state.dpiAnswer.value };
+                if (this.value === 'as_is') state.dpiAnswer.value = undefined;
+                render();
+                var again = document.querySelector('input[name=dpiAns][value="' + el.value + '"]');
+                if (again) again.focus();
+            });
+        });
+        var apply = $('dpiApply');
+        if (apply) apply.addEventListener('click', function () {
+            var v = parseInt($('dpiValue').value, 10);
+            state.dpiAnswer = { answer: 'override', value: isFinite(v) && v > 0 ? v : undefined };
+            render();
+            var f = $('dpiValue'); if (f) f.focus();
+        });
+    }
+
+    function radio(val, title, desc, chosen, disabled) {
+        var id = 'dpi_' + val;
+        return '<div class="consent-item">'
+            + '<input type="radio" name="dpiAns" id="' + id + '" value="' + val + '"'
+            + (chosen === val ? ' checked' : '') + (disabled ? ' disabled' : '') + '>'
+            + '<label for="' + id + '"><span class="t">' + esc(title) + '</span>'
+            + (desc ? '<br><span class="d">' + esc(desc) + '</span>' : '') + '</label></div>';
+    }
+
+    // ------------------------------------------------------------------ 行
+    function renderRows(view) {
+        var COLS = [
+            ['colState', function (r) { return pill(r.state); }],
+            ['colScenario', function (r) { return esc(r.scenario); }],
+            ['colTime', function (r) { return esc(r.timestamp) + (r.tzKnown ? '' : ' <span class="hint">' + esc(T('tzUnknown')) + '</span>'); }],
+            ['colDpiFile', function (r) { return r.dpiInFile === null ? '—' : esc(r.dpiInFile) + ' <span class="hint">' + esc(T('selfDeclared')) + '</span>'; }],
+            ['colSensScale', function (r) { return esc(r.sensScale || '—'); }],
+            ['colInGameSens', function (r) { return r.horizSens === null ? '—' : esc(r.horizSens); }],
+            ['colFov', function (r) { return esc(r.fov === null ? '—' : r.fov); }],
+            ['colCm360', function (r) {
+                return r.cm360Blocked ? '<span class="blocked">' + esc(T('cm360Blocked')) + '</span>'
+                    : (r.cm360 === null ? '—' : esc(r.cm360));
+            }],
+            ['colScore', function (r) { return r.score === null ? '—' : esc(r.score); }],
+            ['colKills', function (r) { return r.kills === null ? '—' : esc(r.kills); }],
+            ['colAccuracy', function (r) { return r.accuracy.available ? (r.accuracy.value * 100).toFixed(1) + '%' : '—'; }],
+            ['colDifficulty', function (r) {
+                return r.adaptive ? '<span class="pill muted">' + esc(T('difficultyVaried')) + '</span>'
+                    : '<span class="hint">' + esc(T('difficultyStable')) + '</span>';
+            }]
+        ];
+
+        var head = '<thead><tr>' + COLS.map(function (c) { return '<th scope="col">' + esc(T(c[0])) + '</th>'; }).join('') + '</tr></thead>';
+        var body = view.rows.map(function (r) {
+            return '<tr' + (r.state === 'excluded' ? ' class="excluded"' : '') + '>'
+                + COLS.map(function (c) { return '<td>' + c[1](r) + '</td>'; }).join('') + '</tr>';
+        }).join('');
+        var rej = view.rejected.map(function (r) {
+            return '<tr class="excluded"><td>' + pill(r.state) + '</td>'
+                + '<td colspan="' + (COLS.length - 1) + '">' + esc(r.file || '?') + ' — ' + esc(r.message) + '</td></tr>';
+        }).join('');
+        $('rowsTable').innerHTML = head + '<tbody>' + body + rej + '</tbody>';
+
+        var ex = U.buildExcludedView(state.run.sessions || []);
+        $('excludedNote').innerHTML = ex.length === 0 ? '' :
+            '<div class="note warn"><b>' + esc(T('excludedCount', { n: ex.length })) + '</b><br>'
+            + ex.map(function (x) {
+                return esc(x.scenario) + ' — ' + esc(T('excludedReason'))
+                    + '<br><span class="hint">' + esc(T('excludedKeptNote')) + '</span>';
+            }).join('<br>') + '</div>';
+
+        $('warnBox').classList.toggle('hidden', view.warnings.length === 0);
+        $('warnBody').innerHTML = view.warnings.length === 0
+            ? '<p class="hint">' + esc(T('warnNone')) + '</p>'
+            : view.warnings.map(function (x) {
+                return '<div>[' + esc(x.level) + '] <span class="mono">' + esc(x.code) + '</span> — ' + esc(x.message) + '</div>';
+            }).join('');
+    }
+
+    // -------------------------------------------------------------- 開発表示
+    function renderDev(sessions) {
+        var ev = window.LC_PROFILE.buildEvidence(sessions);
+        var d = U.devInspect(sessions, ev);
+        $('devBody').innerHTML =
+            '<div class="tablewrap" tabindex="0"><table class="data"><thead><tr>'
+            + '<th scope="col">metric</th><th scope="col">layer</th><th scope="col">rating</th>'
+            + '<th scope="col">effective</th><th scope="col">recommendation</th><th scope="col">comparability_group</th>'
+            + '</tr></thead><tbody>'
+            + d.metrics.map(function (m) {
+                return '<tr><td class="mono">' + esc(m.metricKey) + '</td><td>' + esc(m.layer) + '</td>'
+                    + '<td>' + esc(m.ratingStatus) + '</td>'
+                    + '<td class="num">' + (m.effectiveReliability === null ? '—' : esc(m.effectiveReliability)) + '</td>'
+                    + '<td>' + (m.recommendationEligible ? '<span class="pill ok">eligible</span>'
+                        : m.recommendationHold ? '<span class="pill warn">hold</span>'
+                            : '<span class="pill muted">—</span>') + '</td>'
+                    + '<td class="mono hint">' + esc(m.comparabilityGroup || '—') + '</td></tr>';
+            }).join('') + '</tbody></table></div>';
+    }
+
+    render();
+})();
+</script>
+</body>
+</html>

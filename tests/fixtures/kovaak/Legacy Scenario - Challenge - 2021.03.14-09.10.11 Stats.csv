@@ -1,0 +1,25 @@
+Kill #,Timestamp,Weapon
+1,00:00:03:104,rifle
+2,00:00:05:882,rifle
+
+Weapon,Shots,Hits,Damage Done,Damage Possible
+rifle,5,4,240.0,300.0
+
+Kills:,2
+Deaths:,0
+Fight Time:,30.0
+Score:,880.250000
+Scenario:,Legacy Scenario
+Hash:,abc123
+Game Version:,2.0.4
+
+Input Lag:,3
+Max FPS (config):,240.0
+Sens Scale:,Valorant
+Horiz Sens:,0.350000
+Vert Sens:,0.350000
+FOV:,103.0
+Hide Gun:,false
+Crosshair:,dot.png
+Crosshair Scale:,0.8
+Crosshair Color:,00FFFFFF

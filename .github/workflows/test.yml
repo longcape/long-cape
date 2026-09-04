@@ -22,8 +22,41 @@ jobs:
       - name: ゲームタイトル定義の同期確認（games.json ⇔ index.html）
         run: node tools/sync-games.mjs --check
 
+      - name: Metric Registry の同期確認（metrics.json ⇔ metric-registry.js）
+        run: node tools/sync-metrics.mjs --check
+
+      - name: Metric Registry seed の drift 検出（metrics.json ⇔ 0002 seed）
+        run: node tools/sync-metric-registry-sql.mjs --check
+
+      - name: Algorithm Config の同期確認（algorithm-config.json ⇔ algorithm-config.js）
+        run: node tools/sync-algorithm-config.mjs --check
+
       - name: 感度計算の回帰テスト（JS / 8064 パターン）
         run: node tests/regression.mjs
+
+      - name: Importer のテスト（KovaaK Adapter プロトタイプ）
+        run: node tests/importers.mjs
+
+      - name: Profile のテスト（Multi-source Aim Profile プロトタイプ）
+        run: node tests/profile.mjs
+
+      - name: Registry / 再推定のテスト（Phase E.5 / F プロトタイプ）
+        run: node tests/re-estimation.mjs
+
+      - name: Robustness テスト（Phase F.5 / 悪条件20ケース）
+        run: node tests/robustness.mjs
+
+      - name: UI ロジックのテスト（G-3 prototype）
+        run: node tests/ui.mjs
+
+      - name: 多言語の整合テスト（ja / en / ko）
+        run: node tests/i18n.mjs
+
+      - name: 保存・読込・削除のテスト（G-5）
+        run: node tests/storage.mjs
+
+      - name: UI 統合テスト（G-5 / 取り込み→同意→保存→読み戻し→削除）
+        run: node tests/ui-integration.mjs
 
       - uses: actions/setup-python@v5
         with:

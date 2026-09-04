@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>プロフィール — ロングケープの定理 Lab</title>
+<link rel="stylesheet" href="ui/lab.css">
+</head>
+<body>
+<a class="skiplink" href="#main">本文へスキップ</a>
+<div class="wrap">
+
+  <nav class="lab-nav" aria-label="Lab">
+    <div class="brand">ロングケープの定理<small data-i18n="brandSub">FPS PERFORMANCE LAB</small></div>
+    <span class="spacer"></span>
+    <a class="navlink" href="import.html" data-i18n="navImport">取り込み</a>
+    <a class="navlink on" href="profile.html" aria-current="page" data-i18n="navProfile">プロフィール</a>
+    <a class="navlink" href="index.html" data-i18n="navDiag">かんたん診断</a>
+    <select id="langSelect" class="lang-select" data-i18n-attr="aria-label:navDiag">
+      <option value="ja">日本語</option><option value="en">English</option><option value="ko">한국어</option>
+    </select>
+    <label class="devbar"><input type="checkbox" id="devToggle"> <span data-i18n="devMode">開発モード</span></label>
+  </nav>
+
+  <div id="netBanner" class="note warn" role="status" hidden></div>
+
+  <div class="card tight">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div id="authText" style="flex:1;min-width:220px" role="status"></div>
+      <button class="btn ghost sm" id="btnLogin"></button>
+    </div>
+  </div>
+
+  <main id="main">
+  <h1 data-i18n="profileTitle">あなたの測定プロフィール</h1>
+  <p class="lede" id="lede"></p>
+
+  <div class="card tight">
+    <div class="devbar" style="gap:8px;flex-wrap:wrap">
+      <span data-i18n="demoLabel">表示するデータ:</span>
+      <button class="btn quiet sm" data-demo="imported" data-i18n="demoImported">取り込んだデータ</button>
+      <button class="btn quiet sm" data-demo="enough" data-i18n="demoEnough">人工データ（推奨あり）</button>
+      <button class="btn quiet sm" data-demo="notEnough" data-i18n="demoNotEnough">人工データ（推奨なし）</button>
+      <button class="btn quiet sm" data-demo="withAdaptive" data-i18n="demoAdaptive">人工データ（適応型混在）</button>
+      <button class="btn quiet sm" data-demo="stored" data-i18n="demoStored">保存済みデータ</button>
+    </div>
+    <p class="hint" style="margin-top:8px" data-i18n="demoNote"></p>
+  </div>
+
+  <div id="emptyState" class="card hidden">
+    <div class="note"><b data-i18n="profileEmptyTitle">まだデータがありません。</b><br>
+      <span data-i18n="profileEmptyBody"></span></div>
+  </div>
+
+  <div id="mainBody">
+    <section class="card" id="recCard" aria-labelledby="h-rec"></section>
+    <div id="nextCard"></div>
+
+    <section class="card" aria-labelledby="h-inv">
+      <h2 id="h-inv" data-i18n="invTitle">取り込み状況</h2>
+      <div class="kpis" id="invKpis"></div>
+      <div id="coverage" style="margin-top:16px"></div>
+    </section>
+
+    <div class="grid two">
+      <section class="card" aria-labelledby="h-meters">
+        <h2 id="h-meters" data-i18n="metersTitle">3つの指標</h2>
+        <p class="hint" style="margin-bottom:14px" data-i18n="metersNote"></p>
+        <div id="meters"></div>
+      </section>
+      <section class="card" aria-labelledby="h-trend">
+        <h2 id="h-trend" data-i18n="trendTitle">スコアの推移</h2>
+        <div id="trend"></div>
+      </section>
+    </div>
+
+    <div class="grid two">
+      <section class="card" aria-labelledby="h-unres">
+        <h2 id="h-unres" data-i18n="unresolvedTitle">確認が必要な項目</h2>
+        <div id="unresolved"></div>
+      </section>
+      <section class="card" aria-labelledby="h-excl">
+        <h2 id="h-excl" data-i18n="excludedTitle">比較から外したセッション</h2>
+        <div id="excluded"></div>
+      </section>
+    </div>
+
+    <section class="card dev-only" aria-labelledby="h-dev">
+      <h2 id="h-dev"><span class="devtag">dev</span><span data-i18n="devInternals"></span></h2>
+      <div id="devBody"></div>
+    </section>
+  </div>
+
+  <section class="card" id="saveCard" aria-labelledby="h-save">
+    <h2 id="h-save" data-i18n="saveTitle">この端末のデータを保存する</h2>
+    <div id="saveBody"></div>
+    <div id="saveMsg" style="margin-top:10px" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="card" aria-labelledby="h-consent">
+    <h2 id="h-consent" data-i18n="consentTitle">保存とデータの使い道</h2>
+    <div class="note ok" style="margin-bottom:14px">
+      <b data-i18n="consentNoNeed"></b> <span data-i18n="consentNoNeedBody"></span>
+    </div>
+    <p class="hint" style="margin-bottom:12px" data-i18n="consentPick"></p>
+    <div id="consentList"></div>
+    <div id="consentState" style="margin-top:12px" role="status"></div>
+    <p class="hint" style="margin-top:10px" data-i18n="consentRevocable"></p>
+    <p class="hint" data-i18n="consentRevokeKeeps"></p>
+  </section>
+
+  <section class="card" aria-labelledby="h-data">
+    <h2 id="h-data" data-i18n="dataTitle">あなたのデータ</h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn quiet" id="btnExport" data-i18n="btnExport">自分のデータをExport</button>
+      <button class="btn quiet" id="btnDelete" data-i18n="btnDelete">データを削除</button>
+      <button class="btn quiet" id="btnReload" data-i18n="btnReload">保存済みを読み込む</button>
+    </div>
+    <p class="hint" style="margin-top:10px" data-i18n="dataFree"></p>
+    <div id="dataRightsMsg" style="margin-top:10px" role="status" aria-live="polite"></div>
+  </section>
+  </main>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="importers/kovaak.js"></script>
+<script src="profile/metric-registry.js"></script>
+<script src="profile/algorithm-config.js"></script>
+<script src="profile/aim-profile.js"></script>
+<script src="profile/re-estimation.js"></script>
+<script src="ui/i18n.js"></script>
+<script src="ui/ui-logic.js"></script>
+<script src="ui/samples.js"></script>
+<script src="ui/storage.js"></script>
+<script src="ui/backend.js"></script>
+<script>
+(function () {
+    'use strict';
+    var U = window.LC_UI, P = window.LC_PROFILE, R = window.LC_REESTIMATE,
+        S = window.LC_SAMPLES, B = window.LC_BACKEND, ST = window.LC_STORAGE, I = window.LC_I18N;
+    var T = function (k, p) { return I.t(k, p); };
+
+    var $ = function (id) { return document.getElementById(id); };
+    var esc = function (s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+    var pct = function (v) { return v === null || v === undefined ? '—' : Math.round(v * 100) + '%'; };
+    function note(tone, html) { return '<div class="note ' + tone + '">' + html + '</div>'; }
+
+    var state = {
+        demo: 'imported', loggedIn: false, consent: U.defaultConsent(),
+        user: null, consentRows: {}, stored: [], busy: false
+    };
+
+    // ------------------------------------------------------------ 言語
+    var sel = $('langSelect');
+    sel.value = I.getLang();
+    document.documentElement.setAttribute('lang', I.getLang());
+    sel.addEventListener('change', function () { I.setLang(this.value); render(); });
+
+    // ------------------------------------------------------------ 通信状態
+    function netBanner() {
+        var b = $('netBanner');
+        if (navigator.onLine === false) { b.textContent = T('offlineBanner'); b.hidden = false; }
+        else { b.hidden = true; }
+    }
+    window.addEventListener('online', function () { netBanner(); syncAuth().then(render); });
+    window.addEventListener('offline', netBanner);
+
+    // ------------------------------------------------------------ エラー分類
+    /** 例外を利用者向けの文言へ変換する。技術的な原文も併記して隠さない。 */
+    function classifyError(e) {
+        var msg = (e && (e.message || e.error_description || e.msg)) || String(e || '');
+        var code = String((e && (e.code || e.status)) || '');
+        var kind = 'errUnknown';
+        if (navigator.onLine === false || /Failed to fetch|NetworkError|network/i.test(msg)) kind = 'errNetwork';
+        else if (/row-level security|permission|42501|403/i.test(msg + code)) kind = 'errPermission';
+        else if (/JWT|token|session|401/i.test(msg + code)) kind = 'errAuth';
+        else if (/^5\d\d$/.test(code) || /internal|timeout|503|502/i.test(msg)) kind = 'errServer';
+        return { kind: kind, title: T(kind), body: T(kind + 'Body'), detail: msg,
+                 retryable: kind !== 'errPermission' };
+    }
+
+    /** 一時的な失敗だけ数回試し直す。権限エラーは繰り返さない。 */
+    function withRetry(fn, opts) {
+        var max = (opts && opts.max) || 3, onAttempt = opts && opts.onAttempt;
+        function attempt(n) {
+            return Promise.resolve().then(fn).catch(function (e) {
+                var info = classifyError(e);
+                if (!info.retryable || n >= max) throw e;
+                if (onAttempt) onAttempt(n + 1);
+                return new Promise(function (res) { setTimeout(res, 400 * n); })
+                    .then(function () { return attempt(n + 1); });
+            });
+        }
+        return attempt(1);
+    }
+
+    function showError(el, e, retryFn) {
+        var info = classifyError(e);
+        el.innerHTML = '<div class="note error"><b>' + esc(info.title) + '</b><br>'
+            + esc(info.body) + '<br><span class="hint mono">' + esc(info.detail) + '</span>'
+            + (retryFn ? '<div style="margin-top:10px"><button class="btn sm" id="btnRetry">'
+                + esc(T('retry')) + '</button></div>' : '') + '</div>';
+        if (retryFn) { var b = $('btnRetry'); if (b) b.addEventListener('click', retryFn); }
+    }
+
+    // ------------------------------------------------------------ 開発モード
+    $('devToggle').addEventListener('change', function () {
+        document.body.classList.toggle('devmode', this.checked);
+        try { localStorage.setItem('lc_dev', this.checked ? '1' : '0'); } catch (e) {}
+    });
+    try {
+        if (localStorage.getItem('lc_dev') === '1') { $('devToggle').checked = true; document.body.classList.add('devmode'); }
+    } catch (e) {}
+
+    // ---------------------------------------------------------- 認証と同意
+    function syncAuth() {
+        if (!B.available()) return Promise.resolve();
+        return B.currentUser().then(function (u) {
+            state.user = u; state.loggedIn = !!u;
+            if (!u) { state.consentRows = {}; state.consent = U.defaultConsent(); state.stored = []; return; }
+            return ST.loadConsents(B.client(), u.id).then(function (r) {
+                state.consentRows = r.active || {};
+                U.CONSENT_PURPOSES.forEach(function (p) { state.consent[p.id] = !!state.consentRows[p.id]; });
+            });
+        }).catch(function () { /* 認証が取れなくても画面は動かす */ });
+    }
+
+    // ---------------------------------------------------------- データ取得
+    function importedSessions() {
+        try { return JSON.parse(sessionStorage.getItem('lc_sessions') || '[]'); } catch (e) { return []; }
+    }
+    function importedDpiAnswer() {
+        try { return JSON.parse(sessionStorage.getItem('lc_dpi') || '{}'); } catch (e) { return {}; }
+    }
+    function currentData() {
+        if (state.demo === 'stored') {
+            return { sessions: state.stored, dpiAnswer: { answer: 'as_is' }, synthetic: false, stored: true };
+        }
+        if (state.demo === 'imported') {
+            return { sessions: importedSessions(), dpiAnswer: importedDpiAnswer(), synthetic: false };
+        }
+        return { sessions: S[state.demo](), dpiAnswer: { answer: 'as_is' }, synthetic: true };
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-demo]'), function (b) {
+        b.addEventListener('click', function () { state.demo = this.getAttribute('data-demo'); render(); });
+    });
+
+    $('btnLogin').addEventListener('click', function () {
+        if (!B.available()) return;
+        if (state.loggedIn) B.signOut().then(function () { syncAuth().then(render); });
+        else location.href = B.loginUrl;
+    });
+
+    // ------------------------------------------------------------- 描画
+    function render() {
+        I.apply(document);
+        netBanner();
+
+        var d = currentData();
+        var sessions = d.sessions || [];
+
+        $('btnLogin').textContent = state.loggedIn ? T('loginToggle') : T('loginLink');
+        $('authText').innerHTML = (state.loggedIn
+            ? '<span class="pill ok">' + esc(T('loggedIn')) + '</span> '
+            : '<span class="pill muted">' + esc(T('notLoggedIn')) + '</span> ')
+            + '<span class="hint">' + esc(state.loggedIn ? T('capsUser') : T('capsGuest')) + '</span>';
+        $('lede').innerHTML = esc(T('profileLede'))
+            + (state.loggedIn ? '' : ' <span class="hint">' + esc(T('notSaved')) + '</span>');
+
+        var empty = sessions.length === 0;
+        $('emptyState').classList.toggle('hidden', !empty);
+        $('mainBody').classList.toggle('hidden', empty);
+        renderConsent();
+        renderSave();
+        if (empty) { $('recCard').innerHTML = ''; $('nextCard').innerHTML = ''; return; }
+
+        var dpi = (d.synthetic || d.stored)
+            ? { status: 'confirmed', confirmedDpi: 800, blocked: [], declaredInFile: [800], message: '' }
+            : U.resolveDpi(sessions, d.dpiAnswer);
+
+        var ev = P.buildEvidence(sessions);
+        var aim = P.buildAimProfile(sessions);
+        var reest = null;
+        try {
+            reest = R.reestimate({ sessions: sessions, evidence: ev,
+                levelResolver: P.verifiedSensitivityLevel, now: new Date().toISOString() });
+        } catch (e) { reest = null; }
+
+        var view = U.buildProfileView(aim, sessions, reest);
+        var rec = U.buildRecommendationView(reest, dpi, {});
+
+        renderRec(rec, d);
+        renderNext(rec.nextBestTest);
+        renderInventory(view);
+        renderMeters(view.meters);
+        renderTrend(view.scoreTrend);
+        renderUnresolved(view.unresolved, dpi);
+        renderExcluded(view.excludedSessions);
+        renderDev(sessions, ev);
+    }
+
+    function kpi(v, k, accent) {
+        return '<div class="kpi"><div class="v"' + (accent ? ' style="color:var(--accent-color)"' : '') + '>'
+            + esc(v) + '</div><div class="k">' + esc(k) + '</div></div>';
+    }
+
+    // ------------------------------------------------------------- 推奨
+    var FACTOR_KEY = {
+        performance: ['factorPerformance', 'factorPerformanceDesc'],
+        stability: ['factorStability', 'factorStabilityDesc'],
+        repeatability: ['factorRepeatability', 'factorRepeatabilityDesc'],
+        recency: ['factorRecency', 'factorRecencyDesc'],
+        coverage: ['factorCoverage', 'factorCoverageDesc']
+    };
+
+    function renderRec(rec, d) {
+        var banner = d.synthetic
+            ? note('warn', '<b>' + esc(T('recSyntheticBanner')) + '</b>')
+            : note('', '<b>' + esc(T('recLocalBanner')) + '</b>');
+
+        if (rec.status === 'withheld') {
+            var why = rec.reasonCode === 'dpi_unconfirmed' ? T('recWhyDpi') : T('recWhyEvidence');
+            $('recCard').innerHTML = banner
+                + '<h2 id="h-rec">' + esc(T('recWithheld')) + '</h2>'
+                + note('warn', '<b>' + esc(why) + '</b>')
+                + '<h3 style="margin-top:16px">' + esc(T('recWhatToDo')) + '</h3>'
+                + '<div class="stack">' + rec.whatToDo.map(function (t) {
+                    var label = t.action === 'confirm_dpi' ? T('recConfirmDpi')
+                        : t.action === 'import_more' ? T('recImportMore') : t.label;
+                    var detail = t.action === 'confirm_dpi' ? T('recConfirmDpiDetail') : t.detail;
+                    return '<div class="chip" style="display:block">' + esc(label)
+                        + (detail ? '<br><span class="hint">' + esc(detail) + '</span>' : '') + '</div>';
+                }).join('') + '</div>'
+                + (rec.evidenceCount !== undefined
+                    ? '<p class="hint" style="margin-top:12px">' + esc(T('recUsable')) + ': ' + rec.evidenceCount + '</p>' : '');
+            return;
+        }
+
+        var c = rec.composition;
+        $('recCard').innerHTML = banner
+            + '<h2 id="h-rec">' + esc(T('recNow')) + '</h2>'
+            + '<div class="kpis" style="margin-bottom:8px">'
+            + kpi(rec.recommended_cm360 + ' cm', T('recCm360'), true)
+            + kpi(rec.recommended_range ? rec.recommended_range[0] + '–' + rec.recommended_range[1] : '—', T('recRange'))
+            + kpi(pct(rec.confidence ? rec.confidence.value : null), T('recConfidence'))
+            + kpi(rec.evidenceCount, T('recEvidence'))
+            + '</div>'
+            + '<div class="hint">' + esc(T('recSources')) + ': ' + esc(Object.keys(rec.sourceMix).map(function (k) {
+                return k + ' ' + rec.sourceMix[k];
+            }).join(' / ') || '—') + '</div>'
+            + (Object.keys(rec.evidenceExcluded).length
+                ? '<div class="hint">' + esc(T('recExcluded')) + ': ' + esc(Object.keys(rec.evidenceExcluded).map(function (k) {
+                    return k + ' ' + rec.evidenceExcluded[k];
+                }).join(' / ')) + '</div>' : '')
+            + '<details class="why"><summary>' + esc(T('recWhyToggle')) + '</summary><div class="body">'
+            + '<p style="color:var(--text-main);font-weight:bold;margin-bottom:8px">' + esc(T('recWhyHeadline')) + '</p>'
+            + '<p>' + esc(T('recWhySummary')) + '</p>'
+            + '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
+            + c.factors.map(function (f) {
+                var k = FACTOR_KEY[f.key];
+                return '<span class="chip"><b>' + esc(k ? T(k[0]) : f.label) + '</b> '
+                    + esc(k ? T(k[1]) : f.desc) + '</span>';
+            }).join('') + '</div>'
+            + '<p style="margin-top:12px">' + esc(T('recWhyNote')) + '</p>'
+            + (rec.range_definition ? '<p class="hint" style="margin-top:12px">' + esc(T('recRangeMeaning')) + ': '
+                + esc(rec.range_definition.description || '') + '</p>' : '')
+            + '</div></details>';
+    }
+
+    // --------------------------------------------------------- 次の測定
+    var REASON_KEY = {
+        increase_level_count: 'reasonIncreaseLevels', explore_beyond_edge: 'reasonExploreEdge',
+        distinguish_close_levels: 'reasonDistinguish', reinforce_thin_level: 'reasonReinforce'
+    };
+
+    function renderNext(nbt) {
+        if (!nbt) { $('nextCard').innerHTML = ''; return; }
+        var sentence = T('nextSentence', { cm: nbt.nextSensitivity, n: nbt.sessionCount })
+            + (nbt.scenarioConcept ? ' ' + T('nextScenario', { name: nbt.scenarioConcept }) : '');
+        var reason = REASON_KEY[nbt.reasonCode] ? T(REASON_KEY[nbt.reasonCode]) : (nbt.detail || '');
+
+        $('nextCard').innerHTML = '<div class="next">'
+            + '<div style="font-size:.7rem;color:var(--text-sub);letter-spacing:.08em">' + esc(T('nextExperiment')) + '</div>'
+            + '<div class="headline">' + esc(sentence) + '</div>'
+            + '<div class="why">' + esc(reason) + '</div>'
+            + '<div class="chips">'
+            + '<span class="chip"><b>' + esc(nbt.nextSensitivity) + ' cm</b> ' + esc(T('nextChipSens')) + '</span>'
+            + '<span class="chip"><b>' + esc(nbt.sessionCount) + '</b> ' + esc(T('nextChipCount')) + '</span>'
+            + (nbt.scenarioConcept ? '<span class="chip"><b>' + esc(nbt.scenarioConcept) + '</b> ' + esc(T('nextChipScenario')) + '</span>' : '')
+            + '</div>'
+            + '<p class="hint" style="margin-top:10px">' + esc(T('nextUncertainty')) + '</p>'
+            + '<span class="dev-only devtag">uncertainty_reduction = ' + esc(nbt.uncertaintyReduction)
+            + ' / reason = ' + esc(nbt.reasonCode) + '</span></div>';
+    }
+
+    // ------------------------------------------------------------- 概況
+    function renderInventory(v) {
+        var i = v.inventory;
+        $('invKpis').innerHTML = [
+            ['invSessions', i.importedSessions], ['invSources', i.sourceCount],
+            ['invScenarios', i.scenarioCount],
+            ['invLevels', (i.sensitivityLevels && i.sensitivityLevels.count) || 0],
+            ['invEvidence', v.evidenceCount]
+        ].map(function (p) { return kpi(p[1], T(p[0])); }).join('');
+
+        var c = v.sensitivityCoverage;
+        $('coverage').innerHTML = !c ? '<p class="hint">' + esc(T('coverageNone')) + '</p>'
+            : '<h3>' + esc(T('coverageTitle')) + '</h3><div class="hint">'
+            + esc(T('coverageRange')) + ': ' + esc(c.testedRange ? c.testedRange[0] + '–' + c.testedRange[1] + ' cm' : '—')
+            + ' / ' + esc(T('coverageLevels')) + ': ' + esc(c.levelCount)
+            + (c.balanceAroundBest && c.balanceAroundBest.skewed
+                ? ' / <span style="color:var(--warn)">' + esc(T('coverageSkewed')) + '</span>' : '')
+            + (c.edgeOptimum ? ' / <span style="color:var(--warn)">' + esc(T('coverageEdge')) + '</span>' : '')
+            + '</div>';
+    }
+
+    // --------------------------------------------------------- 3つの指標
+    var METER_KEY = {
+        profile_completeness: ['meterCompleteness', 'meterCompletenessDesc'],
+        evidence_quality: ['meterQuality', 'meterQualityDesc'],
+        recommendation_confidence: ['meterConfidence', 'meterConfidenceDesc']
+    };
+
+    function renderMeters(meters) {
+        $('meters').innerHTML = meters.map(function (m) {
+            var na = m.unavailable || m.value === null || m.value === undefined;
+            var k = METER_KEY[m.id];
+            var w = na ? 0 : Math.round(m.value * 100);
+            return '<div class="meter ' + (na ? 'na' : '') + '">'
+                + '<div class="row"><span class="label" id="mtr-' + m.id + '">' + esc(T(k[0])) + '</span>'
+                + '<span class="val">' + (na ? '—' : pct(m.value)) + '</span></div>'
+                + '<div class="bar" role="progressbar" aria-labelledby="mtr-' + m.id + '"'
+                + ' aria-valuemin="0" aria-valuemax="100"' + (na ? '' : ' aria-valuenow="' + w + '"')
+                + '><i style="width:' + w + '%"></i></div>'
+                + '<div class="desc">' + esc(T(k[1]))
+                + (na ? ' <span style="color:var(--muted)">' + esc(T('meterUnavailable')) + '</span>' : '') + '</div>'
+                + (m.gaps && m.gaps.length ? '<div class="hint">' + esc(T('meterGaps')) + ': ' + m.gaps.map(esc).join(' / ') + '</div>' : '')
+                + '<span class="dev-only devtag">' + esc(m.id) + '</span></div>';
+        }).join('');
+    }
+
+    // ------------------------------------------------------------- 推移
+    function renderTrend(t) {
+        if (!t.points.length) { $('trend').innerHTML = '<p class="hint">' + esc(T('trendNone')) + '</p>'; return; }
+        var vals = t.points.map(function (p) { return p.value; });
+        var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+        var span = (max - min) || 1;
+
+        $('trend').innerHTML =
+            '<div style="display:flex;align-items:flex-end;gap:3px;height:120px;padding:6px 0" role="img"'
+            + ' aria-label="' + esc(T('trendTitle') + ': ' + T('trendMin') + ' ' + Math.round(min)
+                + ', ' + T('trendMax') + ' ' + Math.round(max)) + '">'
+            + t.points.map(function (p) {
+                var h = 12 + ((p.value - min) / span) * 88;
+                return '<div title="' + esc(p.at) + ' / ' + esc(p.value) + '" style="flex:1;min-width:4px;height:'
+                    + h.toFixed(1) + '%;border-radius:3px 3px 0 0;background:'
+                    + (p.adaptive ? 'var(--muted)' : 'var(--accent-color)') + '"></div>';
+            }).join('') + '</div>'
+            + '<div class="hint">' + esc(T('trendMin')) + ' ' + esc(Math.round(min))
+            + ' / ' + esc(T('trendMax')) + ' ' + esc(Math.round(max)) + '</div>'
+            + (t.note ? '<div class="hint" style="margin-top:6px">' + esc(T('trendMixedNote')) + '</div>' : '')
+            + (t.points.some(function (p) { return p.adaptive; })
+                ? '<div class="hint">' + esc(T('trendAdaptiveNote')) + '</div>' : '');
+    }
+
+    // ----------------------------------------------------- 要確認 / 除外
+    var FIELD_KEY = {
+        dpi_verified: 'fieldDpiVerified', cm360: 'fieldCm360',
+        in_game_sens: 'fieldInGameSens', session_comparability: 'fieldComparability'
+    };
+
+    function renderUnresolved(list, dpi) {
+        var head = '';
+        if (dpi && dpi.blocked && dpi.blocked.length) {
+            head = note('warn', '<b>' + esc(T('dpiBlockedTitle')) + '</b><br>' + esc(T('dpiBlockedList'))
+                + ' <a href="import.html">' + esc(T('navImport')) + '</a>');
+        }
+        $('unresolved').innerHTML = head + (list.length === 0
+            ? '<p class="hint">' + esc(T('unresolvedNone')) + '</p>'
+            : '<div class="stack">' + list.map(function (u) {
+                return '<div class="chip" style="display:block"><b>'
+                    + esc(FIELD_KEY[u.field] ? T(FIELD_KEY[u.field]) : u.field) + '</b> '
+                    + '<span class="hint">' + u.count + '</span>'
+                    + '<span class="dev-only devtag" style="margin-left:6px">' + esc(u.field) + '</span></div>';
+            }).join('') + '</div>');
+    }
+
+    function renderExcluded(list) {
+        $('excluded').innerHTML = list.length === 0
+            ? '<p class="hint">' + esc(T('excludedNone')) + '</p>'
+            : '<div class="stack">' + list.map(function (x) {
+                return '<div class="chip" style="display:block">'
+                    + '<span class="pill muted">' + esc(T('stateExcluded')) + '</span> <b>' + esc(x.scenario) + '</b>'
+                    + '<br>' + esc(T('excludedReason'))
+                    + '<br><span class="hint">' + esc(T('excludedKeptNote')) + '</span>'
+                    + '<span class="dev-only devtag">' + esc(x.basis || '') + '</span></div>';
+            }).join('') + '</div>';
+    }
+
+    // ------------------------------------------------------------- 同意
+    var CONSENT_KEY = {
+        profile_storage: ['consentProfile', 'consentProfileDesc'],
+        anonymized_statistics: ['consentStats', 'consentStatsDesc'],
+        model_improvement: ['consentModel', 'consentModelDesc']
+    };
+
+    function renderConsent() {
+        $('consentList').innerHTML = U.CONSENT_PURPOSES.map(function (p) {
+            var k = CONSENT_KEY[p.id];
+            return '<div class="consent-item">'
+                + '<input type="checkbox" id="cs-' + p.id + '" data-consent="' + p.id + '"'
+                + (state.consent[p.id] ? ' checked' : '') + '>'
+                + '<label for="cs-' + p.id + '"><span class="t">' + esc(T(k[0])) + '</span>'
+                + '<span class="d">' + esc(T(k[1])) + '</span></label></div>';
+        }).join('');
+
+        Array.prototype.forEach.call(document.querySelectorAll('[data-consent]'), function (el) {
+            el.addEventListener('change', function () {
+                var purpose = this.getAttribute('data-consent'), on = this.checked;
+                state.consent[purpose] = on;
+                if (B.available() && state.user) {
+                    withRetry(function () {
+                        return on ? ST.grantConsent(B.client(), state.user.id, purpose, 'v1')
+                                  : ST.revokeConsent(B.client(), state.user.id, purpose);
+                    }).then(function () { return syncAuth(); }).then(render)
+                      .catch(function (e) { showError($('consentState'), e, null); });
+                    return;
+                }
+                renderConsent(); renderSave();
+            });
+        });
+
+        var any = U.CONSENT_PURPOSES.some(function (p) { return state.consent[p.id]; });
+        $('consentState').innerHTML = note(any ? '' : 'ok',
+            '<b>' + esc(any ? T('consentSelected') : T('consentNone')) + '</b> '
+            + esc(any ? T('consentSelectedBody') : T('consentNoneBody'))
+            + '<div class="dev-only" style="margin-top:8px">'
+            + U.CONSENT_PURPOSES.map(function (p) {
+                return '<span class="devtag" style="margin-right:6px">' + esc(p.id) + '='
+                    + (U.canSendExternally(state.consent, p.id) ? 'send_ok' : 'blocked') + '</span>';
+            }).join('') + '</div>');
+    }
+
+    // ------------------------------------------------------------- 保存
+    function registryMap() {
+        var map = {};
+        (window.LC_METRICS.all || []).forEach(function (m) {
+            map[m.metric_key] = { unit: m.unit, metric_version: m.metric_version };
+        });
+        return map;
+    }
+
+    function renderSave() {
+        var d = currentData();
+        var sessions = d.sessions || [];
+        var gate = ST.canPersist({ loggedIn: state.loggedIn, userId: state.user && state.user.id }, state.consent);
+
+        if (!B.available()) { $('saveBody').innerHTML = note('warn', esc(T('saveNoBackend'))); return; }
+        if (d.synthetic) { $('saveBody').innerHTML = note('', esc(T('saveSynthetic'))); return; }
+        if (d.stored) { $('saveBody').innerHTML = note('', esc(T('demoStored'))); return; }
+        if (sessions.length === 0) { $('saveBody').innerHTML = note('', esc(T('saveNoData'))); return; }
+        if (!gate.allowed) {
+            $('saveBody').innerHTML = note('warn',
+                esc(gate.reason === 'not_logged_in' ? T('saveNeedLogin') : T('saveNeedConsent'))
+                + (gate.reason === 'not_logged_in'
+                    ? ' <a href="' + esc(B.loginUrl) + '">' + esc(T('loginLink')) + '</a>' : ''));
+            return;
+        }
+
+        $('saveBody').innerHTML = note('ok', '<b>' + esc(T('saveReady', { n: sessions.length })) + '</b><br>'
+            + '<span class="hint">' + esc(T('saveRawNote')) + '</span>')
+            + '<div style="margin-top:12px"><button class="btn" id="btnSave"' + (state.busy ? ' disabled' : '') + '>'
+            + esc(T('saveButton')) + '</button></div>';
+        var btn = $('btnSave');
+        if (btn) btn.addEventListener('click', doSave);
+    }
+
+    function doSave() {
+        var d = currentData();
+        var dpi = U.resolveDpi(d.sessions, d.dpiAnswer);
+        var consentRow = state.consentRows[ST.CONSENT.REQUIRED_FOR_STORAGE];
+        if (!consentRow) { $('saveMsg').innerHTML = note('warn', esc(T('saveNoConsentRow'))); return; }
+
+        state.busy = true; renderSave();
+        $('saveMsg').innerHTML = '<div class="hint">' + esc(T('saving')) + '</div>';
+
+        withRetry(function () {
+            return ST.loadSessions(B.client(), state.user.id).then(function (existing) {
+                var plan = ST.buildSavePlan({
+                    auth: { loggedIn: true, userId: state.user.id },
+                    consent: state.consent, consentId: consentRow.id,
+                    sessions: d.sessions,
+                    existingSessions: (existing.sessions || []).map(function (s) {
+                        return { id: s.storedId, source: s.provenance.source,
+                                 raw_content_hash: s.provenance.rawContentHash,
+                                 parser_version: s.provenance.parserVersion };
+                    }),
+                    confirmedDpi: dpi.confirmedDpi, dpiSource: dpi.confirmedBy,
+                    registry: registryMap(), filesReceived: d.sessions.length,
+                    derivedAccuracyOf: U.derivedAccuracy,
+                    cm360Of: function (s, v) {
+                        var c = U.cm360(s.context.sensScale, s.context.inGameSens, v);
+                        return c.available ? c.value : null;
+                    }
+                });
+                return ST.executeSavePlan(B.client(), plan).then(function (res) {
+                    if (!res.saved && res.reason === 'error') throw (res.error || new Error(res.message));
+                    return res;
+                });
+            });
+        }, { onAttempt: function (n) {
+            $('saveMsg').innerHTML = '<div class="hint">' + esc(T('errRetrying', { n: n })) + '</div>';
+        } })
+        .then(function (res) {
+            state.busy = false;
+            if (res.saved) {
+                $('saveMsg').innerHTML = note('ok', '<b>' + esc(T('saveDone', { n: res.sessionIds.length })) + '</b>'
+                    + (res.skipped.length ? '<br><span class="hint">' + esc(T('saveSkipped', { n: res.skipped.length })) + '</span>' : '')
+                    + (res.reanalysis.length ? '<br><span class="hint">' + esc(T('saveReanalysis', { n: res.reanalysis.length })) + '</span>' : ''));
+                return reloadStored();
+            }
+            $('saveMsg').innerHTML = note(res.reason === 'nothing_new' ? '' : 'warn',
+                esc(res.reason === 'nothing_new' ? T('saveNothingNew') : (res.message || T('errUnknown'))));
+            renderSave();
+        }).catch(function (e) {
+            state.busy = false; renderSave();
+            showError($('saveMsg'), e, doSave);
+        });
+    }
+
+    function reloadStored() {
+        if (!B.available() || !state.user) { state.stored = []; return Promise.resolve(); }
+        return withRetry(function () {
+            return ST.loadSessions(B.client(), state.user.id).then(function (r) {
+                if (r.error) throw r.error;
+                return r;
+            });
+        }).then(function (r) { state.stored = r.sessions || []; render(); });
+    }
+
+    // --------------------------------------------------- Export / 削除
+    $('btnReload').addEventListener('click', function () {
+        if (!B.available() || !state.user) { $('dataRightsMsg').innerHTML = note('warn', esc(T('reloadNeedLogin'))); return; }
+        $('dataRightsMsg').innerHTML = '<div class="hint">' + esc(T('reloading')) + '</div>';
+        reloadStored().then(function () {
+            state.demo = 'stored'; render();
+            $('dataRightsMsg').innerHTML = note('ok', esc(T('reloadDone', { n: state.stored.length })));
+        }).catch(function (e) { showError($('dataRightsMsg'), e, null); });
+    });
+
+    $('btnExport').addEventListener('click', function () {
+        var d = currentData();
+        var payload = ST.buildExport(d.sessions, {
+            source: d.stored ? 'stored' : 'local', registry: registryMap(),
+            algorithmVersion: (window.LC_ALGO_CONFIG && window.LC_ALGO_CONFIG.config_version) || null
+        });
+        var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'long-cape-export.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        $('dataRightsMsg').innerHTML = note('ok', esc(T('exportDone')));
+    });
+
+    $('btnDelete').addEventListener('click', function () {
+        try { sessionStorage.removeItem('lc_sessions'); sessionStorage.removeItem('lc_dpi'); } catch (e) {}
+        if (!B.available() || !state.user) {
+            $('dataRightsMsg').innerHTML = note('ok', esc(T('deleteLocalDone')));
+            state.demo = 'imported'; render(); return;
+        }
+        if (!window.confirm(T('deleteConfirm'))) return;
+
+        withRetry(function () {
+            return ST.deleteAll(B.client(), state.user.id).then(function (r) {
+                if (!r.deleted) throw new Error(r.message || 'delete failed');
+                return r;
+            });
+        }).then(function (r) {
+            state.stored = []; state.demo = 'imported'; render();
+            $('dataRightsMsg').innerHTML = note('ok', '<b>' + esc(T('deleteDone')) + '</b><br>'
+                + '<span class="hint">' + esc(r.note) + '</span>');
+        }).catch(function (e) { showError($('dataRightsMsg'), e, null); });
+    });
+
+    // ------------------------------------------------------------- dev
+    function renderDev(sessions, ev) {
+        var d = U.devInspect(sessions, ev);
+        $('devBody').innerHTML = '<div class="tablewrap" tabindex="0"><table class="data"><thead><tr>'
+            + '<th scope="col">metric</th><th scope="col">layer</th><th scope="col">rating</th>'
+            + '<th scope="col">effective</th><th scope="col">recommendation</th><th scope="col">comparability_group</th>'
+            + '</tr></thead><tbody>'
+            + d.metrics.map(function (m) {
+                return '<tr><td class="mono">' + esc(m.metricKey) + '</td><td>' + esc(m.layer) + '</td>'
+                    + '<td>' + esc(m.ratingStatus) + '</td>'
+                    + '<td class="num">' + (m.effectiveReliability === null ? '—' : esc(m.effectiveReliability)) + '</td>'
+                    + '<td>' + (m.recommendationEligible ? '<span class="pill ok">eligible</span>'
+                        : m.recommendationHold ? '<span class="pill warn">hold</span>'
+                            : '<span class="pill muted">—</span>') + '</td>'
+                    + '<td class="mono hint">' + esc(m.comparabilityGroup || '—') + '</td></tr>';
+            }).join('') + '</tbody></table></div>';
+    }
+
+    // ------------------------------------------------------------- 起動
+    syncAuth().then(function () {
+        render();
+        if (state.loggedIn) return reloadStored();
+    }).catch(function () { render(); });
+
+    if (B.available()) B.onAuthChange(function () { syncAuth().then(render); });
+    render();
+})();
+</script>
+</body>
+</html>

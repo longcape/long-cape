@@ -1,0 +1,54 @@
+Kill #,Timestamp,Bot,Weapon,TTK,Shots,Hits,Accuracy,Damage Done,Damage Possible,Efficiency,Cheated,OverShots
+1,23:05:13.101,Synthetic Bot,Full auto,0.600000s,11,6,0.545455,20.000000,40.000000,0.500000,0,1
+2,23:05:16.102,Synthetic Bot,Full auto,0.700000s,12,7,0.583333,40.000000,80.000000,0.500000,0,0
+3,23:05:19.103,Synthetic Bot,Full auto,0.800000s,13,8,0.615385,60.000000,120.000000,0.500000,0,1
+4,23:05:22.104,Synthetic Bot,Full auto,0.900000s,14,9,0.642857,80.000000,160.000000,0.500000,0,0
+5,23:05:25.105,Synthetic Bot,Full auto,1.000000s,15,10,0.666667,100.000000,200.000000,0.500000,0,1
+
+Weapon,Shots,Hits,Damage Done,Damage Possible,,Sens Scale,Horiz Sens,Vert Sens,FOV,Hide Gun,Crosshair,Crosshair Scale,Crosshair Color,ADS Sens,ADS Zoom Scale,Avg Target Scale,Avg Time Dilation
+Full auto,60,30,300.0,600.0,
+
+Kills:,5
+Deaths:,0
+Fight Time:,30.000000
+Time Remaining:,0.0
+Avg TTK:,1.000000
+Damage Done:,300.0
+Total Overshots:,3
+Damage Taken:,0.0
+Hit Count:,30
+Miss Count:,30
+Midairs:,0
+Midaired:,0
+Directs:,0
+Directed:,0
+Reloads:,0
+Distance Traveled:,0.0
+MBS Points:,0.0
+Score:,1000.0
+Scenario:,Synthetic Intro Scenario
+Hash:,00000000000000000000000000000000
+Game Version:,3.9.8.2026-08-26-12-34-50-0000000000
+Challenge Start:,23:04:00.000
+Pause Count:,0
+Pause Duration:,0
+Avg Target Scale:,1.0
+Avg Time Dilation:,1.0
+
+Input Lag:,0
+Max FPS (config):,999.0
+Sens Scale:,Valorant
+Sens Increment:,0.214877
+Horiz Sens:,0.215
+Vert Sens:,0.215
+DPI:,400
+FOV:,103.0
+FOVScale:,Valorant
+Hide Gun:,false
+Crosshair:,dot.png
+Crosshair Scale:,1.0
+Crosshair Color:,010101FF
+Resolution:,1920x1080
+Avg FPS:,500.000000
+Resolution Scale:,100.0
+
