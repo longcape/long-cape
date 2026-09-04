@@ -62,14 +62,32 @@ create table if not exists public.aim_sessions (
         constraint aim_sessions_source_chk check (source in ('kovaak', 'manual')),
     raw_content_hash      text not null
         constraint aim_sessions_hash_chk check (raw_content_hash ~ '^[0-9a-f]{64}$'),
+    -- idempotency key の構成要素。batch 側にも持つが、再解析の判定に使うため
+    -- session 側にも保持する（batch を消しても判定が壊れないようにする）。
+    parser_version        text not null,
     -- **logical_fingerprint は raw_content_hash とは別概念。** 一意制約も張らない。
     logical_fingerprint   text,
     logical_fingerprint_status text not null default 'not_implemented',
 
     created_at            timestamptz not null default now(),
 
-    -- 同じユーザーが同じ中身のファイルを何度取り込んでも増殖させない。
-    constraint aim_sessions_user_hash_uniq unique (user_id, raw_content_hash)
+    -- ---------------------------------------------------------------
+    -- idempotency key
+    --
+    --   user_id + source + raw_content_hash + parser_version
+    --
+    -- 同じファイルを同じ parser で入れ直しても二重にならない。
+    -- **parser を更新したあとの再取り込みは許可する。** 解釈が変わりうるため。
+    --
+    -- raw_content_hash 単独では unique にしない。単独にすると
+    -- parser 更新後の再解析ができなくなる。
+    --
+    -- 再取り込みは既存行を上書きせず新しい行として増える。これにより
+    -- 「どの parser 版で解釈した結果か」が両方残り、将来 supersedes 等の
+    -- 世代関係を後から足せる（今は列を作らない）。
+    -- ---------------------------------------------------------------
+    constraint aim_sessions_idempotency_uniq
+        unique (user_id, source, raw_content_hash, parser_version)
 );
 
 create index if not exists aim_sessions_user_idx
@@ -78,6 +96,9 @@ create index if not exists aim_sessions_scope_idx
     on public.aim_sessions (user_id, scenario_identity, context_group);
 create index if not exists aim_sessions_batch_idx
     on public.aim_sessions (batch_id);
+-- 再解析の世代を並べて見るための索引
+create index if not exists aim_sessions_reanalysis_idx
+    on public.aim_sessions (user_id, raw_content_hash, parser_version);
 
 -- ---------------------------------------------------------------- RLS
 alter table public.aim_sessions enable row level security;

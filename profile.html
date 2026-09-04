@@ -38,6 +38,7 @@
       <button class="btn quiet sm" data-demo="enough">人工データ（推奨あり）</button>
       <button class="btn quiet sm" data-demo="notEnough">人工データ（推奨なし）</button>
       <button class="btn quiet sm" data-demo="withAdaptive">人工データ（適応型混在）</button>
+      <button class="btn quiet sm" data-demo="stored">保存済みデータ</button>
     </div>
     <p class="hint" style="margin-top:8px">
       推奨の画面は人工データで検証しています。KovaaK の実データは本番の推奨計算へ接続していません。
@@ -95,6 +96,12 @@
     </div>
   </div>
 
+  <!-- 保存 --------------------------------------------------------------- -->
+  <div class="card" id="saveCard">
+    <h2>この端末のデータを保存する</h2>
+    <div id="saveBody"></div>
+  </div>
+
   <!-- 同意 --------------------------------------------------------------- -->
   <div class="card">
     <h2>保存とデータの使い道</h2>
@@ -107,7 +114,7 @@
     <div id="consentList"></div>
     <div id="consentState" style="margin-top:12px"></div>
     <p class="hint" style="margin-top:10px">
-      ※ この試作では実際の保存・送信は行いません。選んだ内容は画面の確認用です。
+      同意は目的ごとに記録され、いつでも取り消せます。取り消すと、それ以降の保存ができなくなります。
     </p>
   </div>
 
@@ -117,6 +124,7 @@
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn quiet" id="btnExport">自分のデータをExport</button>
       <button class="btn quiet" id="btnDelete">データを削除</button>
+      <button class="btn quiet" id="btnReload">保存済みを読み込む</button>
     </div>
     <p class="hint" style="margin-top:10px">
       削除とExportは、今後どの料金プランになっても無料のままにします。有料機能にはしません。
@@ -126,6 +134,7 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="importers/kovaak.js"></script>
 <script src="profile/metric-registry.js"></script>
 <script src="profile/algorithm-config.js"></script>
@@ -133,6 +142,8 @@
 <script src="profile/re-estimation.js"></script>
 <script src="ui/ui-logic.js"></script>
 <script src="ui/samples.js"></script>
+<script src="ui/storage.js"></script>
+<script src="ui/backend.js"></script>
 <script>
 (function () {
     'use strict';
@@ -145,7 +156,27 @@
     };
     var pct = function (v) { return v === null || v === undefined ? '—' : Math.round(v * 100) + '%'; };
 
-    var state = { demo: 'imported', loggedIn: false, consent: U.defaultConsent() };
+    var B = window.LC_BACKEND, ST = window.LC_STORAGE;
+    var state = {
+        demo: 'imported', loggedIn: false, consent: U.defaultConsent(),
+        user: null, consentRows: {}, stored: [], storedLoaded: false, busy: false
+    };
+
+    // -------------------------------------------------- ログイン状態の同期
+    function syncAuth() {
+        if (!B.available()) return Promise.resolve();
+        return B.currentUser().then(function (u) {
+            state.user = u;
+            state.loggedIn = !!u;
+            if (!u) { state.consentRows = {}; return; }
+            return ST.loadConsents(B.client(), u.id).then(function (r) {
+                state.consentRows = r.active || {};
+                U.CONSENT_PURPOSES.forEach(function (p) {
+                    state.consent[p.id] = !!state.consentRows[p.id];
+                });
+            });
+        });
+    }
 
     // --------------------------------------------------------- 開発モード
     $('devToggle').addEventListener('change', function () {
@@ -170,6 +201,9 @@
         if (state.demo === 'imported') {
             return { sessions: importedSessions(), dpiAnswer: importedDpiAnswer(), synthetic: false };
         }
+        if (state.demo === 'stored') {
+            return { sessions: state.stored, dpiAnswer: { answer: 'as_is' }, synthetic: false, stored: true };
+        }
         // 人工データは DPI が確定済みという前提で作ってある
         return { sessions: S[state.demo](), dpiAnswer: { answer: 'as_is' }, synthetic: true };
     }
@@ -177,7 +211,11 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-demo]'), function (b) {
         b.addEventListener('click', function () { state.demo = this.getAttribute('data-demo'); render(); });
     });
-    $('btnLogin').addEventListener('click', function () { state.loggedIn = !state.loggedIn; render(); });
+    $('btnLogin').addEventListener('click', function () {
+        if (!B.available()) { state.loggedIn = !state.loggedIn; render(); return; }
+        if (state.loggedIn) { B.signOut().then(function () { syncAuth().then(render); }); }
+        else { location.href = B.loginUrl; }   // 既存のログイン画面へ
+    });
 
     // ------------------------------------------------------------- 描画
     function render() {
@@ -196,6 +234,7 @@
         $('emptyState').classList.toggle('hidden', !empty);
         $('main').classList.toggle('hidden', empty);
         renderConsent();
+        renderSave();
         if (empty) return;
 
         var dpi = d.synthetic
@@ -411,8 +450,20 @@
 
         Array.prototype.forEach.call(document.querySelectorAll('[data-consent]'), function (el) {
             el.addEventListener('change', function () {
-                state.consent[this.getAttribute('data-consent')] = this.checked;
+                var purpose = this.getAttribute('data-consent');
+                var on = this.checked;
+                state.consent[purpose] = on;
+
+                // ログインしている場合だけ DB へ記録する。未ログインは画面上の選択のみ。
+                if (B.available() && state.user) {
+                    var p = on
+                        ? ST.grantConsent(B.client(), state.user.id, purpose, 'v1')
+                        : ST.revokeConsent(B.client(), state.user.id, purpose);
+                    Promise.resolve(p).then(function () { return syncAuth(); }).then(render);
+                    return;
+                }
                 renderConsent();
+                renderSave();
             });
         });
 
@@ -428,10 +479,136 @@
             }).join('') + '</div></div>';
     }
 
+    // ------------------------------------------------------------- 保存
+    function renderSave() {
+        var d = currentData();
+        var sessions = d.sessions || [];
+        var gate = ST.canPersist({ loggedIn: state.loggedIn, userId: state.user && state.user.id },
+                                 state.consent);
+
+        if (!B.available()) {
+            $('saveBody').innerHTML = '<div class="note warn">保存機能に接続できません。'
+                + '取り込みと確認はこのまま使えます。</div>';
+            return;
+        }
+        if (d.synthetic) {
+            $('saveBody').innerHTML = '<div class="note">人工データは保存しません。'
+                + '「取り込んだデータ」に切り替えると保存できます。</div>';
+            return;
+        }
+        if (sessions.length === 0) {
+            $('saveBody').innerHTML = '<div class="note">保存できるデータがありません。</div>';
+            return;
+        }
+        if (!gate.allowed) {
+            $('saveBody').innerHTML = '<div class="note warn"><b>' + esc(gate.message) + '</b>'
+                + (gate.reason === 'not_logged_in'
+                    ? '<br><a href="' + esc(B.loginUrl) + '">ログインする</a>' : '')
+                + '</div>';
+            return;
+        }
+
+        $('saveBody').innerHTML =
+            '<div class="note ok"><b>' + sessions.length + ' 件を保存できます。</b><br>'
+            + '<span class="hint">元のCSVは保存しません。ハッシュと測定結果だけを保存します。</span></div>'
+            + '<div style="margin-top:12px"><button class="btn" id="btnSave"'
+            + (state.busy ? ' disabled' : '') + '>保存する</button></div>'
+            + '<div id="saveMsg" style="margin-top:10px"></div>';
+
+        var btn = $('btnSave');
+        if (btn) btn.addEventListener('click', doSave);
+    }
+
+    function doSave() {
+        var d = currentData();
+        var dpi = U.resolveDpi(d.sessions, d.dpiAnswer);
+        var consentRow = state.consentRows[ST.CONSENT.REQUIRED_FOR_STORAGE];
+        if (!consentRow) { $('saveMsg').innerHTML = '<div class="note warn">同意の記録が見つかりません。</div>'; return; }
+
+        state.busy = true; renderSave();
+        $('saveMsg').innerHTML = '<div class="hint">保存しています…</div>';
+
+        ST.loadSessions(B.client(), state.user.id).then(function (existing) {
+            var plan = ST.buildSavePlan({
+                auth: { loggedIn: true, userId: state.user.id },
+                consent: state.consent,
+                consentId: consentRow.id,
+                sessions: d.sessions,
+                existingSessions: (existing.sessions || []).map(function (s) {
+                    return { id: s.storedId, source: s.provenance.source,
+                             raw_content_hash: s.provenance.rawContentHash,
+                             parser_version: s.provenance.parserVersion };
+                }),
+                confirmedDpi: dpi.confirmedDpi,
+                dpiSource: dpi.confirmedBy,
+                contextGroup: null,
+                registry: registryMap(),
+                registryVersion: null,
+                filesReceived: d.sessions.length,
+                derivedAccuracyOf: U.derivedAccuracy,
+                cm360Of: function (s, dpiVal) {
+                    var c = U.cm360(s.context.sensScale, s.context.inGameSens, dpiVal);
+                    return c.available ? c.value : null;
+                }
+            });
+            return ST.executeSavePlan(B.client(), plan);
+        }).then(function (res) {
+            state.busy = false;
+            if (res.saved) {
+                $('saveMsg').innerHTML = '<div class="note ok"><b>'
+                    + res.sessionIds.length + ' 件を保存しました。</b>'
+                    + (res.skipped.length ? '<br><span class="hint">' + res.skipped.length
+                        + ' 件は取り込み済みだったので飛ばしました。</span>' : '')
+                    + (res.reanalysis.length ? '<br><span class="hint">'
+                        + res.reanalysis.length + ' 件は前回と違う版で読み直しました。</span>' : '')
+                    + '</div>';
+                state.storedLoaded = false;
+                return reloadStored();
+            }
+            $('saveMsg').innerHTML = '<div class="note ' + (res.reason === 'nothing_new' ? '' : 'warn') + '">'
+                + esc(res.message || '保存しませんでした。') + '</div>';
+        }).catch(function (e) {
+            state.busy = false;
+            $('saveMsg').innerHTML = '<div class="note error">保存に失敗しました: ' + esc(e.message || e) + '</div>';
+        });
+    }
+
+    function registryMap() {
+        var map = {};
+        (window.LC_METRICS.all || []).forEach(function (m) {
+            map[m.metric_key] = { unit: m.unit, metric_version: m.metric_version };
+        });
+        return map;
+    }
+
+    function reloadStored() {
+        if (!B.available() || !state.user) { state.stored = []; state.storedLoaded = true; return Promise.resolve(); }
+        return ST.loadSessions(B.client(), state.user.id).then(function (r) {
+            state.stored = r.sessions || [];
+            state.storedLoaded = true;
+            render();
+        });
+    }
+
     // --------------------------------------------------- Export / 削除
+    $('btnReload').addEventListener('click', function () {
+        if (!B.available() || !state.user) {
+            $('dataRightsMsg').innerHTML = '<div class="note warn">ログインすると保存済みを読み込めます。</div>';
+            return;
+        }
+        $('dataRightsMsg').innerHTML = '<div class="hint">読み込んでいます…</div>';
+        reloadStored().then(function () {
+            state.demo = 'stored';
+            render();
+            $('dataRightsMsg').innerHTML = '<div class="note ok">保存済み '
+                + state.stored.length + ' 件を読み込みました。</div>';
+        });
+    });
+
     $('btnExport').addEventListener('click', function () {
         var d = currentData();
-        var blob = new Blob([JSON.stringify(d.sessions, null, 2)], { type: 'application/json' });
+        var payload = ST.buildExport(d.sessions, { source: d.stored ? 'stored' : 'local' });
+        var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'long-cape-export.json';
@@ -441,9 +618,25 @@
     });
     $('btnDelete').addEventListener('click', function () {
         try { sessionStorage.removeItem('lc_sessions'); sessionStorage.removeItem('lc_dpi'); } catch (e) {}
-        $('dataRightsMsg').innerHTML = '<div class="note ok">この端末に持っていたデータを消しました。</div>';
-        state.demo = 'imported';
-        render();
+
+        if (!B.available() || !state.user) {
+            $('dataRightsMsg').innerHTML = '<div class="note ok">この端末に持っていたデータを消しました。</div>';
+            state.demo = 'imported'; render();
+            return;
+        }
+        if (!window.confirm('保存してある測定データをすべて削除します。よろしいですか？')) return;
+
+        ST.deleteAll(B.client(), state.user.id).then(function (r) {
+            if (!r.deleted) {
+                $('dataRightsMsg').innerHTML = '<div class="note error">削除に失敗しました: '
+                    + esc(r.message || '') + '</div>';
+                return;
+            }
+            state.stored = []; state.demo = 'imported';
+            render();
+            $('dataRightsMsg').innerHTML = '<div class="note ok"><b>削除しました。</b><br>'
+                + '<span class="hint">' + esc(r.note) + '</span></div>';
+        });
     });
 
     // ------------------------------------------------------------- dev
@@ -465,6 +658,14 @@
             + '<p class="hint" style="margin-top:10px">unresolved: '
             + esc(d.layers.unresolved.join(', ') || '—') + '</p>';
     }
+
+    // 起動時にログイン状態と保存済みを取りに行く。失敗しても画面は動く。
+    syncAuth().then(function () {
+        render();
+        if (state.loggedIn) reloadStored();
+    }).catch(function () { render(); });
+
+    if (B.available()) B.onAuthChange(function () { syncAuth().then(render); });
 
     render();
 })();

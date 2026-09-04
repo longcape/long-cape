@@ -49,6 +49,12 @@ jobs:
       - name: UI ロジックのテスト（G-3 prototype）
         run: node tests/ui.mjs
 
+      - name: 保存・読込・削除のテスト（G-5）
+        run: node tests/storage.mjs
+
+      - name: UI 統合テスト（G-5 / 取り込み→同意→保存→読み戻し→削除）
+        run: node tests/ui-integration.mjs
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

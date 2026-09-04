@@ -579,7 +579,7 @@
             desc: '次に来たときも続きから測定できるようになります。', required: false
         },
         {
-            id: 'anonymized_stats', label: '匿名の集計統計に使う',
+            id: 'anonymized_statistics', label: '匿名の集計統計に使う',
             desc: '個人が分からない形で、全体の傾向を出すために使います。', required: false
         },
         {
@@ -589,7 +589,7 @@
     ];
 
     function defaultConsent() {
-        return { profile_storage: false, anonymized_stats: false, model_improvement: false };
+        return { profile_storage: false, anonymized_statistics: false, model_improvement: false };
     }
 
     /**

@@ -286,11 +286,18 @@ check('同意が無ければ外部送信しない', async () => {
 check('同意は用途ごとに独立している', async () => {
     eq(U.CONSENT_PURPOSES.length, 3, '3つの用途に分かれている');
     const c = U.defaultConsent();
-    c.anonymized_stats = true;
-    eq(U.canSendExternally(c, 'anonymized_stats'), true, '同意した用途だけ通る');
+    c.anonymized_statistics = true;
+    eq(U.canSendExternally(c, 'anonymized_statistics'), true, '同意した用途だけ通る');
     eq(U.canSendExternally(c, 'profile_storage'), false, '別の用途は通らない');
     eq(U.canSendExternally(c, 'model_improvement'), false, '別の用途は通らない');
     U.CONSENT_PURPOSES.forEach((p) => eq(p.required, false, `${p.id} は必須ではない`));
+});
+
+check('同意の名前が DB の CHECK と一致している', async () => {
+    // 名前がずれていると、同意を記録した瞬間に DB の CHECK で弾かれる。
+    const DB_PURPOSES = ['profile_storage', 'anonymized_statistics', 'model_improvement'];
+    eq(U.CONSENT_PURPOSES.map((p) => p.id).sort(), DB_PURPOSES.slice().sort(), 'UI と DB で一致');
+    eq(Object.keys(U.defaultConsent()).sort(), DB_PURPOSES.slice().sort(), '既定値の鍵も一致');
 });
 
 check('ローカルプレビューに同意は要らない', async () => {
