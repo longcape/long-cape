@@ -25,6 +25,9 @@ jobs:
       - name: Metric Registry の同期確認（metrics.json ⇔ metric-registry.js）
         run: node tools/sync-metrics.mjs --check
 
+      - name: Algorithm Config の同期確認（algorithm-config.json ⇔ algorithm-config.js）
+        run: node tools/sync-algorithm-config.mjs --check
+
       - name: 感度計算の回帰テスト（JS / 8064 パターン）
         run: node tests/regression.mjs
 
@@ -36,6 +39,9 @@ jobs:
 
       - name: Registry / 再推定のテスト（Phase E.5 / F プロトタイプ）
         run: node tests/re-estimation.mjs
+
+      - name: Robustness テスト（Phase F.5 / 悪条件20ケース）
+        run: node tests/robustness.mjs
 
       - uses: actions/setup-python@v5
         with:

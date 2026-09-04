@@ -20,7 +20,7 @@ const ctx = {
 };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
-for (const f of ['profile/metric-registry.js', 'profile/aim-profile.js', 'profile/re-estimation.js']) {
+for (const f of ['profile/metric-registry.js', 'profile/algorithm-config.js', 'profile/aim-profile.js', 'profile/re-estimation.js']) {
     vm.runInContext(fs.readFileSync(path.join(REPO_ROOT, f), 'utf8'), ctx, { filename: f });
 }
 const M = ctx.LC_METRICS, P = ctx.LC_PROFILE, R = ctx.LC_REESTIMATE;
@@ -77,8 +77,8 @@ function makeSessions(levels, opts = {}) {
                 localTimestamp: `2026-08-${day}T12:00:00`,
                 tzKnown: true,
                 metrics: [
-                    { metricKey: 'manual.score', value: Math.round(score * 100) / 100, unit: 'score' },
-                    { metricKey: 'manual.accuracy', value: 60 + (rand() - 0.5) * 4, unit: 'percent' }
+                    { metricKey: 'manual.benchmark_score', value: Math.round(score * 100) / 100, unit: 'score' },
+                    { metricKey: 'manual.accuracy_transcribed', value: 60 + (rand() - 0.5) * 4, unit: 'percent' }
                 ],
                 weapons: [],
                 context: {
@@ -129,11 +129,11 @@ check('Registry: metric_key が <source>.<name> の名前空間', async () => {
 });
 
 check('Registry: concept が同じでも comparability_group が違えば比較不可', async () => {
-    // kovaak.score も manual.score も concept=performance だが別グループ
-    const a = M.get('kovaak.score'), b = M.get('manual.score');
+    // kovaak.score も manual.benchmark_score も concept=performance だが別グループ
+    const a = M.get('kovaak.score'), b = M.get('manual.benchmark_score');
     eq(a.concept, b.concept, '同じ concept であることの確認');
     ok(a.comparability_group !== b.comparability_group, 'comparability_group は別');
-    eq(M.isComparable('kovaak.score', 'manual.score'), false, '自動的に同一視しない');
+    eq(M.isComparable('kovaak.score', 'manual.benchmark_score'), false, '自動的に同一視しない');
     eq(M.isComparable('kovaak.score', 'kovaak.score'), true, '同一グループなら比較可');
 });
 
@@ -149,8 +149,8 @@ check('Registry: unrated は推奨重み 0（情報の存在と信用を分離�
     eq(M.recommendationWeight('kovaak.score'), 0, '推奨重みは0');
     eq(M.isRecommendationEligible('kovaak.score'), false, 'eligible ではない');
 
-    eq(M.resolveReliability('manual.score').status, 'rated', '手入力は rated');
-    ok(M.recommendationWeight('manual.score') > 0, '推奨重みが正');
+    eq(M.resolveReliability('manual.benchmark_score').status, 'rated', '手入力は rated');
+    ok(M.recommendationWeight('manual.benchmark_score') > 0, '推奨重みが正');
 });
 
 check('Registry: rated でない metric を recommendation_eligible にできない', async () => {
@@ -333,7 +333,7 @@ check('F: Recommendation 出力モデルの必須項目が揃う', async () => {
         ok(k in res, `${k} が存在すること`);
     }
     eq(res.algorithm_version, R.ALGORITHM_VERSION);
-    eq(res.config_version, 'test-config-1');
+    eq(res.config_version, ctx.LC_ALGO_CONFIG.config_version, 'config_version は設定ファイル由来');
     ok(res.evidence_count > 0);
     ok(res.source_mix.manual > 0, 'source_mix');
 });

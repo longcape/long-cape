@@ -23,28 +23,20 @@
 
     var ALGORITHM_VERSION = '0.1.0';
 
-    var DEFAULT_CONFIG = {
-        // 推奨を出す最低条件
-        minSensitivityLevels: 3,       // 比較には最低3水準
-        minSessionsPerLevel: 2,
-        minTotalSessions: 6,
-
-        // 合成スコアの重み（performance だけで決めない）
-        factorWeights: {
-            performance: 0.45,
-            stability: 0.25,
-            repeatability: 0.20,
-            recency: 0.10
-        },
-
-        // 推奨レンジ: 最良水準のスコアからこの割合以内を「実用的に同等」とみなす
-        rangeTolerance: 0.05,
-
-        recencyHalfLifeDays: 30
-    };
-
-    function cfg(config, key) {
-        return (config && config[key] !== undefined) ? config[key] : DEFAULT_CONFIG[key];
+    /**
+     * 設定は algorithm-config.json（→ LC_ALGO_CONFIG）から取る。
+     * コードへ固定しない。呼び出し側が config を渡せば上書きできる。
+     */
+    function baseConfig(config) {
+        if (config) return config;
+        if (root.LC_ALGO_CONFIG) return root.LC_ALGO_CONFIG;
+        throw new Error('algorithm config が読み込まれていません');
+    }
+    function gate(config, key) { return baseConfig(config).gates[key]; }
+    function weights(config) {
+        var w = baseConfig(config).factorWeights, out = {};
+        for (var k in w) if (w.hasOwnProperty(k) && k.charAt(0) !== '_') out[k] = w[k];
+        return out;
     }
 
     function mean(a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : null; }
@@ -54,6 +46,24 @@
         return Math.sqrt(a.reduce(function (s, v) { return s + (v - m) * (v - m); }, 0) / (a.length - 1));
     }
     function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+
+    /** 中央値。単一の外れ値に引きずられないようにするため平均の代わりに使う。 */
+    function median(a) {
+        if (!a.length) return null;
+        var v = a.slice().sort(function (x, y) { return x - y; });
+        var m = Math.floor(v.length / 2);
+        return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+    }
+
+    /** 中央絶対偏差を用いた外れ値の件数。除外はせず、件数を報告する。 */
+    function outlierCount(a) {
+        if (a.length < 4) return 0;
+        var med = median(a);
+        var devs = a.map(function (v) { return Math.abs(v - med); });
+        var mad = median(devs);
+        if (!mad) return 0;
+        return a.filter(function (v) { return Math.abs(v - med) / (1.4826 * mad) > 3.5; }).length;
+    }
 
     function parseTs(ts) {
         if (!ts) return null;
@@ -130,16 +140,26 @@
         var factors = {};
 
         // performance: 主指標の平均（水準間で相対化するのは呼び出し側）
+        // 単一の外れ値で推奨が動かないよう、代表値は **中央値** を使う。
+        // 平均も参考として残すが、合成スコアには中央値を用いる。
         factors.performance = values.length
-            ? { available: true, value: mean(values), n: values.length, metricGroup: primaryKey }
+            ? {
+                available: true,
+                value: median(values),          // 合成に使う代表値
+                statistic: 'median',
+                mean: mean(values),             // 参考
+                outlierCount: outlierCount(values),
+                n: values.length,
+                metricGroup: primaryKey
+            }
             : { available: false, reason: 'no_usable_metric_values' };
 
         // stability: 変動係数の逆。2件未満では算出しない
         var sd = stdev(values);
-        var mn = mean(values);
-        factors.stability = (sd !== null && mn) // mn が 0 でない
-            ? { available: true, cv: sd / Math.abs(mn), n: values.length }
-            : { available: false, reason: values.length < 2 ? 'need_at_least_2_observations' : 'mean_is_zero' };
+        var center = median(values);
+        factors.stability = (sd !== null && center) // center が 0 でない
+            ? { available: true, cv: sd / Math.abs(center), center: 'median', n: values.length }
+            : { available: false, reason: values.length < 2 ? 'need_at_least_2_observations' : 'center_is_zero' };
 
         // repeatability: セッション間の再現性。セッションが2件未満では算出しない
         var perSession = {};
@@ -162,7 +182,7 @@
             var ageDays = Math.max(0, (nowTs - latest) / 86400000);
             factors.recency = {
                 available: true,
-                value: clamp01(Math.pow(0.5, ageDays / cfg(config, 'recencyHalfLifeDays'))),
+                value: clamp01(Math.pow(0.5, ageDays / baseConfig(config).recency.halfLifeDays)),
                 ageDays: Math.round(ageDays * 10) / 10
             };
         } else {
@@ -177,6 +197,7 @@
         return {
             cm360: group.cm360,
             origin: group.origin,
+            sessionIds: Object.keys(ids),
             sessionCount: group.sessions.length,
             observationCount: values.length,
             sourceTypes: (function () {
@@ -205,10 +226,17 @@
         var pMin = Math.min.apply(null, perfVals), pMax = Math.max.apply(null, perfVals);
         var span = pMax - pMin;
 
-        var w = cfg(config, 'factorWeights');
+        var w = weights(config);
+        var norm = baseConfig(config).normalization;
 
         return levels.map(function (l) {
             var parts = {}, used = 0, total = 0;
+
+            // 性能を算出できない水準は比較対象にしない。
+            // recency だけで順位が付いてしまうのを防ぐ。
+            if (!l.factors.performance.available) {
+                return { cm360: l.cm360, composite: null, excluded: 'no_performance_data', detail: l };
+            }
 
             if (l.factors.performance.available) {
                 parts.performance = span > 0 ? (l.factors.performance.value - pMin) / span : 1;
@@ -216,11 +244,11 @@
             }
             if (l.factors.stability.available) {
                 // 変動係数が小さいほど良い。0.30 を上限として正規化
-                parts.stability = clamp01(1 - (l.factors.stability.cv / 0.30));
+                parts.stability = clamp01(1 - (l.factors.stability.cv / norm.stabilityCvCeiling));
                 total += w.stability * parts.stability; used += w.stability;
             }
             if (l.factors.repeatability.available) {
-                parts.repeatability = clamp01(1 - (l.factors.repeatability.cv / 0.30));
+                parts.repeatability = clamp01(1 - (l.factors.repeatability.cv / norm.repeatabilityCvCeiling));
                 total += w.repeatability * parts.repeatability; used += w.repeatability;
             }
             if (l.factors.recency.available) {
@@ -277,12 +305,12 @@
                 excluded: sel.excludedCounts
             });
         }
-        if (levels.length < cfg(config, 'minSensitivityLevels')) {
+        if (levels.length < gate(config, 'minSensitivityLevels')) {
             insufficient.push({
                 code: 'insufficient_sensitivity_levels',
                 message: '検証済みの感度水準が ' + levels.length + ' しかありません（最低 '
-                    + cfg(config, 'minSensitivityLevels') + ' 水準が必要）',
-                have: levels.length, need: cfg(config, 'minSensitivityLevels')
+                    + gate(config, 'minSensitivityLevels') + ' 水準が必要）',
+                have: levels.length, need: gate(config, 'minSensitivityLevels')
             });
         }
         if (grouped.unknownSessionCount > 0) {
@@ -293,25 +321,25 @@
             });
         }
         var totalSessions = levels.reduce(function (s, l) { return s + l.sessionCount; }, 0);
-        if (totalSessions < cfg(config, 'minTotalSessions')) {
+        if (totalSessions < gate(config, 'minTotalSessions')) {
             insufficient.push({
                 code: 'insufficient_sessions',
                 message: '対象セッションが ' + totalSessions + ' 件しかありません（最低 '
-                    + cfg(config, 'minTotalSessions') + ' 件）'
+                    + gate(config, 'minTotalSessions') + ' 件）'
             });
         }
-        var thinLevels = levels.filter(function (l) { return l.sessionCount < cfg(config, 'minSessionsPerLevel'); });
+        var thinLevels = levels.filter(function (l) { return l.sessionCount < gate(config, 'minSessionsPerLevel'); });
         if (thinLevels.length > 0) {
             insufficient.push({
                 code: 'thin_levels',
                 message: thinLevels.map(function (l) { return l.cm360 + 'cm'; }).join(', ')
-                    + ' はセッション数が足りません（各水準に最低 ' + cfg(config, 'minSessionsPerLevel') + ' 件）'
+                    + ' はセッション数が足りません（各水準に最低 ' + gate(config, 'minSessionsPerLevel') + ' 件）'
             });
         }
 
         var base = {
             algorithm_version: ALGORITHM_VERSION,
-            config_version: input.configVersion || null,
+            config_version: baseConfig(config).config_version || null,
             generated_at: input.now || null,
             evidence_count: sel.usable.length,
             evidence_excluded: sel.excludedCounts,
@@ -331,6 +359,9 @@
                 recommended_cm360: null,
                 recommended_range: null,
                 confidence: null,
+                sensitivity_coverage: buildSensitivityCoverage(levels, grouped, null, null),
+                edge_optimum: null,
+                next_best_test: suggestNextTest(levels, [], null, config),
                 insufficient_evidence: insufficient,
                 change_reason: null,
                 message: '証拠が不足しているため推奨を出していません。'
@@ -340,14 +371,26 @@
         // ---- 合成して最良水準とレンジを決める
         var ranked = scoreLevels(levels, config);
         var best = ranked[0];
-        var tol = cfg(config, 'rangeTolerance');
+
+        // rangeCompositeScoreTolerance は「合成スコアの絶対差」。
+        // 合成スコアは0〜1に正規化済みなので、これは感度(cm)の割合でも生スコアの割合でもない。
+        var tol = baseConfig(config).range.rangeCompositeScoreTolerance;
         var withinTol = ranked.filter(function (r) { return r.composite >= best.composite - tol; })
             .map(function (r) { return r.cm360; }).sort(function (a, b) { return a - b; });
 
         var range = [withinTol[0], withinTol[withinTol.length - 1]];
 
+        // ---- 曲線端の検出
+        var edge = detectEdgeOptimum(levels, best, config);
+
+        // ---- source 間の矛盾
+        var conflict = detectSourceConflict(levels, sel.usable, config);
+
+        // ---- 感度被覆（confidence とは別概念として独立させる）
+        var coverage = buildSensitivityCoverage(levels, grouped, best, edge);
+
         // ---- confidence（推奨に対するもの。Profile completeness とは別概念）
-        var conf = buildRecommendationConfidence(levels, ranked, sel, config);
+        var conf = buildRecommendationConfidence(levels, ranked, sel, config, edge, conflict);
 
         // ---- 前回との差分理由
         var change = null;
@@ -364,7 +407,12 @@
             status: 'issued',
             recommended_cm360: best.cm360,
             recommended_range: range,
+            range_definition: baseConfig(config).range._definition,
             confidence: conf,
+            sensitivity_coverage: coverage,
+            edge_optimum: edge,
+            source_conflict: conflict,
+            next_best_test: suggestNextTest(levels, ranked, edge, config),
             ranked: ranked.map(function (r) {
                 return { cm360: r.cm360, composite: Math.round(r.composite * 1000) / 1000, parts: r.parts, usedWeight: r.usedWeight };
             }),
@@ -373,7 +421,7 @@
         });
     }
 
-    function buildRecommendationConfidence(levels, ranked, sel, config) {
+    function buildRecommendationConfidence(levels, ranked, sel, config, edge, conflict) {
         var sessionTotal = levels.reduce(function (s, l) { return s + l.sessionCount; }, 0);
         var sub = {
             levelCoverage: clamp01(levels.length / 5),
@@ -396,7 +444,20 @@
         var value = clamp01(0.35 * sub.levelCoverage + 0.30 * sub.volume
             + 0.20 * sub.separation + 0.15 * sub.factorCoverage);
 
+        var penalties = [];
+        if (edge && edge.detected) {
+            var f = baseConfig(config).edgeOptimum.confidencePenalty;
+            value = clamp01(value * f);
+            penalties.push({ code: 'edge_optimum', factor: f, side: edge.side });
+        }
+        if (conflict && conflict.detected) {
+            value = clamp01(value * 0.75);
+            penalties.push({ code: 'source_conflict', factor: 0.75, sourceTypes: conflict.sourceTypes });
+        }
+
         var caveats = [];
+        if (edge && edge.detected) caveats.push(edge.message);
+        if (conflict && conflict.detected) caveats.push(conflict.message);
         if (sub.separation < 0.2) caveats.push('上位2水準の差が小さく、実質的に同等の可能性があります');
         if (sub.factorCoverage < 0.6) caveats.push('疲労・ピーク性能・長時間適性のデータがありません');
         if (Object.keys(sel.excludedCounts).length > 0) {
@@ -407,8 +468,189 @@
             kind: 'recommendation_confidence',
             value: Math.round(value * 1000) / 1000,
             subscores: sub,
+            penalties: penalties,
             caveats: caveats,
             note: 'Profile completeness とは別概念。推奨そのものに対する信頼度。'
+        };
+    }
+
+    /**
+     * source_type ごとに最良水準を求め、食い違いを検出する。
+     * 「source A と source B で結果が逆」を黙って平均せず、矛盾として報告する。
+     */
+    function detectSourceConflict(levels, usableEvidence, config) {
+        var bySource = {};
+        usableEvidence.forEach(function (e) {
+            if (!e.sourceType) return;
+            bySource[e.sourceType] = bySource[e.sourceType] || {};
+        });
+        var types = Object.keys(bySource);
+        if (types.length < 2) {
+            return { detected: false, reason: 'single_source_type', sourceTypes: types };
+        }
+
+        // source_type ごとに水準別の中央値を出し、最良水準を決める
+        var bestBySource = {};
+        types.forEach(function (t) {
+            var best = null;
+            levels.forEach(function (l) {
+                var vals = usableEvidence.filter(function (e) {
+                    return e.sourceType === t
+                        && l.sessionIds && l.sessionIds.indexOf(e.sessionId) >= 0
+                        && typeof e.value === 'number';
+                }).map(function (e) { return e.value; });
+                if (!vals.length) return;
+                var m = median(vals);
+                if (best === null || m > best.value) best = { cm360: l.cm360, value: m };
+            });
+            if (best) bestBySource[t] = best.cm360;
+        });
+
+        var picks = Object.keys(bestBySource).map(function (k) { return bestBySource[k]; });
+        var uniq = picks.filter(function (v, i) { return picks.indexOf(v) === i; });
+
+        return {
+            detected: uniq.length > 1,
+            sourceTypes: types,
+            bestBySourceType: bestBySource,
+            message: uniq.length > 1
+                ? 'データ元によって最良の感度が食い違っています（' +
+                  Object.keys(bestBySource).map(function (k) { return k + '→' + bestBySource[k] + 'cm'; }).join(', ') +
+                  '）。測定条件の違いを確認してください。'
+                : null
+        };
+    }
+
+    /**
+     * 曲線端の検出。
+     * 「測定した中では30cmが最高だった」と「真の最適が30cmである」を同一視しない。
+     * 最良点が測定範囲の端にあるなら、真の最適は範囲外かもしれない。
+     */
+    function detectEdgeOptimum(levels, best, config) {
+        if (!best || levels.length < 2) {
+            return { detected: false, reason: 'not_enough_levels' };
+        }
+        var cms = levels.map(function (l) { return l.cm360; }).sort(function (a, b) { return a - b; });
+        var lo = cms[0], hi = cms[cms.length - 1];
+
+        if (best.cm360 !== lo && best.cm360 !== hi) {
+            return { detected: false, testedRange: [lo, hi], bestInside: true };
+        }
+
+        var side = best.cm360 === lo ? 'low' : 'high';
+        // 測定間隔の中央値ぶんだけ外側を提案する
+        var gaps = [];
+        for (var i = 1; i < cms.length; i++) gaps.push(cms[i] - cms[i - 1]);
+        gaps.sort(function (a, b) { return a - b; });
+        var step = gaps.length ? gaps[Math.floor(gaps.length / 2)] : null;
+        var outward = step === null ? null
+            : (side === 'low' ? Math.round((lo - step) * 100) / 100 : Math.round((hi + step) * 100) / 100);
+
+        return {
+            detected: true,
+            side: side,
+            testedRange: [lo, hi],
+            bestAtEdge: best.cm360,
+            suggestedOutward: baseConfig(config).edgeOptimum.suggestOutwardStep ? outward : null,
+            message: '最良点が測定範囲の' + (side === 'low' ? '下端' : '上端')
+                + '（' + best.cm360 + 'cm）にあります。真の最適が測定範囲の外にある可能性があるため、'
+                + (outward !== null ? outward + 'cm 付近も試す必要があります。' : 'さらに外側も試す必要があります。')
+        };
+    }
+
+    /**
+     * 感度被覆。confidence とは別概念として独立して返す。
+     */
+    function buildSensitivityCoverage(levels, grouped, best, edge) {
+        var cms = levels.map(function (l) { return l.cm360; }).sort(function (a, b) { return a - b; });
+        var gaps = [];
+        for (var i = 1; i < cms.length; i++) gaps.push(Math.round((cms[i] - cms[i - 1]) * 100) / 100);
+
+        var balance = null;
+        if (best && cms.length > 1) {
+            var below = cms.filter(function (c) { return c < best.cm360; }).length;
+            var above = cms.filter(function (c) { return c > best.cm360; }).length;
+            balance = {
+                below: below, above: above,
+                skewed: (below === 0 || above === 0),
+                note: (below === 0 || above === 0)
+                    ? '最良点の片側にしか測定点がありません'
+                    : null
+            };
+        }
+
+        return {
+            kind: 'sensitivity_coverage',
+            levelCount: levels.length,
+            testedRange: cms.length ? [cms[0], cms[cms.length - 1]] : null,
+            levels: cms,
+            gaps: gaps,
+            unverifiedSessionCount: grouped ? grouped.unknownSessionCount : null,
+            balanceAroundBest: balance,
+            edgeOptimum: edge ? edge.detected : null
+        };
+    }
+
+    /**
+     * Next Best Test / Active Measurement（設計と最小実装）。
+     * 「次にどの感度を何回試せば不確実性を最も減らせるか」を返す。
+     * 現時点では定量的な不確実性減少量は算出せず、根拠を qualitative として返す。
+     */
+    function suggestNextTest(levels, ranked, edge, config) {
+        var conf = baseConfig(config).nextBestTest;
+        if (!conf.enabled) return null;
+
+        var n = conf.defaultRecommendedSessions;
+
+        // 水準が足りない → まず水準を増やす
+        if (levels.length < gate(config, 'minSensitivityLevels')) {
+            var cms0 = levels.map(function (l) { return l.cm360; }).sort(function (a, b) { return a - b; });
+            var base0 = cms0.length ? cms0[cms0.length - 1] : null;
+            return {
+                next_test_cm360: base0 === null ? null : Math.round((base0 + 2) * 100) / 100,
+                recommended_sessions: n,
+                reason: 'increase_level_count',
+                detail: '比較できる感度水準が ' + levels.length + ' しかありません。まず水準を増やす必要があります。',
+                uncertainty_reduction: 'qualitative_only'
+            };
+        }
+
+        // 端に最良点 → 外側を試す
+        if (edge && edge.detected && edge.suggestedOutward !== null) {
+            return {
+                next_test_cm360: edge.suggestedOutward,
+                recommended_sessions: n,
+                reason: 'explore_beyond_edge',
+                detail: edge.message,
+                uncertainty_reduction: 'qualitative_only'
+            };
+        }
+
+        // 上位2水準が僅差 → その中間を試して分離する
+        if (ranked.length >= 2) {
+            var gapTop = ranked[0].composite - ranked[1].composite;
+            if (gapTop <= conf.closeContestCompositeGap) {
+                var a = ranked[0].cm360, b = ranked[1].cm360;
+                var mid = Math.round(((a + b) / 2) * 100) / 100;
+                return {
+                    next_test_cm360: mid,
+                    recommended_sessions: n,
+                    reason: 'distinguish_' + Math.min(a, b) + '_vs_' + Math.max(a, b),
+                    detail: a + 'cm と ' + b + 'cm の合成スコア差が ' + Math.round(gapTop * 1000) / 1000
+                        + ' しかありません。中間の ' + mid + 'cm を試すと切り分けられます。',
+                    uncertainty_reduction: 'qualitative_only'
+                };
+            }
+        }
+
+        // それ以外 → 上位水準のうちセッション数が最も少ないものを補強
+        var thin = levels.slice().sort(function (x, y) { return x.sessionCount - y.sessionCount; })[0];
+        return {
+            next_test_cm360: thin ? thin.cm360 : null,
+            recommended_sessions: n,
+            reason: 'reinforce_thin_level',
+            detail: thin ? (thin.cm360 + 'cm のセッションが ' + thin.sessionCount + ' 件と少ないため補強します。') : null,
+            uncertainty_reduction: 'qualitative_only'
         };
     }
 
@@ -438,11 +680,16 @@
 
     root.LC_REESTIMATE = {
         ALGORITHM_VERSION: ALGORITHM_VERSION,
-        DEFAULT_CONFIG: DEFAULT_CONFIG,
+
         selectUsableEvidence: selectUsableEvidence,
         groupByLevel: groupByLevel,
         computeFactors: computeFactors,
         scoreLevels: scoreLevels,
+        detectEdgeOptimum: detectEdgeOptimum,
+        detectSourceConflict: detectSourceConflict,
+        median: median,
+        buildSensitivityCoverage: buildSensitivityCoverage,
+        suggestNextTest: suggestNextTest,
         buildChangeReason: buildChangeReason,
         reestimate: reestimate
     };

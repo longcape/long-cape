@@ -21,7 +21,7 @@
 
 /* METRICS:BEGIN */
 const METRIC_REGISTRY = {
-    registryVersion: "1.0.0",
+    registryVersion: "1.1.0",
     metrics: [
     {"metric_key":"kovaak.score","source":"kovaak","concept":"performance","category":"session","unit":"score","data_type":"number","higher_is_better":true,"layer":"normalized","metric_version":"1","comparability_group":"kovaak_score","recommendation_eligible":false,"reliability_policy":{"status":"unrated","reason":"real_export_not_validated","note":"実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"},"normalization_method":"none","description":"KovaaKのシナリオ内スコア。シナリオ間で比較可能な絶対値ではない。"},
     {"metric_key":"kovaak.kills","source":"kovaak","concept":"performance","category":"session","unit":"count","data_type":"integer","higher_is_better":true,"layer":"normalized","metric_version":"1","comparability_group":"kovaak_kills","recommendation_eligible":false,"reliability_policy":{"status":"unrated","reason":"real_export_not_validated","note":"実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"},"normalization_method":"none","description":"ラン内のキル数。"},
@@ -41,8 +41,14 @@ const METRIC_REGISTRY = {
     {"metric_key":"kovaak.weapon.hits","source":"kovaak","concept":"performance","category":"weapon","unit":"count","data_type":"integer","higher_is_better":true,"layer":"normalized","metric_version":"1","comparability_group":"kovaak_weapon_hits","recommendation_eligible":false,"reliability_policy":{"status":"unrated","reason":"real_export_not_validated","note":"実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"},"normalization_method":"none","description":"武器ごとの命中数。"},
     {"metric_key":"kovaak.weapon.damage_done","source":"kovaak","concept":"performance","category":"weapon","unit":"damage","data_type":"number","higher_is_better":true,"layer":"normalized","metric_version":"1","comparability_group":"kovaak_weapon_damage_done","recommendation_eligible":false,"reliability_policy":{"status":"unrated","reason":"real_export_not_validated","note":"実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"},"normalization_method":"none","description":"武器ごとの与ダメージ。"},
     {"metric_key":"kovaak.weapon.damage_possible","source":"kovaak","concept":"context","category":"weapon","unit":"damage","data_type":"number","higher_is_better":null,"layer":"normalized","metric_version":"1","comparability_group":"kovaak_weapon_damage_possible","recommendation_eligible":false,"reliability_policy":{"status":"unrated","reason":"real_export_not_validated","note":"実KovaaKファイルでの照合が未了。検証まで本番Recommendationの重みは0として扱う。"},"normalization_method":"none","description":"武器ごとの最大可能ダメージ。"},
-    {"metric_key":"manual.score","source":"manual","concept":"performance","category":"session","unit":"score","data_type":"number","higher_is_better":true,"layer":"normalized","metric_version":"1","comparability_group":"manual_benchmark_score","recommendation_eligible":true,"reliability_policy":{"status":"rated","value":0.5,"basis":"self_reported","rated_at":"2026-09-04","note":"本人申告。測定条件が揃っている前提で中程度の信頼度を与える。"},"normalization_method":"none","description":"ユーザーが明示入力したベンチマークスコア。測定条件（cm/360）が確定しているものだけを対象とする。"},
-    {"metric_key":"manual.accuracy","source":"manual","concept":"accuracy","category":"session","unit":"percent","data_type":"number","higher_is_better":true,"layer":"normalized","metric_version":"1","comparability_group":"manual_benchmark_accuracy","recommendation_eligible":true,"reliability_policy":{"status":"rated","value":0.5,"basis":"self_reported","rated_at":"2026-09-04"},"normalization_method":"percent_0_100","description":"ユーザーが明示入力した命中率。"}
+    {"metric_key":"manual.dpi","source":"manual","concept":"measurement_condition","category":"session","unit":"dpi","data_type":"integer","higher_is_better":null,"layer":"normalized","metric_version":"1","comparability_group":"condition_dpi","recommendation_eligible":false,"reliability_policy":{"status":"rated","value":0.9,"collection_method":"device_setting_readback","rating_scope":"metric_source_collection_method","rated_at":"2026-09-04","basis":"マウス設定の読み取り。取り違えは起こりうるが記憶依存ではない。","note":"測定条件であり性能指標ではないため recommendation_eligible は false。条件の同定に使う。"},"normalization_method":"none","description":"ユーザーが明示入力したマウスDPI。測定条件であって性能指標ではない。"},
+    {"metric_key":"manual.cm360","source":"manual","concept":"measurement_condition","category":"session","unit":"cm_per_360","data_type":"number","higher_is_better":null,"layer":"normalized","metric_version":"1","comparability_group":"condition_cm360","recommendation_eligible":false,"reliability_policy":{"status":"rated","value":0.9,"collection_method":"explicit_user_input","rating_scope":"metric_source_collection_method","rated_at":"2026-09-04","basis":"本人が意図して設定した値。感度水準の同定に使える事実情報。"},"normalization_method":"none","description":"ユーザーが明示入力した cm/360。感度水準の判定に使ってよい系統。"},
+    {"metric_key":"manual.in_game_sens","source":"manual","concept":"measurement_condition","category":"session","unit":"sens","data_type":"number","higher_is_better":null,"layer":"normalized","metric_version":"1","comparability_group":"condition_in_game_sens","recommendation_eligible":false,"reliability_policy":{"status":"rated","value":0.85,"collection_method":"device_setting_readback","rating_scope":"metric_source_collection_method","rated_at":"2026-09-04","basis":"ゲーム設定画面からの読み取り。タイトルごとの単位差に注意が要る。"},"normalization_method":"none","description":"ユーザーが明示入力したゲーム内感度。"},
+    {"metric_key":"manual.input_device","source":"manual","concept":"measurement_condition","category":"session","unit":"label","data_type":"string","higher_is_better":null,"layer":"normalized","metric_version":"1","comparability_group":"condition_input_device","recommendation_eligible":false,"reliability_policy":{"status":"rated","value":0.95,"collection_method":"explicit_user_input","rating_scope":"metric_source_collection_method","rated_at":"2026-09-04","basis":"取り違えの余地がほぼ無い。"},"normalization_method":"none","description":"入力デバイス（マウス／PAD等）。PADは別モデルとするため必須の条件。"},
+    {"metric_key":"manual.benchmark_score","source":"manual","concept":"performance","category":"session","unit":"score","data_type":"number","higher_is_better":true,"layer":"normalized","metric_version":"1","comparability_group":"manual_benchmark_score","recommendation_eligible":true,"reliability_policy":{"status":"rated","value":0.55,"collection_method":"screen_transcribed","rating_scope":"metric_source_collection_method","rated_at":"2026-09-04","basis":"画面表示の書き写し。転記ミスはありうるが記憶依存ではない。","by_collection_method":{"screen_transcribed":0.55,"recalled":0.2}},"normalization_method":"none","description":"画面に表示されたベンチマークスコアをユーザーが書き写したもの。"},
+    {"metric_key":"manual.accuracy_transcribed","source":"manual","concept":"accuracy","category":"session","unit":"percent","data_type":"number","higher_is_better":true,"layer":"normalized","metric_version":"1","comparability_group":"manual_accuracy","recommendation_eligible":true,"reliability_policy":{"status":"rated","value":0.5,"collection_method":"screen_transcribed","rating_scope":"metric_source_collection_method","rated_at":"2026-09-04","basis":"書き写し。丸めや読み違いが混じりやすい。","by_collection_method":{"screen_transcribed":0.5,"recalled":0.15}},"normalization_method":"percent_0_100","description":"画面表示の命中率をユーザーが書き写したもの。"},
+    {"metric_key":"manual.recalled_score","source":"manual","concept":"performance","category":"session","unit":"score","data_type":"number","higher_is_better":true,"layer":"normalized","metric_version":"1","comparability_group":"manual_benchmark_score","recommendation_eligible":false,"reliability_policy":{"status":"rated","value":0.2,"collection_method":"recalled","rating_scope":"metric_source_collection_method","rated_at":"2026-09-04","basis":"記憶に頼った申告。良かった回だけ覚えている自己選択バイアスが乗る。","note":"同じ manual でも書き写しとは別扱い。既定では推奨に使わない。"},"normalization_method":"none","description":"記憶に基づくスコア申告。"},
+    {"metric_key":"manual.self_rating","source":"manual","concept":"subjective","category":"session","unit":"rating","data_type":"integer","higher_is_better":true,"layer":"normalized","metric_version":"1","comparability_group":"manual_self_rating","recommendation_eligible":false,"reliability_policy":{"status":"rated","value":0.15,"collection_method":"subjective_rating","rating_scope":"metric_source_collection_method","rated_at":"2026-09-04","basis":"主観。客観測定値と別管理し、推奨の重みには使わない。"},"normalization_method":"none","description":"本人の主観的なしっくり度。客観測定値とは別に管理する。"}
     ]
 };
 /* METRICS:END */
@@ -74,34 +80,65 @@ const METRIC_REGISTRY = {
      * **汎用の既定値を返さない。** 未登録・未評価は unrated を返す。
      * @returns {{status:'rated'|'unrated', value:number|null, reason:string|null}}
      */
-    function resolveReliability(metricKey) {
+    function resolveReliability(metricKey, collectionMethod) {
         var m = get(metricKey);
         if (!m) {
-            return { status: 'unrated', value: null, reason: 'metric_not_registered' };
+            return {
+                status: 'unrated', value: null, reason: 'metric_not_registered',
+                collectionMethod: collectionMethod || null, ratingScope: null
+            };
         }
         var p = m.reliability_policy || {};
-        if (p.status === 'rated' && typeof p.value === 'number') {
-            return { status: 'rated', value: p.value, reason: p.basis || null };
+        if (p.status !== 'rated' || typeof p.value !== 'number') {
+            return {
+                status: 'unrated', value: null, reason: p.reason || 'not_rated',
+                collectionMethod: collectionMethod || p.collection_method || null,
+                ratingScope: p.rating_scope || null
+            };
         }
-        return { status: 'unrated', value: null, reason: p.reason || 'not_rated' };
+
+        // metric × source × collection_method で解決する。
+        // source が同じというだけで同じ信頼度を与えない。
+        var method = collectionMethod || p.collection_method || null;
+        var value = p.value;
+        var resolvedBy = 'metric_default';
+
+        if (collectionMethod && p.by_collection_method
+            && typeof p.by_collection_method[collectionMethod] === 'number') {
+            value = p.by_collection_method[collectionMethod];
+            resolvedBy = 'collection_method';
+        } else if (collectionMethod && p.collection_method && collectionMethod !== p.collection_method) {
+            // 登録されていない収集方法。推測で既定値を当てはめない。
+            return {
+                status: 'unrated', value: null,
+                reason: 'collection_method_not_rated:' + collectionMethod,
+                collectionMethod: collectionMethod, ratingScope: p.rating_scope || null
+            };
+        }
+
+        return {
+            status: 'rated', value: value, reason: p.basis || null,
+            collectionMethod: method, ratingScope: p.rating_scope || null,
+            resolvedBy: resolvedBy
+        };
     }
 
     /** Recommendation に使ってよいか。未登録は false。 */
-    function isRecommendationEligible(metricKey) {
+    function isRecommendationEligible(metricKey, collectionMethod) {
         var m = get(metricKey);
         if (!m) return false;
         if (m.recommendation_eligible !== true) return false;
         // rated でなければ eligible にしない（二重の安全策）
-        return resolveReliability(metricKey).status === 'rated';
+        return resolveReliability(metricKey, collectionMethod).status === 'rated';
     }
 
     /**
      * 推奨計算に使う重み。
      * **unrated は 0。** 「情報が存在する」ことと「推奨計算に信用して使える」ことを分ける。
      */
-    function recommendationWeight(metricKey) {
-        if (!isRecommendationEligible(metricKey)) return 0;
-        var r = resolveReliability(metricKey);
+    function recommendationWeight(metricKey, collectionMethod) {
+        if (!isRecommendationEligible(metricKey, collectionMethod)) return 0;
+        var r = resolveReliability(metricKey, collectionMethod);
         return r.status === 'rated' ? r.value : 0;
     }
 
