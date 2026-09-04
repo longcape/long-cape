@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>データ取り込み — ロングケープの定理 Lab</title>
+<link rel="stylesheet" href="ui/lab.css">
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="lab-nav">
+    <div class="brand">ロングケープの定理<small>FPS Performance Lab</small></div>
+    <span class="spacer"></span>
+    <a class="navlink on" href="import.html">取り込み</a>
+    <a class="navlink" href="profile.html">プロフィール</a>
+    <a class="navlink" href="index.html">かんたん診断</a>
+    <label class="devbar"><input type="checkbox" id="devToggle"> 開発モード</label>
+  </nav>
+
+  <h1>測定データを取り込む</h1>
+  <p class="lede">
+    KovaaK の記録ファイル（CSV）を読み込みます。<span style="color:var(--ok)">ファイルはこの端末の中だけで処理し、送信しません。</span>
+    ログインは不要です。
+  </p>
+
+  <!-- 1. ファイル入力 --------------------------------------------------- -->
+  <div class="card">
+    <h2><span class="step">1</span>ファイルを選ぶ</h2>
+    <div class="drop" id="drop">
+      <div class="big">ここにファイルをドラッグ＆ドロップ</div>
+      <div class="sub">またはクリックして選択（複数まとめて選べます）</div>
+      <div class="privacy">送信しません。この画面の中だけで読み取ります。</div>
+      <input type="file" id="file" accept=".csv" multiple hidden>
+    </div>
+    <p class="hint" style="margin-top:10px">
+      置き場所の例: <span class="mono">…\steamapps\common\FPSAimTrainer\FPSAimTrainer\stats\</span>
+    </p>
+    <div id="sampleRow" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+      <button class="btn ghost sm" id="btnSample">サンプルで試す</button>
+      <button class="btn quiet sm" id="btnSampleMixed">適応型を含むサンプル</button>
+      <button class="btn quiet sm" id="btnSampleBad">未対応ファイルを含むサンプル</button>
+      <button class="btn quiet sm" id="btnClear">クリア</button>
+    </div>
+  </div>
+
+  <!-- 未選択状態 -->
+  <div class="card" id="emptyState">
+    <div class="note">
+      <b>まだファイルがありません。</b><br>
+      読み込むと、シナリオ・日時・DPI・感度・スコアなどをこの場で確認できます。
+    </div>
+  </div>
+
+  <!-- 2. 読み込み結果 --------------------------------------------------- -->
+  <div class="card hidden" id="summaryCard">
+    <h2><span class="step">2</span>読み込み結果</h2>
+    <div class="kpis" id="kpis"></div>
+    <div class="legend" style="margin-top:14px" id="legend"></div>
+    <div id="formatNote" class="stack" style="margin-top:14px"></div>
+  </div>
+
+  <!-- 3. DPI 確認 -------------------------------------------------------- -->
+  <div class="card hidden" id="dpiCard">
+    <h2><span class="step">3</span>マウスのDPIを確認</h2>
+    <div id="dpiBody"></div>
+  </div>
+
+  <!-- 4. セッション一覧 --------------------------------------------------- -->
+  <div class="card hidden" id="rowsCard">
+    <h2><span class="step">4</span>読み取った内容</h2>
+    <div class="tablewrap">
+      <table class="data" id="rowsTable"></table>
+    </div>
+    <div id="excludedNote" class="stack" style="margin-top:14px"></div>
+    <details class="why" id="warnBox">
+      <summary>注意メッセージを見る</summary>
+      <div class="body" id="warnBody"></div>
+    </details>
+  </div>
+
+  <!-- 開発モード ---------------------------------------------------------- -->
+  <div class="card dev-only" id="devCard">
+    <h2><span class="devtag">dev</span>内部の内訳</h2>
+    <p class="hint" style="margin-bottom:12px">production の画面では表示しません。</p>
+    <div id="devBody"></div>
+  </div>
+
+  <div class="card hidden" id="nextCard">
+    <h2>次へ</h2>
+    <p class="hint" style="margin-bottom:12px">取り込んだ内容はこの端末に保持しています。保存はしていません。</p>
+    <a class="btn" href="profile.html" id="toProfile">プロフィールを見る</a>
+  </div>
+
+</div>
+
+<script src="importers/kovaak.js"></script>
+<script src="profile/metric-registry.js"></script>
+<script src="profile/algorithm-config.js"></script>
+<script src="profile/aim-profile.js"></script>
+<script src="profile/re-estimation.js"></script>
+<script src="ui/ui-logic.js"></script>
+<script src="ui/samples.js"></script>
+<script>
+(function () {
+    'use strict';
+    var U = window.LC_UI, K = window.LC_IMPORTERS.kovaak;
+
+    var state = { run: null, dpiAnswer: {}, files: [] };
+
+    var $ = function (id) { return document.getElementById(id); };
+    var esc = function (s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+
+    // ------------------------------------------------------------ 保存/復元
+    // 同意はまだ扱わない。取り込み結果を profile.html へ渡すためだけの一時保持。
+    function persist() {
+        try {
+            sessionStorage.setItem('lc_sessions', JSON.stringify(state.run ? state.run.sessions : []));
+            sessionStorage.setItem('lc_dpi', JSON.stringify(state.dpiAnswer));
+        } catch (e) { /* プライベートウィンドウ等では保持しない。動作は変えない。 */ }
+    }
+
+    // ------------------------------------------------------------ 開発モード
+    $('devToggle').addEventListener('change', function () {
+        document.body.classList.toggle('devmode', this.checked);
+        try { localStorage.setItem('lc_dev', this.checked ? '1' : '0'); } catch (e) {}
+    });
+    try {
+        if (localStorage.getItem('lc_dev') === '1') { $('devToggle').checked = true; document.body.classList.add('devmode'); }
+    } catch (e) {}
+
+    // ------------------------------------------------------------ ファイル入力
+    var drop = $('drop'), fileInput = $('file');
+    drop.addEventListener('click', function () { fileInput.click(); });
+    ['dragenter', 'dragover'].forEach(function (ev) {
+        drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('hot'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+        drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('hot'); });
+    });
+    drop.addEventListener('drop', function (e) {
+        if (e.dataTransfer && e.dataTransfer.files) readFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', function () { readFiles(this.files); });
+
+    $('btnSample').addEventListener('click', function (e) { e.stopPropagation(); loadSample('normal'); });
+    $('btnSampleMixed').addEventListener('click', function (e) { e.stopPropagation(); loadSample('adaptive'); });
+    $('btnSampleBad').addEventListener('click', function (e) { e.stopPropagation(); loadSample('broken'); });
+    $('btnClear').addEventListener('click', function (e) {
+        e.stopPropagation(); state.run = null; state.files = []; state.dpiAnswer = {}; persist(); render();
+    });
+
+    function loadSample(kind) {
+        var files = window.LC_SAMPLES.files(kind);
+        ingest(files);
+    }
+
+    function readFiles(list) {
+        var files = [];
+        var pending = list.length;
+        if (pending === 0) return;
+        Array.prototype.forEach.call(list, function (f) {
+            var r = new FileReader();
+            r.onload = function () {
+                files.push({ name: f.name, text: String(r.result) });
+                if (--pending === 0) ingest(files);
+            };
+            r.onerror = function () { if (--pending === 0) ingest(files); };
+            r.readAsText(f);   // ← 読むだけ。送信は行わない。
+        });
+    }
+
+    function ingest(files) {
+        state.files = files;
+        K.run(files, { importedAt: new Date().toISOString() }).then(function (res) {
+            res.stats = res.stats || {};
+            res.stats.filesReceived = files.length;
+            state.run = res;
+            persist();
+            render();
+        });
+    }
+
+    // ---------------------------------------------------------------- 描画
+    function render() {
+        var has = !!(state.run);
+        $('emptyState').classList.toggle('hidden', has);
+        ['summaryCard', 'dpiCard', 'rowsCard', 'nextCard'].forEach(function (id) {
+            $(id).classList.toggle('hidden', !has);
+        });
+        if (!has) { $('devBody').innerHTML = '<p class="hint">データがありません。</p>'; return; }
+
+        var sessions = state.run.sessions || [];
+        var dpi = U.resolveDpi(sessions, state.dpiAnswer);
+        var view = U.buildImportView(state.run, dpi);
+
+        renderSummary(view);
+        renderDpi(dpi, view);
+        renderRows(view, dpi);
+        renderDev(sessions);
+        persist();
+    }
+
+    function renderSummary(v) {
+        var s = v.summary;
+        $('kpis').innerHTML = [
+            kpi(s.filesReceived, '受け取ったファイル'),
+            kpi(s.parsed, '読み取れたセッション'),
+            kpi(s.rejected, '読み取れなかった'),
+            kpi(v.stateCounts.excluded, '分析対象外')
+        ].join('');
+
+        $('legend').innerHTML = Object.keys(U.STATE_LABEL).map(function (k) {
+            var L = U.STATE_LABEL[k];
+            return '<span class="item"><span class="pill ' + L.tone + '">' + esc(L.ja) + '</span>'
+                + '<span>' + esc(L.desc) + '</span></span>';
+        }).join('');
+
+        var notes = [];
+        if (v.rejected.length) {
+            notes.push('<div class="note error"><b>読み取れなかったファイルが ' + v.rejected.length + ' 件あります。</b><br>'
+                + v.rejected.map(function (r) {
+                    return esc(r.file || '(名前不明)') + ' — ' + esc(r.message)
+                        + (r.note ? '<br><span class="hint">' + esc(r.note) + '</span>' : '');
+                }).join('<br>') + '</div>');
+        }
+        if (v.rows.length) {
+            notes.push('<div class="note ok"><b>送信していません。</b> ' + esc(v.transport.note) + '</div>');
+        }
+        $('formatNote').innerHTML = notes.join('');
+    }
+
+    function kpi(v, k) {
+        return '<div class="kpi"><div class="v">' + esc(v) + '</div><div class="k">' + esc(k) + '</div></div>';
+    }
+
+    // ------------------------------------------------------------------ DPI
+    function renderDpi(dpi, view) {
+        if (view.rows.length === 0) { $('dpiCard').classList.add('hidden'); return; }
+        var d = dpi.declaredInFile;
+        var head;
+
+        if (d.length === 0) {
+            head = '<div class="note warn"><b>ファイルにDPIの記録がありません。</b><br>'
+                + '実際に使っているマウスのDPIを入力してください。</div>';
+        } else if (d.length > 1) {
+            head = '<div class="note warn"><b>ファイルによってDPIの記録が違います（' + d.join(' / ') + '）。</b><br>'
+                + 'どれが実際の値か選んでください。</div>';
+        } else {
+            head = '<div class="note"><b>KovaaKに記録されたDPI：' + d[0] + '</b><br>'
+                + '実際に使用しているマウスDPIは ' + d[0] + ' ですか？<br>'
+                + '<span class="hint">' + esc(dpi.note) + '</span></div>';
+        }
+
+        var chosen = state.dpiAnswer.answer || null;
+        var opts = '<div class="stack" style="margin-top:14px">'
+            + radio('as_is', 'このDPIで正しい', d.length === 1 ? d[0] + ' として扱います' : 'ファイルの値を使います', chosen, d.length !== 1)
+            + radio('override', '別のDPIを入力', '実際のマウス設定の値を入れてください', chosen, false)
+            + '<div id="overrideBox" class="' + (chosen === 'override' ? '' : 'hidden') + '" style="padding-left:28px">'
+            + '<input type="number" id="dpiValue" min="1" step="1" placeholder="例: 800" value="'
+            + (state.dpiAnswer.value || '') + '" style="width:160px"> '
+            + '<button class="btn sm" id="dpiApply">確定する</button></div>'
+            + radio('defer', '今は確認しない', 'スコアなどの分析はできます', chosen, false)
+            + '</div>';
+
+        var status = '<div style="margin-top:16px">'
+            + '<span class="pill ' + U.STATE_LABEL[dpi.status].tone + '">' + esc(U.STATE_LABEL[dpi.status].ja) + '</span> '
+            + '<span class="hint">' + esc(dpi.message) + '</span>';
+        if (dpi.blocked.length) {
+            status += '<div class="note warn" style="margin-top:10px"><b>DPIが未確認のあいだ、次は出しません。</b><br>'
+                + '振り向き（cm/360）／感度の水準判定／感度の推奨<br>'
+                + '<span class="hint">DPIが2倍違うと、振り向きの距離も2倍ずれるためです。</span></div>';
+        }
+        if (dpi.mismatch) {
+            status += '<div class="note warn" style="margin-top:10px"><b>ファイルの記録（'
+                + dpi.mismatch.fileValue + '）と違う値で確定しました。</b><br>'
+                + '<span class="hint">KovaaK側の設定も ' + dpi.mismatch.actual + ' に直しておくと、次から食い違いません。</span></div>';
+        }
+        status += '</div>';
+
+        $('dpiBody').innerHTML = head + opts + status;
+
+        Array.prototype.forEach.call(document.querySelectorAll('input[name=dpiAns]'), function (el) {
+            el.addEventListener('change', function () {
+                state.dpiAnswer = { answer: this.value, value: state.dpiAnswer.value };
+                if (this.value === 'as_is') state.dpiAnswer.value = undefined;
+                render();
+            });
+        });
+        var apply = $('dpiApply');
+        if (apply) {
+            apply.addEventListener('click', function () {
+                var v = parseInt($('dpiValue').value, 10);
+                state.dpiAnswer = { answer: 'override', value: isFinite(v) && v > 0 ? v : undefined };
+                render();
+            });
+        }
+    }
+
+    function radio(val, title, desc, chosen, disabled) {
+        return '<label class="consent-item" style="cursor:pointer">'
+            + '<input type="radio" name="dpiAns" value="' + val + '"' + (chosen === val ? ' checked' : '')
+            + (disabled ? ' disabled' : '') + '>'
+            + '<span><span class="t">' + esc(title) + '</span><br><span class="d">' + esc(desc) + '</span></span></label>';
+    }
+
+    // ------------------------------------------------------------------ 行
+    var COLS = [
+        ['状態', function (r) { var L = U.STATE_LABEL[r.state]; return '<span class="pill ' + L.tone + '">' + esc(L.ja) + '</span>'; }],
+        ['シナリオ', function (r) { return esc(r.scenario); }],
+        ['日時', function (r) { return esc(r.timestamp) + (r.tzKnown ? '' : ' <span class="hint">(TZ不明)</span>'); }],
+        ['DPI(ファイル)', function (r) { return r.dpiInFile === null ? '—' : esc(r.dpiInFile) + ' <span class="hint">自己申告</span>'; }],
+        ['感度スケール', function (r) { return esc(r.sensScale || '—'); }],
+        ['ゲーム内感度', function (r) { return r.horizSens === null ? '—' : esc(r.horizSens); }],
+        ['FOV', function (r) { return esc(r.fov === null ? '—' : r.fov); }],
+        ['cm/360', function (r) {
+            return r.cm360Blocked ? '<span class="blocked">DPI未確認</span>' : (r.cm360 === null ? '—' : esc(r.cm360));
+        }],
+        ['Score', function (r) { return r.score === null ? '—' : esc(r.score); }],
+        ['Kills', function (r) { return r.kills === null ? '—' : esc(r.kills); }],
+        ['命中率', function (r) {
+            return r.accuracy.available
+                ? (r.accuracy.value * 100).toFixed(1) + '%'
+                : '<span class="hint">—</span>';
+        }],
+        ['難易度', function (r) {
+            return r.adaptive
+                ? '<span class="pill muted">変動あり</span>'
+                : '<span class="hint">一定</span>';
+        }]
+    ];
+
+    function renderRows(view, dpi) {
+        var head = '<thead><tr>' + COLS.map(function (c) { return '<th>' + esc(c[0]) + '</th>'; }).join('') + '</tr></thead>';
+        var body = view.rows.map(function (r) {
+            return '<tr class="' + (r.state === 'excluded' ? 'excluded' : '') + '">'
+                + COLS.map(function (c) { return '<td>' + c[1](r) + '</td>'; }).join('') + '</tr>';
+        }).join('');
+        var rej = view.rejected.map(function (r) {
+            return '<tr class="excluded"><td><span class="pill error">'
+                + esc(U.STATE_LABEL[r.state].ja) + '</span></td>'
+                + '<td colspan="' + (COLS.length - 1) + '">' + esc(r.file || '(名前不明)')
+                + ' — ' + esc(r.message) + '</td></tr>';
+        }).join('');
+        $('rowsTable').innerHTML = head + '<tbody>' + body + rej + '</tbody>';
+
+        var ex = U.buildExcludedView(state.run.sessions || []);
+        $('excludedNote').innerHTML = ex.length === 0 ? '' :
+            '<div class="note warn"><b>' + ex.length + ' 件を感度の比較から外しています（記録は残しています）。</b><br>'
+            + ex.map(function (x) {
+                return esc(x.scenario) + ' — ' + esc(x.reason)
+                    + '<br><span class="hint">' + esc(x.note) + '</span>';
+            }).join('<br>') + '</div>';
+
+        var w = view.warnings.filter(function (x) { return x.level !== 'error'; });
+        $('warnBox').classList.toggle('hidden', view.warnings.length === 0);
+        $('warnBody').innerHTML = view.warnings.length === 0 ? '<p class="hint">ありません。</p>'
+            : view.warnings.map(function (x) {
+                return '<div>[' + esc(x.level) + '] <span class="mono">' + esc(x.code) + '</span> — ' + esc(x.message) + '</div>';
+            }).join('');
+    }
+
+    // -------------------------------------------------------------- 開発表示
+    function renderDev(sessions) {
+        var ev = window.LC_PROFILE.buildEvidence(sessions);
+        var d = U.devInspect(sessions, ev);
+        var rows = d.metrics.map(function (m) {
+            return '<tr><td class="mono">' + esc(m.metricKey) + '</td><td>' + esc(m.layer) + '</td>'
+                + '<td>' + esc(m.ratingStatus) + '</td>'
+                + '<td class="num">' + (m.effectiveReliability === null ? '—' : esc(m.effectiveReliability)) + '</td>'
+                + '<td>' + (m.recommendationEligible ? '<span class="pill ok">eligible</span>'
+                    : m.recommendationHold ? '<span class="pill warn">hold</span>'
+                        : '<span class="pill muted">—</span>') + '</td>'
+                + '<td class="mono hint">' + esc(m.comparabilityGroup || '—') + '</td></tr>';
+        }).join('');
+
+        $('devBody').innerHTML =
+            '<div class="grid three" style="margin-bottom:14px">'
+            + devList('raw', d.layers.raw) + devList('normalized', d.layers.normalized)
+            + devList('derived / unresolved', d.layers.derived.concat(d.layers.unresolved.map(function (x) { return '⚠ ' + x; })))
+            + '</div>'
+            + '<div class="tablewrap"><table class="data"><thead><tr>'
+            + '<th>metric</th><th>layer</th><th>rating</th><th>effective</th><th>recommendation</th><th>comparability_group</th>'
+            + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+            + '<p class="hint" style="margin-top:10px">evidence 件数: ' + d.evidenceCount + '</p>';
+    }
+
+    function devList(title, items) {
+        return '<div><h3>' + esc(title) + '</h3><div class="mono hint">'
+            + (items.length ? items.map(esc).join('<br>') : '—') + '</div></div>';
+    }
+
+    render();
+})();
+</script>
+</body>
+</html>

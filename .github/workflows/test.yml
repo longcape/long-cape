@@ -43,6 +43,9 @@ jobs:
       - name: Robustness テスト（Phase F.5 / 悪条件20ケース）
         run: node tests/robustness.mjs
 
+      - name: UI ロジックのテスト（G-3 prototype）
+        run: node tests/ui.mjs
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

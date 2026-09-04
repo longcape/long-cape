@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>プロフィール — ロングケープの定理 Lab</title>
+<link rel="stylesheet" href="ui/lab.css">
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="lab-nav">
+    <div class="brand">ロングケープの定理<small>FPS Performance Lab</small></div>
+    <span class="spacer"></span>
+    <a class="navlink" href="import.html">取り込み</a>
+    <a class="navlink on" href="profile.html">プロフィール</a>
+    <a class="navlink" href="index.html">かんたん診断</a>
+    <label class="devbar"><input type="checkbox" id="devToggle"> 開発モード</label>
+  </nav>
+
+  <!-- ログイン状態 ------------------------------------------------------- -->
+  <div class="card tight" id="authCard">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div id="authText" style="flex:1;min-width:220px"></div>
+      <button class="btn ghost sm" id="btnLogin">ログイン状態を切り替え（デモ）</button>
+    </div>
+  </div>
+
+  <h1>あなたの測定プロフィール</h1>
+  <p class="lede" id="lede"></p>
+
+  <!-- デモ切替 ----------------------------------------------------------- -->
+  <div class="card tight">
+    <div class="devbar" style="gap:8px;flex-wrap:wrap">
+      <span>表示するデータ:</span>
+      <button class="btn quiet sm" data-demo="imported">取り込んだデータ</button>
+      <button class="btn quiet sm" data-demo="enough">人工データ（推奨あり）</button>
+      <button class="btn quiet sm" data-demo="notEnough">人工データ（推奨なし）</button>
+      <button class="btn quiet sm" data-demo="withAdaptive">人工データ（適応型混在）</button>
+    </div>
+    <p class="hint" style="margin-top:8px">
+      推奨の画面は人工データで検証しています。KovaaK の実データは本番の推奨計算へ接続していません。
+    </p>
+  </div>
+
+  <div id="emptyState" class="card hidden">
+    <div class="note"><b>まだデータがありません。</b><br>
+      <a href="import.html">取り込み画面</a>から CSV を読み込むか、上の人工データを選んでください。</div>
+  </div>
+
+  <div id="main">
+    <!-- 推奨 ----------------------------------------------------------- -->
+    <div class="card" id="recCard"></div>
+
+    <!-- 次の測定 ------------------------------------------------------- -->
+    <div id="nextCard"></div>
+
+    <!-- 概況 ----------------------------------------------------------- -->
+    <div class="card">
+      <h2>取り込み状況</h2>
+      <div class="kpis" id="invKpis"></div>
+      <div id="coverage" style="margin-top:16px"></div>
+    </div>
+
+    <div class="grid two">
+      <div class="card">
+        <h2>3つの指標</h2>
+        <p class="hint" style="margin-bottom:14px">
+          意味が違うので、ひとつのメーターにまとめていません。
+        </p>
+        <div id="meters"></div>
+      </div>
+      <div class="card">
+        <h2>スコアの推移</h2>
+        <div id="trend"></div>
+      </div>
+    </div>
+
+    <div class="grid two">
+      <div class="card">
+        <h2>確認が必要な項目</h2>
+        <div id="unresolved"></div>
+      </div>
+      <div class="card">
+        <h2>比較から外したセッション</h2>
+        <div id="excluded"></div>
+      </div>
+    </div>
+
+    <!-- 開発モード ------------------------------------------------------ -->
+    <div class="card dev-only">
+      <h2><span class="devtag">dev</span>内部の内訳</h2>
+      <div id="devBody"></div>
+    </div>
+  </div>
+
+  <!-- 同意 --------------------------------------------------------------- -->
+  <div class="card">
+    <h2>保存とデータの使い道</h2>
+    <div class="note ok" style="margin-bottom:14px">
+      <b>ここまでの表示に同意は要りません。</b> 取り込みとプロフィールの確認は、同意なし・ログインなしで使えます。
+    </div>
+    <p class="hint" style="margin-bottom:12px">
+      保存する場合だけ、目的ごとに選んでください。まとめてひとつのチェックにはしていません。
+    </p>
+    <div id="consentList"></div>
+    <div id="consentState" style="margin-top:12px"></div>
+    <p class="hint" style="margin-top:10px">
+      ※ この試作では実際の保存・送信は行いません。選んだ内容は画面の確認用です。
+    </p>
+  </div>
+
+  <!-- データの権利 ------------------------------------------------------- -->
+  <div class="card">
+    <h2>あなたのデータ</h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn quiet" id="btnExport">自分のデータをExport</button>
+      <button class="btn quiet" id="btnDelete">データを削除</button>
+    </div>
+    <p class="hint" style="margin-top:10px">
+      削除とExportは、今後どの料金プランになっても無料のままにします。有料機能にはしません。
+    </p>
+    <div id="dataRightsMsg" style="margin-top:10px"></div>
+  </div>
+
+</div>
+
+<script src="importers/kovaak.js"></script>
+<script src="profile/metric-registry.js"></script>
+<script src="profile/algorithm-config.js"></script>
+<script src="profile/aim-profile.js"></script>
+<script src="profile/re-estimation.js"></script>
+<script src="ui/ui-logic.js"></script>
+<script src="ui/samples.js"></script>
+<script>
+(function () {
+    'use strict';
+    var U = window.LC_UI, P = window.LC_PROFILE, R = window.LC_REESTIMATE, S = window.LC_SAMPLES;
+
+    var $ = function (id) { return document.getElementById(id); };
+    var esc = function (s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+    var pct = function (v) { return v === null || v === undefined ? '—' : Math.round(v * 100) + '%'; };
+
+    var state = { demo: 'imported', loggedIn: false, consent: U.defaultConsent() };
+
+    // --------------------------------------------------------- 開発モード
+    $('devToggle').addEventListener('change', function () {
+        document.body.classList.toggle('devmode', this.checked);
+        try { localStorage.setItem('lc_dev', this.checked ? '1' : '0'); } catch (e) {}
+    });
+    try {
+        if (localStorage.getItem('lc_dev') === '1') { $('devToggle').checked = true; document.body.classList.add('devmode'); }
+    } catch (e) {}
+
+    // ---------------------------------------------------------- データ取得
+    function importedSessions() {
+        try { return JSON.parse(sessionStorage.getItem('lc_sessions') || '[]'); }
+        catch (e) { return []; }
+    }
+    function importedDpiAnswer() {
+        try { return JSON.parse(sessionStorage.getItem('lc_dpi') || '{}'); }
+        catch (e) { return {}; }
+    }
+
+    function currentData() {
+        if (state.demo === 'imported') {
+            return { sessions: importedSessions(), dpiAnswer: importedDpiAnswer(), synthetic: false };
+        }
+        // 人工データは DPI が確定済みという前提で作ってある
+        return { sessions: S[state.demo](), dpiAnswer: { answer: 'as_is' }, synthetic: true };
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-demo]'), function (b) {
+        b.addEventListener('click', function () { state.demo = this.getAttribute('data-demo'); render(); });
+    });
+    $('btnLogin').addEventListener('click', function () { state.loggedIn = !state.loggedIn; render(); });
+
+    // ------------------------------------------------------------- 描画
+    function render() {
+        var d = currentData();
+        var sessions = d.sessions || [];
+
+        var cap = U.loginCapabilities(state.loggedIn);
+        $('authText').innerHTML = (state.loggedIn
+            ? '<span class="pill ok">ログイン中</span> '
+            : '<span class="pill muted">ログインしていません</span> ')
+            + '<span class="hint">' + esc(cap.note) + '</span>';
+        $('lede').innerHTML = 'いま集まっているデータと、次に何を測ればよいかを表示します。'
+            + (cap.canSave ? '' : ' <span class="hint">（保存はしていません）</span>');
+
+        var empty = sessions.length === 0;
+        $('emptyState').classList.toggle('hidden', !empty);
+        $('main').classList.toggle('hidden', empty);
+        renderConsent();
+        if (empty) return;
+
+        var dpi = d.synthetic
+            ? { status: 'confirmed', confirmedDpi: 800, blocked: [], declaredInFile: [800], message: '' }
+            : U.resolveDpi(sessions, d.dpiAnswer);
+
+        var ev = P.buildEvidence(sessions);
+        var aim = P.buildAimProfile(sessions);
+        var reest = null;
+        try {
+            reest = R.reestimate({
+                sessions: sessions, evidence: ev,
+                levelResolver: P.verifiedSensitivityLevel,
+                now: new Date().toISOString()
+            });
+        } catch (e) { reest = null; }
+
+        var view = U.buildProfileView(aim, sessions, reest);
+        var rec = U.buildRecommendationView(reest, dpi, {
+            dataSource: d.synthetic ? 'synthetic_demo' : 'imported_local'
+        });
+
+        renderRec(rec, d.synthetic);
+        renderNext(rec.nextBestTest);
+        renderInventory(view);
+        renderMeters(view.meters);
+        renderTrend(view.scoreTrend);
+        renderUnresolved(view.unresolved, dpi);
+        renderExcluded(view.excludedSessions);
+        renderDev(sessions, ev);
+    }
+
+    // ------------------------------------------------------------- 推奨
+    function renderRec(rec, synthetic) {
+        var banner = synthetic
+            ? '<div class="note warn" style="margin-bottom:14px"><b>人工データによる表示確認です。</b> 実際の測定結果ではありません。</div>'
+            : '<div class="note" style="margin-bottom:14px"><b>取り込んだデータのみで計算しています。</b> 保存も送信もしていません。</div>';
+
+        if (rec.status === 'withheld') {
+            $('recCard').innerHTML = banner
+                + '<h2>' + esc(rec.headline) + '</h2>'
+                + '<div class="note warn"><b>' + esc(rec.why) + '</b></div>'
+                + '<h3 style="margin-top:16px">出せるようにするには</h3>'
+                + '<div class="stack">' + rec.whatToDo.map(function (t) {
+                    return '<div class="chip" style="display:block">' + esc(t.label)
+                        + (t.detail ? '<br><span class="hint">' + esc(t.detail) + '</span>' : '') + '</div>';
+                }).join('') + '</div>'
+                + (rec.evidenceCount !== undefined
+                    ? '<p class="hint" style="margin-top:12px">いま使えるデータ: ' + rec.evidenceCount + ' 件</p>' : '');
+            return;
+        }
+
+        var c = rec.composition;
+        $('recCard').innerHTML = banner
+            + '<h2>' + esc(rec.headline) + '</h2>'
+            + '<div class="kpis" style="margin-bottom:8px">'
+            + '<div class="kpi"><div class="v" style="color:var(--accent-color)">' + esc(rec.recommended_cm360) + ' cm</div><div class="k">推奨（振り向き）</div></div>'
+            + '<div class="kpi"><div class="v">' + esc(rec.recommended_range ? rec.recommended_range[0] + '–' + rec.recommended_range[1] : '—') + '</div><div class="k">有力な範囲 cm</div></div>'
+            + '<div class="kpi"><div class="v">' + pct(rec.confidence ? rec.confidence.value : null) + '</div><div class="k">推奨の確からしさ</div></div>'
+            + '<div class="kpi"><div class="v">' + esc(rec.evidenceCount) + '</div><div class="k">使ったデータ件数</div></div>'
+            + '</div>'
+            + '<div class="hint">データ元: ' + esc(Object.keys(rec.sourceMix).map(function (k) {
+                return k + ' ' + rec.sourceMix[k] + '件';
+            }).join(' / ') || '—') + '</div>'
+            + (Object.keys(rec.evidenceExcluded).length
+                ? '<div class="hint" style="margin-top:4px">除外: ' + esc(Object.keys(rec.evidenceExcluded).map(function (k) {
+                    return k + ' ' + rec.evidenceExcluded[k] + '件';
+                }).join(' / ')) + '</div>' : '')
+            + '<details class="why"><summary>なぜこの結果？</summary><div class="body">'
+            + '<p style="color:var(--text-main);font-weight:bold;margin-bottom:8px">' + esc(c.headline) + '</p>'
+            + '<p>' + esc(c.summary) + '</p>'
+            + '<div class="next chips" style="margin-top:12px;border:0;padding:0;background:none">'
+            + c.factors.map(function (f) {
+                return '<span class="chip"><b>' + esc(f.label) + '</b> ' + esc(f.desc) + '</span>';
+            }).join('') + '</div>'
+            + '<p style="margin-top:12px">' + esc(c.note) + '</p>'
+            + (rec.whyThisChanged ? '<p style="margin-top:12px"><b>前回からの変化:</b> '
+                + esc(JSON.stringify(rec.whyThisChanged)) + '</p>' : '')
+            + (rec.range_definition ? '<p class="hint" style="margin-top:12px">範囲の意味: '
+                + esc(rec.range_definition.description || JSON.stringify(rec.range_definition)) + '</p>' : '')
+            + '</div></details>';
+    }
+
+    // --------------------------------------------------------- 次の測定
+    function renderNext(nbt) {
+        if (!nbt) { $('nextCard').innerHTML = ''; return; }
+        $('nextCard').innerHTML = '<div class="next">'
+            + '<div class="k" style="font-size:.7rem;color:var(--text-sub);letter-spacing:.08em">NEXT EXPERIMENT</div>'
+            + '<div class="headline">' + esc(nbt.sentence) + '</div>'
+            + '<div class="why">' + esc(nbt.reason || '') + '</div>'
+            + '<div class="chips">'
+            + '<span class="chip"><b>' + esc(nbt.nextSensitivity) + ' cm</b> 次に試す感度</span>'
+            + '<span class="chip"><b>' + esc(nbt.sessionCount) + ' 回</b> 必要な回数</span>'
+            + (nbt.scenarioConcept ? '<span class="chip"><b>' + esc(nbt.scenarioConcept) + '</b> シナリオ</span>' : '')
+            + '</div>'
+            + '<p class="hint" style="margin-top:10px">' + esc(nbt.uncertaintyNote) + '</p>'
+            + '<span class="dev-only devtag">uncertainty_reduction = '
+            + esc(nbt.uncertaintyReduction) + ' / reason = ' + esc(nbt.reasonCode) + '</span>'
+            + '</div>';
+    }
+
+    // ------------------------------------------------------------- 概況
+    function renderInventory(v) {
+        var i = v.inventory;
+        $('invKpis').innerHTML = [
+            ['取り込んだセッション', i.importedSessions],
+            ['データ元', i.sourceCount],
+            ['シナリオ数', i.scenarioCount],
+            ['試した感度の数', (i.sensitivityLevels && i.sensitivityLevels.count) || 0],
+            ['エビデンス件数', v.evidenceCount]
+        ].map(function (p) {
+            return '<div class="kpi"><div class="v">' + esc(p[1]) + '</div><div class="k">' + esc(p[0]) + '</div></div>';
+        }).join('');
+
+        var c = v.sensitivityCoverage;
+        $('coverage').innerHTML = !c ? '<p class="hint">感度の広がりはまだ計算できません。</p>'
+            : '<h3>感度の広がり</h3>'
+            + '<div class="hint">試した範囲: ' + esc(c.testedRange ? c.testedRange[0] + '–' + c.testedRange[1] + ' cm' : '—')
+            + ' / 水準数: ' + esc(c.levelCount)
+            + (c.balanceAroundBest && c.balanceAroundBest.skewed ? ' / <span style="color:var(--warn)">片側に偏っています</span>' : '')
+            + (c.edgeOptimum ? ' / <span style="color:var(--warn)">最良が端にあります</span>' : '')
+            + '</div>';
+    }
+
+    // --------------------------------------------------------- 3つの指標
+    function renderMeters(meters) {
+        $('meters').innerHTML = meters.map(function (m) {
+            var na = m.unavailable || m.value === null || m.value === undefined;
+            return '<div class="meter ' + (na ? 'na' : '') + '">'
+                + '<div class="row"><span class="label">' + esc(m.label) + '</span>'
+                + '<span class="val">' + (na ? '—' : pct(m.value)) + '</span></div>'
+                + '<div class="bar"><i style="width:' + (na ? 0 : Math.round(m.value * 100)) + '%"></i></div>'
+                + '<div class="desc">' + esc(m.desc)
+                + (na && m.unavailableReason ? ' <span style="color:var(--muted)">' + esc(m.unavailableReason) + '</span>' : '')
+                + '</div>'
+                + (m.gaps && m.gaps.length ? '<div class="hint">不足: ' + m.gaps.map(esc).join(' / ') + '</div>' : '')
+                + '<span class="dev-only devtag">' + esc(m.id) + '</span>'
+                + '</div>';
+        }).join('');
+    }
+
+    // ------------------------------------------------------------- 推移
+    function renderTrend(t) {
+        if (!t.points.length) { $('trend').innerHTML = '<p class="hint">スコアがまだありません。</p>'; return; }
+        var vals = t.points.map(function (p) { return p.value; });
+        var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+        var span = (max - min) || 1;
+        var w = 100 / Math.max(t.points.length, 1);
+
+        $('trend').innerHTML =
+            '<div style="display:flex;align-items:flex-end;gap:3px;height:120px;padding:6px 0">'
+            + t.points.map(function (p) {
+                var h = 12 + ((p.value - min) / span) * 88;
+                return '<div title="' + esc(p.at) + ' / ' + esc(p.value) + '" style="flex:1;min-width:4px;height:'
+                    + h.toFixed(1) + '%;border-radius:3px 3px 0 0;background:'
+                    + (p.adaptive ? 'var(--muted)' : 'var(--accent-color)') + '"></div>';
+            }).join('') + '</div>'
+            + '<div class="hint">最小 ' + esc(Math.round(min)) + ' / 最大 ' + esc(Math.round(max)) + '</div>'
+            + (t.note ? '<div class="hint" style="margin-top:6px">' + esc(t.note) + '</div>' : '')
+            + (t.points.some(function (p) { return p.adaptive; })
+                ? '<div class="hint">灰色は難易度が変動したセッションです。比較には使っていません。</div>' : '');
+    }
+
+    // ----------------------------------------------------- 要確認 / 除外
+    function renderUnresolved(list, dpi) {
+        var head = '';
+        if (dpi && dpi.blocked && dpi.blocked.length) {
+            head = '<div class="note warn" style="margin-bottom:12px"><b>DPIが未確認です。</b><br>'
+                + '振り向き・感度の水準判定・推奨は出していません。'
+                + ' <a href="import.html">取り込み画面で確認する</a></div>';
+        }
+        $('unresolved').innerHTML = head + (list.length === 0
+            ? '<p class="hint">ありません。</p>'
+            : '<div class="stack">' + list.map(function (u) {
+                return '<div class="chip" style="display:block"><b>' + esc(fieldJa(u.field)) + '</b>'
+                    + ' <span class="hint">' + u.count + '件</span>'
+                    + (u.note ? '<br><span class="hint">' + esc(u.note) + '</span>' : '')
+                    + '<span class="dev-only devtag" style="margin-left:6px">' + esc(u.field)
+                    + ' / ' + esc(u.reasons.join(',')) + '</span></div>';
+            }).join('') + '</div>');
+    }
+
+    var FIELD_JA = {
+        dpi_verified: 'マウスDPIの確認',
+        cm360: '振り向き（cm/360）',
+        in_game_sens: 'ゲーム内感度',
+        session_comparability: 'このセッションを比較に使えるか'
+    };
+    function fieldJa(f) { return FIELD_JA[f] || f; }
+
+    function renderExcluded(list) {
+        $('excluded').innerHTML = list.length === 0
+            ? '<p class="hint">ありません。</p>'
+            : '<div class="stack">' + list.map(function (x) {
+                return '<div class="chip" style="display:block">'
+                    + '<span class="pill muted">分析対象外</span> <b>' + esc(x.scenario) + '</b>'
+                    + '<br>' + esc(x.reason)
+                    + '<br><span class="hint">' + esc(x.note) + '</span>'
+                    + '<span class="dev-only devtag">'
+                    + esc(x.basis || '') + '</span></div>';
+            }).join('') + '</div>';
+    }
+
+    // ------------------------------------------------------------- 同意
+    function renderConsent() {
+        $('consentList').innerHTML = U.CONSENT_PURPOSES.map(function (p) {
+            return '<label class="consent-item">'
+                + '<input type="checkbox" data-consent="' + p.id + '"'
+                + (state.consent[p.id] ? ' checked' : '') + '>'
+                + '<span><span class="t">' + esc(p.label) + '</span>'
+                + '<span class="d">' + esc(p.desc) + '</span></span></label>';
+        }).join('');
+
+        Array.prototype.forEach.call(document.querySelectorAll('[data-consent]'), function (el) {
+            el.addEventListener('change', function () {
+                state.consent[this.getAttribute('data-consent')] = this.checked;
+                renderConsent();
+            });
+        });
+
+        var any = U.CONSENT_PURPOSES.some(function (p) { return state.consent[p.id]; });
+        $('consentState').innerHTML = '<div class="note ' + (any ? '' : 'ok') + '">'
+            + (any
+                ? '<b>選んだ用途のみに使います。</b> 選んでいない用途には使いません。'
+                : '<b>どれも選んでいません。</b> このままでも取り込みとプロフィールの確認は使えます。')
+            + '<div class="dev-only" style="margin-top:8px">'
+            + U.CONSENT_PURPOSES.map(function (p) {
+                return '<span class="devtag" style="margin-right:6px">' + esc(p.id) + '='
+                    + (U.canSendExternally(state.consent, p.id) ? 'send_ok' : 'blocked') + '</span>';
+            }).join('') + '</div></div>';
+    }
+
+    // --------------------------------------------------- Export / 削除
+    $('btnExport').addEventListener('click', function () {
+        var d = currentData();
+        var blob = new Blob([JSON.stringify(d.sessions, null, 2)], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'long-cape-export.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        $('dataRightsMsg').innerHTML = '<div class="note ok">この端末の中でファイルを作成しました。送信はしていません。</div>';
+    });
+    $('btnDelete').addEventListener('click', function () {
+        try { sessionStorage.removeItem('lc_sessions'); sessionStorage.removeItem('lc_dpi'); } catch (e) {}
+        $('dataRightsMsg').innerHTML = '<div class="note ok">この端末に持っていたデータを消しました。</div>';
+        state.demo = 'imported';
+        render();
+    });
+
+    // ------------------------------------------------------------- dev
+    function renderDev(sessions, ev) {
+        var d = U.devInspect(sessions, ev);
+        $('devBody').innerHTML = '<div class="tablewrap"><table class="data"><thead><tr>'
+            + '<th>metric</th><th>layer</th><th>rating</th><th>effective</th><th>recommendation</th><th>comparability_group</th>'
+            + '</tr></thead><tbody>'
+            + d.metrics.map(function (m) {
+                return '<tr><td class="mono">' + esc(m.metricKey) + '</td><td>' + esc(m.layer) + '</td>'
+                    + '<td>' + esc(m.ratingStatus) + '</td>'
+                    + '<td class="num">' + (m.effectiveReliability === null ? '—' : esc(m.effectiveReliability)) + '</td>'
+                    + '<td>' + (m.recommendationEligible ? '<span class="pill ok">eligible</span>'
+                        : m.recommendationHold ? '<span class="pill warn">hold</span>'
+                            : '<span class="pill muted">—</span>') + '</td>'
+                    + '<td class="mono hint">' + esc(m.comparabilityGroup || '—') + '</td></tr>';
+            }).join('')
+            + '</tbody></table></div>'
+            + '<p class="hint" style="margin-top:10px">unresolved: '
+            + esc(d.layers.unresolved.join(', ') || '—') + '</p>';
+    }
+
+    render();
+})();
+</script>
+</body>
+</html>
