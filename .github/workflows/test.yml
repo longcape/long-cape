@@ -55,6 +55,9 @@ jobs:
       - name: Recommendation の意味（Aimテスト上の推奨であること）
         run: node tests/recommendation-scope.mjs
 
+      - name: 感度調整量 contract のテスト（将来設計 / 禁止事項の deliberate breakage）
+        run: node tests/sensitivity-recommendation.mjs
+
       - name: 保存・読込・削除のテスト（G-5）
         run: node tests/storage.mjs
 

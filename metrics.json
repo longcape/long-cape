@@ -1310,5 +1310,397 @@
       "manual.recalled_score",
       "manual.self_rating"
     ]
+  },
+  "planned_metrics": {
+    "_readme": [
+      "実戦（ゲーム内）Aim解析で使いたいメトリクスの候補。",
+      "**まだ一度も実測していない。** したがって production-rated ではなく、",
+      "metrics.json の metrics（正本の Registry）には入れない。",
+      "ここにあるものは推奨を駆動してはいけない。maturity で状態を表す。",
+      "  planned      … 概念として定義しただけ。取得手段も未確立",
+      "  experimental … 取得はできるが、意味・単位・再現性が未検証",
+      "  unvalidated  … 取得も再現もできるが、感度との関係が未検証",
+      "production_rated へ上げるには metrics 側へ移し、4軸 reliability を付ける。",
+      "この移動は設計変更であり、レビューを経ずに行わない。"
+    ],
+    "planned_version": "0.1.0",
+    "promotion_rule": {
+      "target": "metrics",
+      "requires": [
+        "実データでの取得実績",
+        "単位と意味の確定",
+        "再現性の確認",
+        "4軸 reliability の付与",
+        "comparability_group の静的定義"
+      ],
+      "prohibited_shortcut": "planned のまま recommendation_eligible を true にすること"
+    },
+    "metrics": [
+      {
+        "metric_key": "ingame.flick_overshoot",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "performance",
+        "higher_is_better": false,
+        "concept": "flick_accuracy",
+        "unit": "degree",
+        "data_type": "number",
+        "description": "フリックで目標を通り越した量。感度が高すぎる兆候として使える可能性がある。",
+        "status_reason": "未実測。角度で測るか、フリック角に対する割合で測るかも未確定。",
+        "open_questions": [
+          "絶対角度と相対割合のどちらを正本にするか",
+          "通り越しと補正の切り分け基準"
+        ]
+      },
+      {
+        "metric_key": "ingame.flick_undershoot",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "performance",
+        "higher_is_better": false,
+        "concept": "flick_accuracy",
+        "unit": "degree",
+        "data_type": "number",
+        "description": "フリックで目標に届かなかった量。感度が低すぎる兆候として使える可能性がある。",
+        "status_reason": "未実測。overshoot と対称に扱えるかは未検証。",
+        "open_questions": [
+          "overshoot と同じ単位で扱えるか"
+        ]
+      },
+      {
+        "metric_key": "ingame.acquisition_time",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "performance",
+        "higher_is_better": false,
+        "concept": "speed",
+        "unit": "millisecond",
+        "data_type": "number",
+        "description": "目標に狙いを合わせるまでの時間。",
+        "status_reason": "未実測。「合った」と判定する閾値が未定義。",
+        "open_questions": [
+          "合致judgeの角度閾値",
+          "静止目標と移動目標で定義を分けるか"
+        ]
+      },
+      {
+        "metric_key": "ingame.correction_count",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "performance",
+        "higher_is_better": false,
+        "concept": "flick_accuracy",
+        "unit": "count",
+        "data_type": "integer",
+        "description": "狙いを合わせるまでに要した修正動作の回数。",
+        "status_reason": "未実測。何を1回の修正と数えるかが未定義。",
+        "open_questions": [
+          "方向反転を修正と数えるか",
+          "微小な揺れを除くノイズ処理"
+        ]
+      },
+      {
+        "metric_key": "ingame.crosshair_error_first_shot",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "performance",
+        "higher_is_better": false,
+        "concept": "accuracy",
+        "unit": "degree",
+        "data_type": "number",
+        "description": "最初の1発を撃った瞬間の、目標中心からの角度誤差。",
+        "status_reason": "未実測。発砲イベントと視点角の時刻同期が必要。",
+        "open_questions": [
+          "ヒットボックス基準か中心基準か"
+        ]
+      },
+      {
+        "metric_key": "ingame.tracking_lag",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "performance",
+        "higher_is_better": false,
+        "concept": "tracking",
+        "unit": "millisecond",
+        "data_type": "number",
+        "description": "移動する目標に対して、視点が遅れている時間。",
+        "status_reason": "未実測。相互相関で求める想定だが窓幅が未定。",
+        "open_questions": [
+          "遅れの推定方法",
+          "目標の急な方向転換をどう扱うか"
+        ]
+      },
+      {
+        "metric_key": "ingame.tracking_error",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "performance",
+        "higher_is_better": false,
+        "concept": "tracking",
+        "unit": "degree",
+        "data_type": "number",
+        "description": "追跡中の目標中心からの角度誤差。",
+        "status_reason": "未実測。平均で見るか RMS で見るかが未確定。",
+        "open_questions": [
+          "平均 / RMS / 分位のどれを正本にするか"
+        ]
+      },
+      {
+        "metric_key": "ingame.target_relative_velocity",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "context_dimension",
+        "higher_is_better": null,
+        "concept": "condition",
+        "unit": "degree_per_second",
+        "data_type": "number",
+        "description": "自分から見た目標の角速度。難易度の条件であって、成績ではない。",
+        "status_reason": "未実測。**性能指標ではなく条件の軸**として使う。",
+        "open_questions": [
+          "どの区間の平均を取るか"
+        ]
+      },
+      {
+        "metric_key": "ingame.flick_angle",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "context_dimension",
+        "higher_is_better": null,
+        "concept": "condition",
+        "unit": "degree",
+        "data_type": "number",
+        "description": "フリックの移動角。難易度の条件であって、成績ではない。",
+        "status_reason": "未実測。比較を同条件に揃えるための軸として使う。",
+        "open_questions": [
+          "開始点の定義"
+        ]
+      },
+      {
+        "metric_key": "ingame.flick_direction_lr",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "context_dimension",
+        "higher_is_better": null,
+        "concept": "condition",
+        "unit": "enum",
+        "data_type": "string",
+        "enum_values": [
+          "left",
+          "right"
+        ],
+        "description": "フリックの左右方向。左右差を見るための軸。",
+        "status_reason": "未実測。左右差が感度で変わるかは未検証。",
+        "open_questions": [
+          "上下方向も同様に持つべきか"
+        ]
+      },
+      {
+        "metric_key": "ingame.flick_angle_bucket",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "context_dimension",
+        "higher_is_better": null,
+        "concept": "condition",
+        "unit": "enum",
+        "data_type": "string",
+        "enum_values": [
+          "micro",
+          "medium",
+          "large"
+        ],
+        "description": "フリック角の区分。区分ごとに最適感度が違う可能性があるため軸として持つ。",
+        "status_reason": "未実測。**区切りの角度は未定。実データを見てから決める。**",
+        "open_questions": [
+          "境界値をどこに置くか",
+          "ゲームごとに変えるべきか"
+        ]
+      },
+      {
+        "metric_key": "ingame.stability_after_acquisition",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "performance",
+        "higher_is_better": false,
+        "concept": "stability",
+        "unit": "degree",
+        "data_type": "number",
+        "description": "狙いが合った後の、視点の揺れの大きさ。",
+        "status_reason": "未実測。評価する時間窓が未定義。",
+        "open_questions": [
+          "合致後どれだけの時間を見るか"
+        ]
+      },
+      {
+        "metric_key": "ingame.first_shot_timing",
+        "source": "ingame",
+        "category": "engagement",
+        "maturity": "planned",
+        "target_layer": "game_specific_performance",
+        "recommendation_eligible": false,
+        "unit_status": "candidate",
+        "measurement_requirements": [
+          "yaw/pitch の時系列（視点角のログ）",
+          "発砲イベントのタイムスタンプ",
+          "ターゲット位置の真値（または同等の参照）",
+          "サンプリング周波数の記録",
+          "取得手段（ゲーム側API・リプレイ解析・録画解析）の確立"
+        ],
+        "blocks": "production_rating_until_measured",
+        "role": "performance",
+        "higher_is_better": false,
+        "concept": "speed",
+        "unit": "millisecond",
+        "data_type": "number",
+        "description": "目標が見えてから最初の1発を撃つまでの時間。",
+        "status_reason": "未実測。速さだけを最適化すると命中率と衝突するため、単独で推奨を駆動させてはいけない。",
+        "open_questions": [
+          "命中率とのトレードオフをどう扱うか"
+        ]
+      }
+    ]
   }
 }
