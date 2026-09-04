@@ -66,6 +66,10 @@
             tzUnknown: '(TZ不明)', selfDeclared: '自己申告',
             difficultyVaried: '変動あり', difficultyStable: '一定',
             cm360Blocked: 'DPI未確認',
+            cm360ScopeTitle: '振り向き（cm/360）は検証済みのスケールだけ計算します',
+            cm360ScopeBody: '換算を実測で確かめられた感度スケールだけを計算します。確かめられていないスケールは、推測で換算しません。数字が出ないのはそのためです。',
+            cm360Verified: '対応済み',
+            cm360NotVerified: '{scale} の換算は未検証のため計算しません',
 
             // ---- DPI
             dpiRecorded: 'KovaaKに記録されたDPI：{dpi}',
@@ -286,6 +290,10 @@
             tzUnknown: '(timezone unknown)', selfDeclared: 'self-declared',
             difficultyVaried: 'varied', difficultyStable: 'constant',
             cm360Blocked: 'DPI unconfirmed',
+            cm360ScopeTitle: 'cm/360 is calculated only for verified scales',
+            cm360ScopeBody: 'We calculate only for sensitivity scales whose conversion we have verified against real data. For scales we have not verified, we do not guess a conversion. That is why no number appears.',
+            cm360Verified: 'supported',
+            cm360NotVerified: 'The conversion for {scale} is unverified, so it is not calculated',
 
             dpiRecorded: 'DPI recorded by KovaaK: {dpi}',
             dpiQuestion: 'Is the mouse you actually use set to {dpi} DPI?',
@@ -499,6 +507,10 @@
             tzUnknown: '(시간대 불명)', selfDeclared: '자기 신고',
             difficultyVaried: '변동 있음', difficultyStable: '일정',
             cm360Blocked: 'DPI 미확인',
+            cm360ScopeTitle: '360도 거리(cm/360)는 검증된 스케일만 계산합니다',
+            cm360ScopeBody: '환산을 실측으로 확인한 감도 스케일만 계산합니다. 확인되지 않은 스케일은 추측으로 환산하지 않습니다. 숫자가 표시되지 않는 이유입니다.',
+            cm360Verified: '지원됨',
+            cm360NotVerified: '{scale} 의 환산은 미검증이므로 계산하지 않습니다',
 
             dpiRecorded: 'KovaaK에 기록된 DPI: {dpi}',
             dpiQuestion: '실제 사용 중인 마우스 DPI가 {dpi} 맞습니까?',
