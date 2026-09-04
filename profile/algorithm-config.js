@@ -24,7 +24,7 @@ const ALGORITHM_CONFIG = {
         "変更したら node tools/sync-algorithm-config.mjs を実行し、CI の --check を通すこと。",
         "ここにある値はすべて prototype 値であり、本番確定値ではない。"
     ],
-    "config_version": "1.0.0",
+    "config_version": "1.1.0",
     "factorWeights": {
         "_note": "利用できない factor は重みごと除外して再正規化する。0点として罰しない。",
         "performance": 0.45,
@@ -60,6 +60,24 @@ const ALGORITHM_CONFIG = {
         "enabled": true,
         "defaultRecommendedSessions": 3,
         "closeContestCompositeGap": 0.05
+    },
+    "aggregation": {
+        "_note": "同質な集合（sensitivity level × comparable metric × scenario/context）の中でだけ集約する。将来 trimmed_mean や M-estimator へ差し替えられるよう strategy として持つ。",
+        "strategy": "median",
+        "trimmedMeanProportion": 0.1
+    },
+    "sourceConflict": {
+        "_note": "source が違うだけでは矛盾としない。Flick最適32cm と Tracking最適36cm は矛盾ではなく Aim特性差。比較可能なスコープが一致する場合にのみ conflict とする。penalty は prototype 値。",
+        "penalty": 0.75,
+        "requireSameComparabilityGroup": true,
+        "requireSameScenario": true,
+        "requireSameContextGroup": false,
+        "minSamplesPerSource": 2,
+        "severity": {
+            "_note": "将来は disagreement magnitude × source reliability × sample count × comparability から段階的に算出する。現在は算出のみ行い penalty には反映していない。",
+            "enabled": true,
+            "appliedToPenalty": false
+        }
     }
 };
 /* ALGO_CONFIG:END */

@@ -170,6 +170,19 @@
      * Profile に出る数字が「どの実測値から来たか」を逆引きできるようにする。
      * session レベルと weapon レベルの両方を1件ずつ evidence 化する。
      */
+    /**
+     * 測定条件のざっくりした署名。「十分に近い測定条件か」の判定に使う。
+     * 条件が違えば同じ指標でも直接比較しない。
+     */
+    function contextSignature(session) {
+        var c = session.context || {};
+        var parts = [];
+        parts.push('dpi:' + (c.dpi === undefined || c.dpi === null ? 'unknown' : c.dpi));
+        parts.push('fov:' + (c.fov === undefined || c.fov === null ? 'unknown' : c.fov));
+        parts.push('dev:' + (c.inputDevice || 'unknown'));
+        return parts.join('|');
+    }
+
     function buildEvidence(sessions, config) {
         var out = [];
 
@@ -178,10 +191,12 @@
             var M = root.LC_METRICS || null;
 
             function emit(metricKey, value, unit, scope, weapon) {
-                var rel = M ? M.resolveReliability(metricKey)
+                var collectionMethod = p.collectionMethod || null;
+                var rel = M ? M.resolveReliability(metricKey, collectionMethod)
                             : { status: 'unrated', value: null, reason: 'registry_unavailable' };
-                var eligible = M ? M.isRecommendationEligible(metricKey) : false;
-                var weight = M ? M.recommendationWeight(metricKey) : 0;
+                var eligible = M ? M.isRecommendationEligible(metricKey, collectionMethod) : false;
+                var weight = M ? M.recommendationWeight(metricKey, collectionMethod) : 0;
+                var def = M ? M.get(metricKey) : null;
                 out.push({
                     source: p.source || null,
                     sourceType: p.sourceType || null,
@@ -191,7 +206,13 @@
                     metricKey: metricKey,
                     value: value,
                     unit: unit || null,
-                    metricVersion: '1',           // metric_registry 導入後はそこから引く
+                    metricVersion: def ? def.metric_version : '1',
+                    // --- 比較スコープ。意味の違うものを混ぜないための鍵
+                    comparabilityGroup: def ? def.comparability_group : null,
+                    concept: def ? def.concept : null,
+                    collectionMethod: collectionMethod,
+                    scenario: s.scenario || null,
+                    contextGroup: contextSignature(s),
                     parserVersion: p.parserVersion || null,
                     normalizationVersion: p.normalizationVersion || null,
                     observedAt: s.localTimestamp || null,
@@ -493,6 +514,7 @@
         buildSessionProfile: buildSessionProfile,
         buildEvidence: buildEvidence,
         traceMetric: traceMetric,
+        contextSignature: contextSignature,
         verifiedSensitivityLevel: verifiedSensitivityLevel,
         buildAimProfile: buildAimProfile,
         buildConfidencePreview: buildConfidencePreview,

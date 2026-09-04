@@ -47,6 +47,27 @@
     }
     function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
 
+    /**
+     * 集約戦略。差し替え可能にしておき、データ量が増えたら trimmed mean や
+     * M-estimator へ移行できるようにする。
+     * **意味の異なる Evidence をまとめて集約してはいけない。** 呼び出し側が
+     * 同質な集合（sensitivity level × comparable metric × scenario/context）を
+     * 作ってから渡すこと。
+     */
+    function aggregate(values, config) {
+        var conf = baseConfig(config).aggregation || { strategy: 'median' };
+        if (!values.length) return null;
+        if (conf.strategy === 'mean') return mean(values);
+        if (conf.strategy === 'trimmed_mean') {
+            var p = conf.trimmedMeanProportion || 0.1;
+            var v = values.slice().sort(function (x, y) { return x - y; });
+            var cut = Math.floor(v.length * p);
+            var kept = v.slice(cut, v.length - cut);
+            return kept.length ? mean(kept) : mean(v);
+        }
+        return median(values);   // 既定
+    }
+
     /** 中央値。単一の外れ値に引きずられないようにするため平均の代わりに使う。 */
     function median(a) {
         if (!a.length) return null;
@@ -92,6 +113,19 @@
         return { usable: usable, excludedCounts: excluded };
     }
 
+    /**
+     * 同質な比較スコープのキー。
+     * comparability_group が一致し、シナリオ／測定条件が揃っているものだけを
+     * 1つの集合として扱う。concept が同じでも group が違えば混ぜない。
+     */
+    function scopeKey(e, config) {
+        var conf = baseConfig(config).sourceConflict || {};
+        var parts = [(e.comparabilityGroup || e.metricKey) + '@' + (e.metricVersion || '1')];
+        if (conf.requireSameScenario !== false) parts.push('scn:' + (e.scenario || 'unknown'));
+        if (conf.requireSameContextGroup === true) parts.push('ctx:' + (e.contextGroup || 'unknown'));
+        return parts.join(' | ');
+    }
+
     // --------------------------------------------------- 水準ごとの集計
 
     /**
@@ -120,14 +154,15 @@
 
         var ev = usableEvidence.filter(function (e) { return ids[e.sessionId]; });
 
-        // 主指標: comparability_group ごとに分けて扱う（名前が似ていても混ぜない）
+        // 主指標: **同質スコープ**ごとに分ける。
+        // comparability_group / シナリオ / 測定条件が揃ったものだけを1集合にする。
         var byGroup = {};
         ev.forEach(function (e) {
-            var g = e.comparabilityGroup || e.metricKey;
+            var g = scopeKey(e, config);
             (byGroup[g] = byGroup[g] || []).push(e);
         });
 
-        // 最も観測数の多い comparability_group を主指標にする
+        // 最も観測数の多いスコープを主指標にする
         var primaryKey = null, primaryList = [];
         for (var g in byGroup) {
             if (byGroup[g].length > primaryList.length) { primaryKey = g; primaryList = byGroup[g]; }
@@ -145,8 +180,8 @@
         factors.performance = values.length
             ? {
                 available: true,
-                value: median(values),          // 合成に使う代表値
-                statistic: 'median',
+                value: aggregate(values, config),   // 同質スコープ内でのみ集約する
+                statistic: (baseConfig(config).aggregation || {}).strategy || 'median',
                 mean: mean(values),             // 参考
                 outlierCount: outlierCount(values),
                 n: values.length,
@@ -156,7 +191,7 @@
 
         // stability: 変動係数の逆。2件未満では算出しない
         var sd = stdev(values);
-        var center = median(values);
+        var center = aggregate(values, config);
         factors.stability = (sd !== null && center) // center が 0 でない
             ? { available: true, cv: sd / Math.abs(center), center: 'median', n: values.length }
             : { available: false, reason: values.length < 2 ? 'need_at_least_2_observations' : 'center_is_zero' };
@@ -200,6 +235,9 @@
             sessionIds: Object.keys(ids),
             sessionCount: group.sessions.length,
             observationCount: values.length,
+            scopes: Object.keys(byGroup).map(function (k) {
+                return { scope: k, observations: byGroup[k].length };
+            }),
             sourceTypes: (function () {
                 var st = {};
                 ev.forEach(function (e) { if (e.sourceType) st[e.sourceType] = true; });
@@ -412,6 +450,7 @@
             sensitivity_coverage: coverage,
             edge_optimum: edge,
             source_conflict: conflict,
+            characteristic_differences: conflict ? conflict.characteristicDifferences : [],
             next_best_test: suggestNextTest(levels, ranked, edge, config),
             ranked: ranked.map(function (r) {
                 return { cm360: r.cm360, composite: Math.round(r.composite * 1000) / 1000, parts: r.parts, usedWeight: r.usedWeight };
@@ -451,8 +490,14 @@
             penalties.push({ code: 'edge_optimum', factor: f, side: edge.side });
         }
         if (conflict && conflict.detected) {
-            value = clamp01(value * 0.75);
-            penalties.push({ code: 'source_conflict', factor: 0.75, sourceTypes: conflict.sourceTypes });
+            var cf = (baseConfig(config).sourceConflict || {}).penalty || 0.75;
+            value = clamp01(value * cf);
+            penalties.push({
+                code: 'source_conflict', factor: cf,
+                sourceTypes: conflict.sourceTypes,
+                scopes: conflict.conflicts.map(function (x) { return x.scope; }),
+                note: 'prototype値。将来は disagreement magnitude × reliability × sample count から段階的に決める。'
+            });
         }
 
         var caveats = [];
@@ -475,49 +520,120 @@
     }
 
     /**
-     * source_type ごとに最良水準を求め、食い違いを検出する。
-     * 「source A と source B で結果が逆」を黙って平均せず、矛盾として報告する。
+     * source 間の食い違いを検出する。
+     *
+     * 【重要】source が違うというだけで矛盾扱いしない。
+     *   - Flick 最適 32cm / Tracking 最適 36cm  → 矛盾ではなく **Aim特性差**
+     *   - Aim Trainer 最適 32cm / 実戦 最適 35cm → 矛盾ではなく **環境差**
+     * これらは Profile が保持すべき情報であり、罰する対象ではない。
+     *
+     * conflict とみなすのは、**同一の比較可能スコープ**（同じ comparability_group、
+     * 同じシナリオ、必要なら同じ測定条件）の中で source_type 間の結論が食い違う場合だけ。
      */
     function detectSourceConflict(levels, usableEvidence, config) {
-        var bySource = {};
+        var conf = baseConfig(config).sourceConflict || {};
+        var minN = conf.minSamplesPerSource || 2;
+
+        // スコープ × source_type ごとに、水準別の代表値を集める
+        var scopes = {};
         usableEvidence.forEach(function (e) {
-            if (!e.sourceType) return;
-            bySource[e.sourceType] = bySource[e.sourceType] || {};
+            if (!e.sourceType || typeof e.value !== 'number') return;
+            var sk = scopeKey(e, config);
+            var lv = null;
+            levels.forEach(function (l) {
+                if (l.sessionIds && l.sessionIds.indexOf(e.sessionId) >= 0) lv = l.cm360;
+            });
+            if (lv === null) return;
+            scopes[sk] = scopes[sk] || {};
+            scopes[sk][e.sourceType] = scopes[sk][e.sourceType] || {};
+            (scopes[sk][e.sourceType][lv] = scopes[sk][e.sourceType][lv] || []).push(e.value);
         });
-        var types = Object.keys(bySource);
-        if (types.length < 2) {
-            return { detected: false, reason: 'single_source_type', sourceTypes: types };
+
+        var conflicts = [];
+        var comparableScopes = [];
+        var perScopeBest = {};
+
+        Object.keys(scopes).forEach(function (sk) {
+            var bySource = scopes[sk];
+            var types = Object.keys(bySource);
+            var best = {};
+
+            types.forEach(function (t) {
+                var levelsOfType = Object.keys(bySource[t]);
+                var total = levelsOfType.reduce(function (n, k) { return n + bySource[t][k].length; }, 0);
+                if (total < minN) return;                    // 標本が少なすぎる source は判定に使わない
+                if (levelsOfType.length < 2) return;         // 1水準しか無ければ「最良」を語れない
+                var top = null;
+                levelsOfType.forEach(function (k) {
+                    var v = aggregate(bySource[t][k], config);
+                    if (top === null || v > top.value) top = { cm360: Number(k), value: v };
+                });
+                if (top) best[t] = top;
+            });
+
+            perScopeBest[sk] = best;
+            var usableTypes = Object.keys(best);
+            if (usableTypes.length < 2) return;              // 比較できない
+            comparableScopes.push({ scope: sk, sourceTypes: usableTypes });
+
+            var picks = usableTypes.map(function (t) { return best[t].cm360; });
+            var uniq = picks.filter(function (v, i) { return picks.indexOf(v) === i; });
+            if (uniq.length < 2) return;                     // 一致している
+
+            var magnitude = Math.max.apply(null, picks) - Math.min.apply(null, picks);
+            var minSamples = Math.min.apply(null, usableTypes.map(function (t) {
+                return Object.keys(bySource[t]).reduce(function (n, k) { return n + bySource[t][k].length; }, 0);
+            }));
+            var minReliability = Math.min.apply(null, usableEvidence
+                .filter(function (e) { return usableTypes.indexOf(e.sourceType) >= 0 && typeof e.recommendationWeight === 'number'; })
+                .map(function (e) { return e.recommendationWeight; }).concat([1]));
+
+            conflicts.push({
+                scope: sk,
+                bestBySourceType: usableTypes.reduce(function (o, t) { o[t] = best[t].cm360; return o; }, {}),
+                disagreementCm: Math.round(magnitude * 100) / 100,
+                minSampleCount: minSamples,
+                minSourceReliability: Math.round(minReliability * 1000) / 1000,
+                // 将来は severity から段階的に penalty を決める。現在は算出のみ。
+                severity: Math.round(Math.min(1,
+                    (magnitude / 10) * minReliability * Math.min(1, minSamples / 6)) * 1000) / 1000,
+                severityAppliedToPenalty: !!(conf.severity && conf.severity.appliedToPenalty),
+                message: '同じ比較スコープ（' + sk + '）の中でデータ元によって最良の感度が食い違っています（'
+                    + usableTypes.map(function (t) { return t + '→' + best[t].cm360 + 'cm'; }).join(', ')
+                    + '）。測定条件の違いを確認してください。'
+            });
+        });
+
+        // 比較できないスコープ同士の違いは「矛盾」ではなく特性差として保持する
+        var characteristic = [];
+        var scopeNames = Object.keys(perScopeBest);
+        for (var i = 0; i < scopeNames.length; i++) {
+            for (var j = i + 1; j < scopeNames.length; j++) {
+                var A = perScopeBest[scopeNames[i]], B = perScopeBest[scopeNames[j]];
+                var aT = Object.keys(A), bT = Object.keys(B);
+                if (!aT.length || !bT.length) continue;
+                var aBest = A[aT[0]].cm360, bBest = B[bT[0]].cm360;
+                if (aBest === bBest) continue;
+                characteristic.push({
+                    scopeA: scopeNames[i], bestA: aBest,
+                    scopeB: scopeNames[j], bestB: bBest,
+                    classification: 'characteristic_difference',
+                    note: '比較可能スコープが異なるため矛盾ではありません。Aim特性差または環境差として Profile に保持します。'
+                });
+            }
         }
 
-        // source_type ごとに水準別の中央値を出し、最良水準を決める
-        var bestBySource = {};
-        types.forEach(function (t) {
-            var best = null;
-            levels.forEach(function (l) {
-                var vals = usableEvidence.filter(function (e) {
-                    return e.sourceType === t
-                        && l.sessionIds && l.sessionIds.indexOf(e.sessionId) >= 0
-                        && typeof e.value === 'number';
-                }).map(function (e) { return e.value; });
-                if (!vals.length) return;
-                var m = median(vals);
-                if (best === null || m > best.value) best = { cm360: l.cm360, value: m };
-            });
-            if (best) bestBySource[t] = best.cm360;
-        });
-
-        var picks = Object.keys(bestBySource).map(function (k) { return bestBySource[k]; });
-        var uniq = picks.filter(function (v, i) { return picks.indexOf(v) === i; });
-
         return {
-            detected: uniq.length > 1,
-            sourceTypes: types,
-            bestBySourceType: bestBySource,
-            message: uniq.length > 1
-                ? 'データ元によって最良の感度が食い違っています（' +
-                  Object.keys(bestBySource).map(function (k) { return k + '→' + bestBySource[k] + 'cm'; }).join(', ') +
-                  '）。測定条件の違いを確認してください。'
-                : null
+            detected: conflicts.length > 0,
+            conflicts: conflicts,
+            comparableScopes: comparableScopes,
+            characteristicDifferences: characteristic,
+            sourceTypes: (function () {
+                var t = {};
+                usableEvidence.forEach(function (e) { if (e.sourceType) t[e.sourceType] = true; });
+                return Object.keys(t);
+            })(),
+            message: conflicts.length ? conflicts[0].message : null
         };
     }
 
@@ -688,6 +804,8 @@
         detectEdgeOptimum: detectEdgeOptimum,
         detectSourceConflict: detectSourceConflict,
         median: median,
+        aggregate: aggregate,
+        scopeKey: scopeKey,
         buildSensitivityCoverage: buildSensitivityCoverage,
         suggestNextTest: suggestNextTest,
         buildChangeReason: buildChangeReason,

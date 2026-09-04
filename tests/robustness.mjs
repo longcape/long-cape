@@ -342,6 +342,159 @@ check('20 データ不足 → withheld とし、不足内容を返す', async ()
     eq(r.next_best_test.reason, 'increase_level_count', 'まず水準を増やす提案');
 });
 
+// ============================ source conflict の限定（Phase G 前の修正）
+
+check('C1 Flick と Tracking で最適が違っても矛盾扱いしない', async () => {
+    // 別の comparability_group（benchmark_score と accuracy_transcribed）
+    const flick = build([
+        { cm360: 30, sessions: 3 }, { cm360: 32, sessions: 3 }, { cm360: 34, sessions: 3 }
+    ], { seed: 30, peak: 32 });
+
+    const trackingRaw = build([
+        { cm360: 30, sessions: 3 }, { cm360: 32, sessions: 3 }, { cm360: 34, sessions: 3 }
+    ], { seed: 31, peak: 34 });
+    const tracking = trackingRaw.map((x) => ({
+        ...x, externalId: x.externalId + '-trk',
+        metrics: [{ metricKey: 'manual.accuracy_transcribed', value: x.metrics[0].value / 20, unit: 'percent' }]
+    }));
+
+    const r = run([...flick, ...tracking]);
+
+    eq(r.source_conflict.detected, false, '矛盾として扱わない');
+    ok(!r.confidence.penalties.some((p) => p.code === 'source_conflict'), '減点しない');
+    ok(r.characteristic_differences.length > 0, '特性差として保持する');
+    ok(/矛盾ではありません/.test(r.characteristic_differences[0].note), '説明が付く');
+    eq(r.characteristic_differences[0].classification, 'characteristic_difference', '分類');
+});
+
+check('C2 Trainer と実戦で最適が違っても、スコープが違えば矛盾扱いしない', async () => {
+    // 同じ metric だがシナリオが違う = 比較スコープが違う
+    const trainer = build([
+        { cm360: 30, sessions: 3, scenario: 'Trainer Scenario' },
+        { cm360: 32, sessions: 3, scenario: 'Trainer Scenario' },
+        { cm360: 34, sessions: 3, scenario: 'Trainer Scenario' }
+    ], { seed: 32, peak: 32 });
+
+    const match = build([
+        { cm360: 30, sessions: 3, scenario: 'Live Match' },
+        { cm360: 32, sessions: 3, scenario: 'Live Match' },
+        { cm360: 34, sessions: 3, scenario: 'Live Match' }
+    ], { seed: 33, peak: 34 }).map((x) => ({
+        ...x, externalId: x.externalId + '-live',
+        provenance: { ...x.provenance, sourceType: 'in_game_match' }
+    }));
+
+    const r = run([...trainer, ...match]);
+    eq(r.source_conflict.detected, false, 'シナリオが違えば矛盾ではない');
+    ok(r.characteristic_differences.length > 0, '環境差として保持する');
+});
+
+check('C3 同一スコープ内で食い違えば矛盾として検出する', async () => {
+    // 同じ metric・同じシナリオ・source_type だけ違う
+    const a = build([
+        { cm360: 30, sessions: 3 }, { cm360: 32, sessions: 3 }, { cm360: 34, sessions: 3 }
+    ], { seed: 34, peak: 30 });
+    const b = build([
+        { cm360: 30, sessions: 3 }, { cm360: 32, sessions: 3 }, { cm360: 34, sessions: 3 }
+    ], { seed: 35, peak: 34 }).map((x) => ({
+        ...x, externalId: x.externalId + '-b',
+        provenance: { ...x.provenance, sourceType: 'in_game_range' }
+    }));
+
+    const r = run([...a, ...b]);
+    eq(r.source_conflict.detected, true, '同一スコープなら矛盾');
+    eq(r.source_conflict.conflicts.length >= 1, true, '内訳が返る');
+
+    const c = r.source_conflict.conflicts[0];
+    ok(c.scope, 'どのスコープでの矛盾か分かる');
+    ok(c.disagreementCm > 0, '食い違いの大きさ');
+    ok(typeof c.severity === 'number', 'severity を算出する');
+    eq(c.severityAppliedToPenalty, false, '現時点では penalty へ反映していない');
+    ok(r.confidence.penalties.some((p) => p.code === 'source_conflict'), '減点する');
+});
+
+check('C4 conflict penalty が config 値であり固定でない', async () => {
+    ok(CFG.sourceConflict, 'config に sourceConflict がある');
+    eq(CFG.sourceConflict.penalty, 0.75, 'prototype値');
+    ok(/prototype/.test(CFG.sourceConflict._note), 'prototype である旨');
+
+    const a = build([{ cm360: 30, sessions: 3 }, { cm360: 32, sessions: 3 }, { cm360: 34, sessions: 3 }],
+        { seed: 34, peak: 30 });
+    const b = build([{ cm360: 30, sessions: 3 }, { cm360: 32, sessions: 3 }, { cm360: 34, sessions: 3 }],
+        { seed: 35, peak: 34 }).map((x) => ({
+            ...x, externalId: x.externalId + '-b',
+            provenance: { ...x.provenance, sourceType: 'in_game_range' }
+        }));
+
+    const strict = JSON.parse(JSON.stringify(CFG));
+    strict.sourceConflict.penalty = 0.4;
+    const r1 = run([...a, ...b]);
+    const r2 = R.reestimate({
+        sessions: [...a, ...b], evidence: P.buildEvidence([...a, ...b]),
+        levelResolver: P.verifiedSensitivityLevel, now: '2026-09-04T00:00:00'
+    }, strict);
+    ok(r2.confidence.value < r1.confidence.value, 'config を変えると効き方が変わる');
+});
+
+check('C5 標本が少ない source は矛盾判定に使わない', async () => {
+    const a = build([{ cm360: 30, sessions: 3 }, { cm360: 32, sessions: 3 }, { cm360: 34, sessions: 3 }],
+        { seed: 36, peak: 34 });
+    // 1件しか無い source は判定対象外
+    const b = build([{ cm360: 30, sessions: 1 }], { seed: 37, peak: 30 }).map((x) => ({
+        ...x, externalId: x.externalId + '-thin',
+        provenance: { ...x.provenance, sourceType: 'in_game_match' }
+    }));
+    const r = run([...a, ...b]);
+    eq(r.source_conflict.detected, false, '標本不足の source では矛盾と判定しない');
+});
+
+// ================================ 集約戦略（median の適用単位）
+
+check('A1 集約は同質スコープの中でのみ行う', async () => {
+    const sessions = build([{ cm360: 34, sessions: 4, scenario: 'S1' }], { seed: 38 });
+    const other = build([{ cm360: 34, sessions: 4, scenario: 'S2' }], { seed: 39, top: 5000 })
+        .map((x) => ({ ...x, externalId: x.externalId + '-s2' }));
+
+    const r = run([...sessions, ...other,
+    ...build([{ cm360: 32, sessions: 3, scenario: 'S1' }], { seed: 40 }),
+    ...build([{ cm360: 36, sessions: 3, scenario: 'S1' }], { seed: 41 })]);
+
+    const l34 = r.levels.find((l) => l.cm360 === 34);
+    ok(l34.scopes.length >= 2, '複数のスコープが存在する');
+    // 主指標は最も観測数の多いスコープ1つ。別シナリオの値と混ざっていない
+    ok(/scn:S1|scn:S2/.test(l34.factors.performance.metricGroup), 'スコープ名にシナリオが含まれる');
+});
+
+check('A2 集約戦略を config で差し替えられる', async () => {
+    const sessions = build([
+        { cm360: 30, sessions: 4 },
+        { cm360: 32, sessions: 4 },
+        { cm360: 34, values: [900, 905, 902, 100000] },   // 外れ値1件
+        { cm360: 36, sessions: 4 }
+    ], { seed: 42 });
+
+    const meanCfg = JSON.parse(JSON.stringify(CFG));
+    meanCfg.aggregation.strategy = 'mean';
+    const trimCfg = JSON.parse(JSON.stringify(CFG));
+    trimCfg.aggregation.strategy = 'trimmed_mean';
+
+    const med = run(sessions);
+    const mn = R.reestimate({
+        sessions, evidence: P.buildEvidence(sessions),
+        levelResolver: P.verifiedSensitivityLevel, now: '2026-09-04T00:00:00'
+    }, meanCfg);
+    const tm = R.reestimate({
+        sessions, evidence: P.buildEvidence(sessions),
+        levelResolver: P.verifiedSensitivityLevel, now: '2026-09-04T00:00:00'
+    }, trimCfg);
+
+    eq(med.levels.find((l) => l.cm360 === 34).factors.statistic, undefined, '型の確認用');
+    const v = (r) => r.levels.find((l) => l.cm360 === 34).factors.performance.value;
+    ok(v(mn) > v(med), '平均は外れ値に引きずられる');
+    ok(v(med) < 1000, '中央値は引きずられない');
+    ok(typeof v(tm) === 'number', 'trimmed_mean も動作する');
+});
+
 // ============================================ config / 概念分離の検証
 
 check('config: 重みがコードに固定されず config から来る', async () => {
