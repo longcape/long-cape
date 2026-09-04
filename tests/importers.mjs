@@ -362,9 +362,15 @@ check('ハッシュ: raw_content_hash は SHA-256 で、内容が1バイト違�
 });
 
 check('ハッシュ: raw_content_hash と logical_fingerprint を混同しない', async () => {
+    // チェックアウト時の改行コードに依存しないよう、両方の版をここで作る。
+    // （fixture の保存形式に依存させると Linux と Windows で結果が変わる）
     const f = readFixture(F.current);
-    const lf = { name: f.name, text: f.text.replace(/\r\n/g, '\n') };
-    const a = (await app.run([f], { importedAt: 'T' })).sessions[0].provenance;
+    const lfText = f.text.replace(/\r\n/g, '\n');
+    const crlfText = lfText.replace(/\n/g, '\r\n');
+    const lf = { name: f.name, text: lfText };
+    const crlf = { name: f.name, text: crlfText };
+
+    const a = (await app.run([crlf], { importedAt: 'T' })).sessions[0].provenance;
     const b = (await app.run([lf], { importedAt: 'T' })).sessions[0].provenance;
 
     // 改行コードだけ違う = バイト列が違う → raw_content_hash は別で正しい
