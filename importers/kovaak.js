@@ -553,9 +553,17 @@
         }
 
         // --- DPI の出どころ
+        //
+        // 【重要・実測で判明】KovaaK の DPI 欄は **ユーザーが手で入力する設定値**であって、
+        // マウスの実際のDPIを検出したものではない。KovaaK 自身の cm/360 表示にしか使われず、
+        // 入力を忘れる／変え忘れると実機と食い違う。
+        // 実際、最初の実ファイルで「ファイル 400 / 実機 800」の食い違いが確認された。
+        // この差はそのまま cm/360 の2倍の誤差になるため、**自己申告として扱い、
+        // ユーザーの確認を必須とする**。ファイルにあることを「確定」と同一視しない。
         var dpi = toNumber(context.dpi);
         context.dpi = dpi;
-        context.dpiSource = dpi === null ? 'unknown' : 'file';
+        context.dpiSource = dpi === null ? 'unknown' : 'file_self_declared';
+        context.dpiNeedsConfirmation = dpi !== null;
 
         // --- Horiz Sens は **正規化しない**（Phase D の禁止事項）
         var candidates = [];
@@ -586,10 +594,24 @@
                 note: '実ファイル検証まで in_game_sens を確定しない（Phase C.5 未確定事項2）'
             });
         }
+        if (dpi !== null) {
+            unresolved.push({
+                field: 'dpi_verified',
+                reason: 'file_value_is_self_declared',
+                candidates: [{ origin: 'file', value: dpi }],
+                note: 'KovaaKのDPI欄は手入力の設定値であり実機DPIとは限らない。'
+                    + '実測で「ファイル400 / 実機800」の食い違いを確認済み。ユーザー確認が必要。'
+            });
+        }
+
+        var cmBlockers = ['in_game_sens'];
+        if (dpi === null) cmBlockers.push('dpi_missing');
+        else cmBlockers.push('dpi_unverified');
         unresolved.push({
             field: 'cm360',
-            reason: 'blocked_by_in_game_sens',
-            note: 'in_game_sens が未確定のため cm/360 を自動確定しない'
+            reason: 'blocked_by:' + cmBlockers.join(','),
+            note: 'cm/360 は in_game_sens と実機DPIの両方が確定するまで自動算出しない。'
+                + 'DPIが2倍違えば cm/360 も2倍ずれる。'
         });
 
         return { metrics: metrics, weapons: weapons, context: context, unresolved: unresolved };
@@ -740,7 +762,9 @@
         var errors = result.warnings.filter(function (w) { return w.level === 'error'; });
         var warns = result.warnings.filter(function (w) { return w.level === 'warn'; });
 
-        var dpiKnown = result.sessions.filter(function (s) { return s.context.dpiSource === 'file'; }).length;
+        var dpiSelfDeclared = result.sessions.filter(function (s) {
+            return s.context.dpiSource === 'file_self_declared';
+        }).length;
 
         return {
             summary: {
@@ -755,7 +779,13 @@
             period: { earliest: earliest, latest: latest, tzKnown: false },
             scenarios: scenarios,
             formats: formats,
-            dpi: { fromFile: dpiKnown, needsUserInput: result.stats.sessionsParsed - dpiKnown },
+            dpi: {
+                selfDeclaredInFile: dpiSelfDeclared,
+                missing: result.stats.sessionsParsed - dpiSelfDeclared,
+                // ファイルに書いてあっても確定ではない。全件ユーザー確認が要る。
+                needsUserConfirmation: result.stats.sessionsParsed,
+                note: 'KovaaKのDPI欄は手入力の設定値。実機DPIと食い違いうるため必ず確認する。'
+            },
             weapons: (function () {
                 var names = {}; var maxPer = 0;
                 result.sessions.forEach(function (s) {

@@ -161,10 +161,17 @@ check('正規化: 現行形式の session 指標', async () => {
         '武器由来の指標が session レベルに混ざっていないこと');
 });
 
-check('正規化: DPI をファイルから取得し dpiSource=file にする', async () => {
+check('正規化: DPI は自己申告として扱い、確定させない', async () => {
     const r = await app.run([readFixture(F.current)], { importedAt: 'T' });
-    eq(r.sessions[0].context.dpi, 800, 'DPI');
-    eq(r.sessions[0].context.dpiSource, 'file', 'DPIの出どころ');
+    const s = r.sessions[0];
+    eq(s.context.dpi, 800, '値は取れる');
+    eq(s.context.dpiSource, 'file_self_declared', 'ファイル値は自己申告');
+    eq(s.context.dpiNeedsConfirmation, true, 'ユーザー確認が必要');
+
+    // 実測で「ファイル400 / 実機800」の食い違いが出たため、確定扱いにしない
+    const u = s.unresolved.find((x) => x.field === 'dpi_verified');
+    ok(u, 'DPIが未確定として記録される');
+    eq(u.reason, 'file_value_is_self_declared', '理由');
 });
 
 check('正規化: 旧形式は DPI が無く dpiSource=unknown', async () => {
@@ -205,7 +212,10 @@ check('禁止事項: cm/360 を自動確定しない', async () => {
     const r = await app.run([readFixture(F.current)], { importedAt: 'T' });
     const s = r.sessions[0];
     ok(s.context.cm360 === undefined, 'cm360 が算出されていないこと');
-    ok(s.unresolved.some((u) => u.field === 'cm360'), 'cm360 が unresolved に記録されていること');
+    const cm = s.unresolved.find((u) => u.field === 'cm360');
+    ok(cm, 'cm360 が unresolved に記録されていること');
+    ok(/in_game_sens/.test(cm.reason), '感度が未確定であること');
+    ok(/dpi/.test(cm.reason), 'DPIも阻害要因であること');
 });
 
 check('禁止事項: Derived 指標を算出しない（accuracy 等）', async () => {
@@ -407,8 +417,8 @@ check('実構造: Timestamp が時刻表記でも世代判別を誤らない', a
 check('実構造: 設定値をフッターから取得する', async () => {
     const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
     const c = r.sessions[0].context;
-    eq(c.dpi, 400, 'DPI');
-    eq(c.dpiSource, 'file', 'DPIの出どころ');
+    eq(c.dpi, 400, 'ファイルに書かれている値');
+    eq(c.dpiSource, 'file_self_declared', '自己申告として扱う');
     eq(c.fov, '103.0', 'FOV');
     eq(c.sensScale, 'Valorant', 'Sens Scale は名前であって数値ではない');
     eq(c.fovScale, 'Valorant', 'FOVScale');
@@ -476,6 +486,17 @@ check('実構造: Horiz Sens は1箇所しか無く、100倍差は存在しな�
     ok(r.sessions[0].context.inGameSens === undefined, 'まだ確定させない');
 });
 
+check('実構造: ファイルのDPIと実機DPIが違いうることを前提にする', async () => {
+    // 実測（2026-09-04）: ファイル 400 / 実機 800。cm/360 が2倍ずれる。
+    const r = await app.run([readFixture(F.real)], { importedAt: 'T' });
+    const s = r.sessions[0];
+    eq(s.context.dpi, 400, 'ファイルの値');
+    eq(s.context.dpiNeedsConfirmation, true, '確認が必要');
+    const cm = s.unresolved.find((u) => u.field === 'cm360');
+    ok(/dpi_unverified/.test(cm.reason), 'DPI未確認が cm/360 の阻害要因になる');
+    ok(/2倍/.test(cm.note), '誤差の大きさが説明されている');
+});
+
 // ------------------------------------------------------------- 9. preview
 
 check('プレビュー: バッチ全体の要約を返す', async () => {
@@ -491,8 +512,9 @@ check('プレビュー: バッチ全体の要約を返す', async () => {
     ok(p.summary.errorCount >= 2, 'エラー件数');
     eq(p.formats[app.FORMATS.CURRENT], 1, 'current の件数');
     eq(p.formats[app.FORMATS.LEGACY], 1, 'legacy の件数');
-    eq(p.dpi.fromFile, 1, 'DPIがファイルから取れた件数');
-    eq(p.dpi.needsUserInput, 1, 'DPI入力が必要な件数');
+    eq(p.dpi.selfDeclaredInFile, 1, 'ファイルにDPIがあった件数');
+    eq(p.dpi.missing, 1, 'DPIが無かった件数');
+    eq(p.dpi.needsUserConfirmation, 2, '解析できた全件で確認が必要');
     eq(p.period.tzKnown, false, 'タイムゾーンは不明のまま');
     ok(p.unresolvedFields.in_game_sens >= 1, 'in_game_sens が未確定として集計される');
 });
