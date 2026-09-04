@@ -25,6 +25,7 @@ function makeContext() {
 
 const ctx = makeContext();
 vm.runInContext(fs.readFileSync(path.join(REPO_ROOT, 'importers', 'kovaak.js'), 'utf8'), ctx);
+vm.runInContext(fs.readFileSync(path.join(REPO_ROOT, 'profile', 'metric-registry.js'), 'utf8'), ctx);
 vm.runInContext(fs.readFileSync(path.join(REPO_ROOT, 'profile', 'aim-profile.js'), 'utf8'), ctx);
 
 const kovaak = ctx.LC_IMPORTERS.kovaak;
@@ -133,12 +134,15 @@ check('B: Evidence に必須項目が揃う', async () => {
 
     const e = ev[0];
     for (const k of ['source', 'sourceType', 'sessionId', 'metricKey', 'value',
-        'metricVersion', 'parserVersion', 'normalizationVersion', 'observedAt', 'reliability']) {
+        'metricVersion', 'parserVersion', 'normalizationVersion', 'observedAt',
+        'reliability', 'reliabilityStatus', 'recommendationEligible', 'recommendationWeight']) {
         ok(k in e, `${k} が存在すること`);
     }
     eq(e.source, 'kovaak');
     eq(e.sourceType, 'aim_trainer');
-    ok(typeof e.reliability === 'number', 'reliability が数値');
+    // KovaaK は実ファイル未検証のため Registry 上 unrated
+    eq(e.reliabilityStatus, 'unrated', 'unrated であること');
+    eq(e.reliability, null, '汎用の既定値を与えない');
 });
 
 check('B: Profile の数字を evidence から逆引きできる', async () => {
@@ -161,14 +165,14 @@ check('B: weapon レベルの evidence が武器名付きで残る', async () =>
     eq([...new Set(wev.map((e) => e.weapon))].sort(), ['pistol', 'rifle', 'smg'], '武器名で区別');
 });
 
-check('B: source_type によって reliability が変わる', async () => {
+check('B: reliability は Registry が定義したものだけ数値を持つ', async () => {
     const sessions = await sessionsFrom([F.s1]);
-    const mixed = [sessions[0], asOtherSource(sessions[0], 'valorant_match', 'in_game_match')];
-    const ev = P.buildEvidence(mixed);
+    const ev = P.buildEvidence(sessions);
 
-    const trainer = ev.find((e) => e.sourceType === 'aim_trainer').reliability;
-    const match = ev.find((e) => e.sourceType === 'in_game_match').reliability;
-    ok(trainer > match, '実戦マッチの信頼度が低いこと（交絡が多いため）');
+    ok(ev.every((e) => e.reliabilityStatus === 'unrated'), 'すべて unrated');
+    ok(ev.every((e) => e.reliability === null), '数値を持たない');
+    ok(ev.every((e) => e.recommendationWeight === 0), '推奨重みは0');
+    ok(ev.every((e) => e.registered === true), 'Registry に登録はされている');
 });
 
 // -------------------------------------------------------- C. Multi-source
@@ -190,11 +194,14 @@ check('C: source混在でも Profile が成立する（KovaaK専用でない）'
         'KovaaK以外のmetricKeyも扱える');
 });
 
-check('C: 未知の source_type でも落ちず、既定の低い信頼度になる', async () => {
+check('C: 未登録 metric でも落ちず、unrated として扱う', async () => {
     const base = (await sessionsFrom([F.s1]))[0];
     const ev = P.buildEvidence([asOtherSource(base, 'brand_new_trainer', 'something_unknown')]);
-    ok(ev.length > 0, 'evidence が作られる');
-    ok(ev[0].reliability > 0 && ev[0].reliability < 0.5, '未知は低め既定になる');
+    ok(ev.length > 0, 'evidence が作られる（情報としては保持する）');
+    eq(ev[0].reliabilityStatus, 'unrated', '未登録は unrated');
+    eq(ev[0].reliability, null, '推測で数値を与えない');
+    eq(ev[0].registered, false, '未登録であることが分かる');
+    eq(ev[0].recommendationWeight, 0, '推奨には使わない');
 });
 
 // ------------------------------- D. raw/normalized/derived/unresolved 表示
@@ -239,12 +246,14 @@ check('E: 複数session の在庫情報を出せる', async () => {
     eq(inv.dataFreshness.tzKnownForAll, false, 'タイムゾーン不明を隠さない');
 });
 
-check('E: 感度水準の数を数えられる（単一 vs 複数）', async () => {
-    const single = await sessionsFrom([F.s1, F.s3]);      // 同一条件（DPI800・同sens）
-    const multi = await sessionsFrom([F.s1, F.s2]);       // 別条件（DPI/sens が違う）
+check('E: KovaaK のみでは感度水準を unknown とし、推測で数えない', async () => {
+    const sessions = await sessionsFrom([F.s1, F.s2]);
+    const lv = P.buildAimProfile(sessions).inventory.sensitivityLevels;
 
-    eq(P.buildAimProfile(single).inventory.sensitivityLevelCount, 1, '同一条件は1水準');
-    eq(P.buildAimProfile(multi).inventory.sensitivityLevelCount, 2, '別条件は2水準');
+    eq(lv.status, 'unknown', 'in_game_sens が未確定なので unknown');
+    eq(lv.count, null, '件数を出さない');
+    eq(lv.unknownSessionCount, 2, '未検証セッション数');
+    ok(/1水準と数えてはいけない/.test(lv.note), '誤認防止の注意書き');
 });
 
 check('E: unknown metric も coverage に現れる（捨てない）', async () => {
@@ -257,48 +266,49 @@ check('E: unknown metric も coverage に現れる（捨てない）', async () 
 
 // ---------------------------------------------------------- F. Confidence
 
-check('F: 単一感度水準しかない場合は低信頼になる', async () => {
-    const single = await sessionsFrom([F.s1, F.s3]);   // 1水準
-    const multi = await sessionsFrom([F.s1, F.s2]);    // 2水準
+check('F: 感度水準が unknown なら条件被覆を算出せず、不足として説明する', async () => {
+    const sessions = await sessionsFrom([F.s1, F.s2]);
+    const c = P.buildAimProfile(sessions).confidence;
 
-    const cs = P.buildAimProfile(single).confidence;
-    const cm = P.buildAimProfile(multi).confidence;
-
-    eq(cs.subscores.conditionCoverage < cm.subscores.conditionCoverage, true, '条件被覆が低い');
-    ok(cs.penalties.some((p) => p.code === 'single_sensitivity_level'), '減点が適用される');
-    ok(cs.value < cm.value, '総合値が低いこと');
-    ok(cs.missing.some((m) => /感度水準/.test(m)), '不足内容が説明される');
+    eq(c.profileCompleteness.subscores.conditionCoverage, null, '算出しない（推測しない）');
+    ok(c.profileCompleteness.unavailableSubscores.includes('conditionCoverage'), '算出不能と明示');
+    ok(c.profileCompleteness.gaps.some((g) => /検証済みの感度水準/.test(g)), '不足内容が説明される');
 });
 
-check('F: 本番Recommendationのconfidenceではないと明示する', async () => {
+check('F: Profile completeness と Recommendation confidence を分離する', async () => {
     const sessions = await sessionsFrom([F.s1]);
     const c = P.buildAimProfile(sessions).confidence;
-    eq(c.kind, 'evidence_completeness_preview', '種別');
-    ok(/本番Recommendation/.test(c.note), '注記');
+    eq(c.kind, 'profile_completeness_and_evidence_quality', '種別');
+    ok(/別概念/.test(c.note), '別概念であるという注記');
+    ok(/表示してはいけない/.test(c.displayGuidance), 'ユーザー表示への注意');
+    eq(c.recommendationConfidence.status, 'not_computed', 'Recommendation側は算出しない');
     ok(c.algorithmVersion, 'algorithmVersion を持つ');
 });
 
-check('F: データが少なければ belowMinimumEvidence になる', async () => {
+check('F: データが少なければ gaps に列挙される', async () => {
     const one = await sessionsFrom([F.s1]);
     const c = P.buildAimProfile(one).confidence;
-    eq(c.belowMinimumEvidence, true, '最小件数未満');
-    ok(c.missing.length > 0, '不足内容が列挙される');
+    ok(c.profileCompleteness.gaps.some((g) => /セッションが/.test(g)), 'セッション不足を説明');
+    ok(c.profileCompleteness.gaps.length > 0, '不足内容が列挙される');
 });
 
-check('F: source_type が1種類だと減点される', async () => {
+check('F: source_type が1種類なら gaps に出る', async () => {
     const base = (await sessionsFrom([F.s1]))[0];
     const only = P.buildAimProfile([base, base]);
     const mixed = P.buildAimProfile([base, asOtherSource(base, 'valorant_range', 'in_game_range')]);
 
-    ok(only.confidence.penalties.some((p) => p.code === 'single_source_type'), '減点あり');
-    ok(!mixed.confidence.penalties.some((p) => p.code === 'single_source_type'), '混在なら減点なし');
+    ok(only.confidence.profileCompleteness.gaps.some((g) => /データ元が1種類/.test(g)), '単一なら指摘');
+    ok(!mixed.confidence.profileCompleteness.gaps.some((g) => /データ元が1種類/.test(g)), '混在なら出ない');
 });
 
-check('F: in_game_sens 未確定が減点される', async () => {
+check('F: evidence quality が「推奨に使えるか」を分けて示す', async () => {
     const sessions = await sessionsFrom([F.s1]);
-    const c = P.buildAimProfile(sessions).confidence;
-    ok(c.penalties.some((p) => p.code === 'unresolved_sensitivity'), '未確定の減点');
-    ok(c.missing.some((m) => /in_game_sens/.test(m)), '不足内容に含まれる');
+    const q = P.buildAimProfile(sessions).confidence.evidenceQuality;
+
+    ok(q.evidenceCount > 0, '情報としては存在する');
+    eq(q.ratedCount, 0, 'rated は0件（KovaaK未検証）');
+    eq(q.usableForRecommendation, false, '推奨には使えない');
+    ok(/重みは0/.test(q.note), '重み0であることの説明');
 });
 
 // ---------------------------------------------------------- 禁止事項
@@ -332,7 +342,7 @@ check('禁止事項: 推奨感度を算出しない', async () => {
     }
 
     // confidence は evidence completeness であって推奨の信頼度ではない
-    eq(prof.confidence.kind, 'evidence_completeness_preview', 'confidence の種別');
+    eq(prof.confidence.kind, 'profile_completeness_and_evidence_quality', 'confidence の種別');
 });
 
 // -------------------------------------------------------------- 同一Raw重複

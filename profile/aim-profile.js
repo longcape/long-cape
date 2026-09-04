@@ -50,13 +50,6 @@
      * 実戦は交絡が多いため既定を最も低くする。
      */
     var DEFAULT_CONFIG = {
-        sourceTypeReliability: {
-            aim_trainer: 1.00,
-            in_game_range: 0.80,
-            diagnosis: 0.60,
-            manual: 0.50,
-            in_game_match: 0.35
-        },
         // confidence の飽和点・下限
         volumeSaturationSessions: 20,
         spanSaturationDays: 14,
@@ -182,10 +175,13 @@
 
         (sessions || []).forEach(function (s) {
             var p = s.provenance || {};
-            var relBase = (cfg(config, 'sourceTypeReliability')[p.sourceType] !== undefined)
-                ? cfg(config, 'sourceTypeReliability')[p.sourceType] : 0.3;
+            var M = root.LC_METRICS || null;
 
             function emit(metricKey, value, unit, scope, weapon) {
+                var rel = M ? M.resolveReliability(metricKey)
+                            : { status: 'unrated', value: null, reason: 'registry_unavailable' };
+                var eligible = M ? M.isRecommendationEligible(metricKey) : false;
+                var weight = M ? M.recommendationWeight(metricKey) : 0;
                 out.push({
                     source: p.source || null,
                     sourceType: p.sourceType || null,
@@ -203,7 +199,14 @@
                     importedAt: p.importedAt || null,
                     rawContentHash: p.rawContentHash || null,
                     valueKind: VALUE_KIND.NORMALIZED,
-                    reliability: relBase
+                    // reliability に汎用の既定値を置かない。Registry が rated と定義した
+                    // ものだけが数値を持ち、それ以外は unrated。
+                    reliabilityStatus: rel.status,
+                    reliability: rel.value,                       // unrated のときは null
+                    reliabilityReason: rel.reason,
+                    recommendationEligible: eligible,
+                    recommendationWeight: weight,                 // unrated は 0
+                    registered: !!(M && M.get(metricKey))
                 });
             }
 
@@ -228,13 +231,36 @@
      * 確定できている条件（DPI / FOV）と、未確定の候補セットの文字列表現から
      * 「条件が同じか違うか」だけを判定する。値そのものは確定しない。
      */
-    function sensitivityConditionKey(session) {
+    /**
+     * 感度水準として数えてよいのは、意味が検証済みのものだけ。
+     * 許容する出どころ:
+     *   - 正規化済み cm/360
+     *   - 意味を検証済みのゲーム内感度
+     *   - ユーザーの明示入力
+     *   - 検証済みの変換結果
+     *
+     * KovaaK の Horiz Sens は現在未確定なので **水準判定に使ってはいけない**。
+     * 判断できない場合は unknown を返す。不明なものを「1水準」と誤認しない。
+     */
+    function verifiedSensitivityLevel(session) {
         var ctx = session.context || {};
-        var u = (session.unresolved || []).find(function (x) { return x.field === 'in_game_sens'; });
-        var cand = u && u.candidates
-            ? u.candidates.map(function (c) { return c.origin + '=' + c.value; }).sort().join(';')
-            : 'none';
-        return [ctx.dpi === undefined ? 'null' : ctx.dpi, ctx.fov === undefined ? 'null' : ctx.fov, cand].join('|');
+        var sens = ctx.sensitivity;
+
+        if (sens && sens.verified === true && typeof sens.cm360 === 'number' && isFinite(sens.cm360)) {
+            var allowed = ['normalized_cm360', 'verified_in_game_sens', 'user_input', 'verified_conversion'];
+            if (allowed.indexOf(sens.origin) >= 0) {
+                return { status: 'known', cm360: sens.cm360, origin: sens.origin };
+            }
+            return { status: 'unknown', reason: 'unrecognized_origin:' + sens.origin };
+        }
+
+        var unresolvedSens = (session.unresolved || []).some(function (u) {
+            return u.field === 'in_game_sens';
+        });
+        return {
+            status: 'unknown',
+            reason: unresolvedSens ? 'in_game_sens_unresolved' : 'no_verified_sensitivity'
+        };
     }
 
     function buildAimProfile(sessions, config) {
@@ -242,6 +268,7 @@
         var evidence = buildEvidence(sessions, config);
 
         var sourceSet = {}, sourceTypeSet = {}, scenarioSet = {}, condSet = {};
+        var unknownSensCount = 0;
         var metricCoverage = {};
         var tzUnknown = 0;
         var timestamps = [];
@@ -251,7 +278,9 @@
             if (p.source) sourceSet[p.source] = true;
             if (p.sourceType) sourceTypeSet[p.sourceType] = true;
             if (s.scenario) scenarioSet[s.scenario] = true;
-            condSet[sensitivityConditionKey(s)] = true;
+            var lv = verifiedSensitivityLevel(s);
+            if (lv.status === 'known') condSet[String(lv.cm360)] = true;
+            else unknownSensCount++;
             if (!s.tzKnown) tzUnknown++;
             var t = parseLocalTs(s.localTimestamp);
             if (t !== null) timestamps.push(t);
@@ -298,7 +327,20 @@
             sourceTypes: Object.keys(sourceTypeSet),
             scenarioCount: Object.keys(scenarioSet).length,
             scenarios: Object.keys(scenarioSet),
-            sensitivityLevelCount: Object.keys(condSet).length,
+            sensitivityLevels: (function () {
+                var known = Object.keys(condSet).length;
+                if (unknownSensCount > 0 && known === 0) {
+                    return { status: 'unknown', count: null, knownCount: 0,
+                             unknownSessionCount: unknownSensCount,
+                             note: '検証済みの感度が1件も無い。1水準と数えてはいけない。' };
+                }
+                if (unknownSensCount > 0) {
+                    return { status: 'partial', count: known, knownCount: known,
+                             unknownSessionCount: unknownSensCount,
+                             note: '一部セッションの感度が未検証。既知分のみを水準として数えている。' };
+                }
+                return { status: 'known', count: known, knownCount: known, unknownSessionCount: 0 };
+            })(),
             metricCoverage: coverageList,
             dataFreshness: {
                 earliest: timestamps.length ? new Date(timestamps[0]).toISOString().slice(0, 19) : null,
@@ -312,7 +354,7 @@
             algorithmVersion: PROFILE_ALGORITHM_VERSION,
             inventory: inventory,
             evidence: evidence,
-            confidence: buildConfidencePreview(sessions, inventory, config),
+            confidence: buildConfidencePreview(sessions, inventory, config, evidence),
             aggregation: {
                 performed: false,
                 reason: '単純平均を行わない方針。重み付けと再推定は後続Phase'
@@ -326,20 +368,23 @@
      * **本番Recommendationのconfidenceではない。**
      * 「根拠がどれだけ揃っているか」を示す evidence completeness / profile confidence preview。
      */
-    function buildConfidencePreview(sessions, inventory, config) {
+    function buildConfidencePreview(sessions, inventory, config, evidence) {
         var w = cfg(config, 'weights');
         var n = inventory.sessionCount;
+        var levels = inventory.sensitivityLevels;
 
+        // ---- profile_completeness: 「どれだけデータが揃っているか」
         var sub = {
             volume: clamp01(n / cfg(config, 'volumeSaturationSessions')),
             span: clamp01(inventory.dataFreshness.spanDays / cfg(config, 'spanSaturationDays')),
-            conditionCoverage: clamp01(inventory.sensitivityLevelCount / cfg(config, 'conditionCoverageSaturation')),
+            conditionCoverage: levels.status === 'unknown'
+                ? null
+                : clamp01(levels.count / cfg(config, 'conditionCoverageSaturation')),
             sourceDiversity: clamp01(inventory.sourceTypeCount / cfg(config, 'sourceDiversitySaturation')),
             recency: 0,
             metricCompleteness: clamp01(inventory.metricCoverage.length / 8)
         };
 
-        // 直近性: 最新データからの経過を半減期で減衰
         if (inventory.dataFreshness.latest) {
             var latest = parseLocalTs(inventory.dataFreshness.latest);
             var ref = (config && config.now) ? parseLocalTs(config.now) : latest;
@@ -347,52 +392,62 @@
             sub.recency = clamp01(Math.pow(0.5, ageDays / cfg(config, 'recencyHalfLifeDays')));
         }
 
-        var base = 0;
-        for (var k in w) if (w.hasOwnProperty(k)) base += w[k] * (sub[k] || 0);
+        var base = 0, weightUsed = 0;
+        for (var k in w) {
+            if (!w.hasOwnProperty(k)) continue;
+            if (sub[k] === null || sub[k] === undefined) continue;   // 不明な項目は寄与も分母も除く
+            base += w[k] * sub[k];
+            weightUsed += w[k];
+        }
+        base = weightUsed > 0 ? base / weightUsed : 0;
 
-        var penalties = [];
-        var mult = 1;
-        if (inventory.sourceTypeCount <= 1) {
-            mult *= cfg(config, 'penaltySingleSourceType');
-            penalties.push({ code: 'single_source_type', factor: cfg(config, 'penaltySingleSourceType') });
+        var gaps = [];
+        if (n < cfg(config, 'minSessionsForAnyConfidence')) {
+            gaps.push('セッションが ' + cfg(config, 'minSessionsForAnyConfidence') + ' 件に満たない（現在 ' + n + ' 件）');
         }
-        if (inventory.sensitivityLevelCount <= 1) {
-            mult *= cfg(config, 'penaltySingleSensitivityLevel');
-            penalties.push({
-                code: 'single_sensitivity_level', factor: cfg(config, 'penaltySingleSensitivityLevel'),
-                note: '感度を比較していないため「最適」とは言えない'
-            });
+        if (levels.status === 'unknown') {
+            gaps.push('検証済みの感度水準が1件も無い（推測で水準を数えない方針）');
+        } else if (levels.status === 'partial') {
+            gaps.push('一部セッションの感度が未検証（' + levels.unknownSessionCount + ' 件）');
+        } else if (levels.count <= 1) {
+            gaps.push('感度水準が1つしかない。別の感度でも測定が必要');
         }
-        var anyUnresolvedSens = sessions.some(function (s) {
-            return (s.unresolved || []).some(function (u) { return u.field === 'in_game_sens'; });
-        });
-        if (anyUnresolvedSens) {
-            mult *= cfg(config, 'penaltyUnresolvedSensitivity');
-            penalties.push({ code: 'unresolved_sensitivity', factor: cfg(config, 'penaltyUnresolvedSensitivity') });
-        }
-        if (!inventory.dataFreshness.tzKnownForAll) {
-            mult *= cfg(config, 'penaltyTzUnknownMajority');
-            penalties.push({ code: 'timezone_unknown', factor: cfg(config, 'penaltyTzUnknownMajority') });
-        }
+        if (inventory.sourceTypeCount <= 1) gaps.push('データ元が1種類しかない');
+        if (inventory.dataFreshness.spanDays < 1) gaps.push('測定が1日に偏っている');
 
-        var value = clamp01(base * mult);
-        var belowMinimum = n < cfg(config, 'minSessionsForAnyConfidence');
+        // ---- evidence_quality: 「その根拠を推奨計算に信用して使えるか」
+        var ev = evidence || [];
+        var rated = ev.filter(function (e) { return e.reliabilityStatus === 'rated'; });
+        var eligible = ev.filter(function (e) { return e.recommendationEligible === true; });
+        var unregistered = ev.filter(function (e) { return e.registered === false; });
 
-        var missing = [];
-        if (belowMinimum) missing.push('セッションが ' + cfg(config, 'minSessionsForAnyConfidence') + ' 件に満たない（現在 ' + n + ' 件）');
-        if (inventory.sensitivityLevelCount <= 1) missing.push('感度水準が1つしかない。別の感度でも測定が必要');
-        if (inventory.sourceTypeCount <= 1) missing.push('データ元が1種類しかない');
-        if (anyUnresolvedSens) missing.push('in_game_sens が未確定（実ファイル検証待ち）');
-        if (inventory.dataFreshness.spanDays < 1) missing.push('測定が1日に偏っている');
+        var quality = {
+            evidenceCount: ev.length,
+            ratedCount: rated.length,
+            unratedCount: ev.length - rated.length,
+            recommendationEligibleCount: eligible.length,
+            unregisteredMetricCount: unregistered.length,
+            ratedRatio: ev.length ? Math.round((rated.length / ev.length) * 1000) / 1000 : 0,
+            usableForRecommendation: eligible.length > 0,
+            note: 'unrated は Profile 表示・coverage・provenance には使えるが、推奨計算の重みは0。'
+        };
 
         return {
-            kind: 'evidence_completeness_preview',
-            note: '本番Recommendationのconfidenceではない。根拠の揃い具合を示すプレビュー。',
-            value: Math.round(value * 1000) / 1000,
-            subscores: sub,
-            penalties: penalties,
-            belowMinimumEvidence: belowMinimum,
-            missing: missing,
+            kind: 'profile_completeness_and_evidence_quality',
+            note: '本番Recommendationのconfidenceではない。Profile completeness と Recommendation confidence は別概念。',
+            displayGuidance: 'この値を「推奨感度◯◯%信頼」としてユーザーへ表示してはいけない。',
+
+            profileCompleteness: {
+                value: Math.round(base * 1000) / 1000,
+                subscores: sub,
+                unavailableSubscores: Object.keys(sub).filter(function (k2) { return sub[k2] === null; }),
+                gaps: gaps
+            },
+            evidenceQuality: quality,
+            recommendationConfidence: {
+                status: 'not_computed',
+                reason: 'Phase E ではRecommendationを算出しない。算出はRe-estimation側の責務。'
+            },
             algorithmVersion: PROFILE_ALGORITHM_VERSION
         };
     }
@@ -438,7 +493,7 @@
         buildSessionProfile: buildSessionProfile,
         buildEvidence: buildEvidence,
         traceMetric: traceMetric,
-        sensitivityConditionKey: sensitivityConditionKey,
+        verifiedSensitivityLevel: verifiedSensitivityLevel,
         buildAimProfile: buildAimProfile,
         buildConfidencePreview: buildConfidencePreview,
         buildProfilePreview: buildProfilePreview
