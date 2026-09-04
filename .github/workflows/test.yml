@@ -28,6 +28,9 @@ jobs:
       - name: Importer のテスト（KovaaK Adapter プロトタイプ）
         run: node tests/importers.mjs
 
+      - name: Profile のテスト（Multi-source Aim Profile プロトタイプ）
+        run: node tests/profile.mjs
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
