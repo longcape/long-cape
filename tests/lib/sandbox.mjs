@@ -52,7 +52,7 @@ function createElement(id) {
  * index.html の本体スクリプトを評価し、計算に必要な関数・状態を取り出す。
  * @param {string} [htmlPath] 対象の index.html（既定はリポジトリ直下）
  */
-export function loadApp(htmlPath = path.join(REPO_ROOT, 'index.html')) {
+export function loadApp(htmlPath = path.join(REPO_ROOT, 'index.html'), options = {}) {
     const html = fs.readFileSync(htmlPath, 'utf8');
     const source = extractMainScript(html);
 
@@ -107,8 +107,17 @@ export function loadApp(htmlPath = path.join(REPO_ROOT, 'index.html')) {
         navigator: { language: 'ja' },
         location: { href: 'https://longcapenotieri.jp/', search: '', hash: '' },
         fetch: () => Promise.reject(new Error('network disabled in tests')),
-        alert() {},
-        confirm: () => false,
+        alert: options.alert || (() => {}),
+        confirm: options.confirm || (() => false),
+    };
+    // 保存まわりのテスト用。模擬の Supabase SDK を渡すと、本物の保存処理がそれにつながる。
+    // 渡さなければ従来どおり SDK なし（診断だけが動く状態）になる。
+    if (options.supabase) context.supabase = options.supabase;
+    const session = new Map();
+    context.sessionStorage = {
+        getItem: (k) => (session.has(k) ? session.get(k) : null),
+        setItem: (k, v) => void session.set(k, String(v)),
+        removeItem: (k) => void session.delete(k),
     };
     context.window = context;
     context.globalThis = context;
@@ -129,6 +138,12 @@ export function loadApp(htmlPath = path.join(REPO_ROOT, 'index.html')) {
         translations,
         T,
         changeLanguage,
+        saveResultToSupabase,
+        loadLogs,
+        toggleLock,
+        deleteLog,
+        setUser(u) { currentUser = u; },
+        setClient(c) { supabaseClient = c; },
         get currentDiagResult() { return currentDiagResult; },
     };`;
 
@@ -168,5 +183,5 @@ export function loadApp(htmlPath = path.join(REPO_ROOT, 'index.html')) {
     }
 
     // currentDiagResult は getter なので、展開した写しではなく元の app から読む
-    return { ...app, diagnose, getElementById, elements, getDiagResult: () => app.currentDiagResult };
+    return { ...app, diagnose, getElementById, elements, localStorage, getDiagResult: () => app.currentDiagResult };
 }

@@ -466,10 +466,10 @@ check('VALORANT と CS2 が別々の選択肢になっている（games.json・�
 check('CS2 の診断は VALORANT と同じ中身で、単位だけが違う（係数・カーブを足していない）', () => {
     const valo = GAMES.find((g) => g.key === 'valo'), cs2 = GAMES.find((g) => g.key === 'cs2');
     eq(cs2.curve, valo.curve, 'カーブは同じ');
-    eq(cs2.sensTransform, 'linear'); eq(cs2.scale, 3.18);
+    eq(cs2.sensTransform, 'linear'); near(cs2.scale, 0.07 / 0.022, 1e-12, '丸めない係数');
     const base = { height: 173, dexterity: '3', armThickness: 'normal', mouseWeight: 'standard', aimPart: 'wrist', dpi: 800 };
     const v = app.diagnose({ ...base, game: 'valo' }), c = app.diagnose({ ...base, game: 'cs2' });
-    near(parseFloat(c.finalSens), parseFloat(v.finalSens) * 3.18, 0.0025, 'CS2 = VALORANT × 3.18');
+    near(parseFloat(c.finalSens), parseFloat(v.finalSens) * (0.07 / 0.022), 0.002, 'CS2 = VALORANT × (0.07 ÷ 0.022)');
     // 回転量は同じ（同じ診断を別の単位で見せているだけ）
     const rv = D.rotation('valo', parseFloat(v.finalSens), 800), rc = D.rotation('cs2', parseFloat(c.finalSens), 800);
     ok(Math.abs(rv - rc) / rv < 0.005, '回転量が一致: ' + rv + ' / ' + rc);
@@ -594,6 +594,112 @@ check('初回診断で「現在の感度」を必須にしていない', () => {
     ok(!/<input[^>]*id="currentSens"[^>]*required/.test(indexHtml));
     const r = run({ currentSens: '' });
     ok(r.result && parseFloat(r.result.finalSens) > 0);
+});
+
+// ============================================================ 監査 P1: 換算精度（内部値と表示桁の分離）
+
+check('CS2 の係数は丸めない値で、タイトル間換算の倍率と一致する（3.18 の丸めを持ち込まない）', () => {
+    const cs2 = GAMES.find((g) => g.key === 'cs2');
+    near(cs2.scale, 0.07 / 0.022, 1e-12);
+    near(D.YAW.valo.yaw / D.YAW.cs2.yaw, cs2.scale, 1e-12);
+    // 既存タイトルの値は変えていない（Apex の 3.18 は既存の診断結果を守るため据え置き）
+    eq(GAMES.find((g) => g.key === 'apex').scale, 3.18);
+    eq(GAMES.find((g) => g.key === 'valo').scale, 1.0);
+});
+check('記録は「入力する値（sens）」と「丸める前の値（raw）」を分けて持つ', () => {
+    const e = D.makeEntry({ game: 'valo', dpi: 800, sens: '0.353', sensExact: 0.3525, inputs: INPUTS });
+    eq([e.sens, e.raw], ['0.353', 0.3525]);
+    eq(D.exactOf(e), 0.3525);
+    eq(D.viewEntry(e, 'valo').sens, 0.353, '同じタイトルの表示は入力する値');
+    eq(D.viewEntry(e, 'valo').edpi, 282.4, 'eDPI は表示している感度から出す');
+    near(D.viewEntry(e, 'cs2').sens, 0.3525 * 0.07 / 0.022, 1e-12, '換算は丸める前の値から');
+    ok(!('raw' in D.makeEntry({ game: 'valo', dpi: 800, sens: '0.353', inputs: INPUTS })), '無ければ作らない');
+});
+check('同じ診断を VALORANT と CS2 で記録しても、比較は 0.0% になる（丸めの差が出ない）', () => {
+    for (const exact of [0.3525, 0.2381, 0.9173, 0.05137]) {
+        const v = D.makeEntry({ game: 'valo', dpi: 800, sens: fmt(exact, 'valo'), sensExact: exact, inputs: INPUTS });
+        const c = D.makeEntry({ game: 'cs2', dpi: 800, sens: fmt(exact * (0.07 / 0.022), 'cs2'), sensExact: exact * (0.07 / 0.022), inputs: INPUTS });
+        const cmp = D.compareEntries(v, c, integerScaleOf);
+        eq([cmp.basis, cmp.pct], ['rotation', 0], '内部値 ' + exact);
+    }
+});
+check('高 DPI・低感度でも、比較が表示桁の丸めに振り回されない', () => {
+    // DPI 25600 では VALORANT の感度は 0.011 前後。小数3桁へ丸めると 1 桁の違いが約 9% になる
+    const exact = 0.011016;
+    const a = D.makeEntry({ game: 'valo', dpi: 25600, sens: '0.011', sensExact: exact, inputs: INPUTS });
+    const b = D.makeEntry({ game: 'valo', dpi: 800, sens: '0.353', sensExact: exact * 32, inputs: INPUTS });
+    eq(D.compareEntries(a, b, integerScaleOf).pct, 0, '同じ eDPI（DPI 違い）');
+    const c = D.makeEntry({ game: 'ow', dpi: 25600, sens: '0.117', sensExact: exact * 0.07 / 0.0066, inputs: INPUTS });
+    eq(D.compareEntries(a, c, integerScaleOf).pct, 0, '同じ回転量（タイトル違い・高 DPI）');
+    // 丸めた値しか無い場合は、同じ組でも差が出てしまう（＝内部値を使う理由）
+    const strip = (e) => { const x = { ...e }; delete x.raw; return x; };
+    ok(Math.abs(D.compareEntries(strip(a), strip(b), integerScaleOf).pct) > 0.05, '丸めた値どうしでは差が出る');
+    // 低い eDPI でも、表示用に丸めた eDPI ではなく積そのもので比べる
+    const lo1 = D.makeEntry({ game: 'valo', dpi: 100, sens: '0.5', sensExact: 0.50004, inputs: INPUTS });
+    const lo2 = D.makeEntry({ game: 'valo', dpi: 200, sens: '0.25', sensExact: 0.25002, inputs: INPUTS });
+    eq(D.compareEntries(lo1, lo2, integerScaleOf).pct, 0);
+});
+check('丸める前の値を持たない古い記録も、そのまま読めて比較できる', () => {
+    const old = D.parseHistory(JSON.stringify([entry({ id: 'old1', sens: '0.4' }),
+        entry({ id: 'old2', sens: '0.5', at: '2026-10-02T00:00:00Z' }), { ...entry({ id: 'bad-raw', at: '2026-10-03T00:00:00Z' }), raw: 'x' }]));
+    eq(old.length, 3, '不正な raw があっても行は捨てない');
+    eq(D.exactOf(old[0]), 0.4); eq(D.exactOf(old[2]), 0.4, '不正な raw は無視して表示値を使う');
+    eq(D.compareEntries(old[0], old[1], integerScaleOf).pct, 25);
+    const mixed = D.compareEntries(old[0], D.makeEntry({ game: 'valo', dpi: 800, sens: '0.4', sensExact: 0.4, inputs: INPUTS }), integerScaleOf);
+    eq(mixed.pct, 0, '古い記録と新しい記録の混在');
+});
+check('結果カードの換算表と前回比も、丸める前の値から計算する', () => {
+    const exact = 0.3525;
+    const html = D.renderReport(report({ sens: 0.353, sensExact: exact }), helpers('ja'));
+    ok(html.includes(fmt(exact * 0.07 / 0.022, 'cs2')), 'CS2 の換算値: ' + fmt(exact * 0.07 / 0.022, 'cs2'));
+    const prev = D.makeEntry({ game: 'cs2', dpi: 800, sens: fmt(exact * 0.07 / 0.022, 'cs2'), sensExact: exact * 0.07 / 0.022, inputs: INPUTS });
+    const withPrev = D.renderReport(report({ sens: 0.353, sensExact: exact }), helpers('ja', { prev }));
+    ok(withPrev.includes('+0.0%') || withPrev.includes('0.0%'), '同じ診断なら 0.0%');
+    ok(/sensExact: rawSens/.test(indexHtml) && /sensExact: c\.sensExact/.test(indexHtml), 'index.html が内部値を渡している');
+});
+
+// ============================================================ 監査 P1: 削除と退避コピー
+
+check('読める記録が0件でも、壊れたデータや退避コピーが残っていれば「すべて削除」を出す', () => {
+    const T = makeT('ja');
+    const html = D.renderHistory([], helpers('ja', { hasStored: true, unreadable: true }));
+    ok(html.includes('data-dh-clear') && html.includes(esc(T('dhUnreadable'))));
+    ok(!D.renderHistory([], helpers('ja')).includes('data-dh-clear'), '何も無ければ出さない');
+});
+check('全削除は履歴本体と退避コピーの両方を消し、消えたことを確かめてから表示を更新する', () => {
+    const block = indexHtml.slice(indexHtml.indexOf('function onDiagHistoryClick'), indexHtml.indexOf('function onDiagHistoryChange'));
+    ok(/lstore\.remove\(LC_DIAG\.HISTORY_KEY\)/.test(block) && /lstore\.remove\(DIAG_BACKUP_KEY\(\)\)/.test(block), '両方を消す');
+    ok(/lstore\.get\(LC_DIAG\.HISTORY_KEY\) !== null \|\| lstore\.get\(DIAG_BACKUP_KEY\(\)\) !== null/.test(block), '残っていないか確かめる');
+    ok(/alert\(T\('dhDeleteFail'\)\)/.test(block), '消せなければ失敗と伝える');
+    // 1件削除と記録の追加は、退避コピーを消さない（saveDiagHistory は退避へ書くだけ）
+    const save = indexHtml.slice(indexHtml.indexOf('function saveDiagHistory'), indexHtml.indexOf('function renderDiagReport'));
+    ok(/lstore\.set\(DIAG_BACKUP_KEY\(\), raw\)/.test(save) && !/remove\(DIAG_BACKUP_KEY/.test(save));
+});
+check('退避と削除の説明が、画面とポリシーの両方に3言語である', () => {
+    const p = fs.readFileSync(path.join(ROOT, 'privacy.html'), 'utf8');
+    ok(/退避したデータも含めて削除/.test(p) && /kept aside in the same browser/.test(p) && /따로 보관하며/.test(p), 'privacy.html');
+    ok(/退避したデータも一緒に削除/.test(D.I18N.ja.dhUnreadable) && /also deletes that kept-aside data/.test(D.I18N.en.dhUnreadable)
+        && /보관한 데이터도 함께 삭제/.test(D.I18N.ko.dhUnreadable), '画面の説明');
+    for (const lang of ['ja', 'en', 'ko']) ok(/退避|kept aside|따로 보관/.test(D.I18N[lang].dhClearConfirm), lang + ': 確認の文');
+});
+
+// ============================================================ 監査 P2: OGP
+
+check('OGP 画像の元と参照先に、旧表記（VALORANT / CS2・0.215）が残っていない', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'assets/ogp-source.html'), 'utf8');
+    ok(!/VALORANT\s*\/\s*CS2/.test(src), '共通表記'); ok(!/0\.215/.test(src), '旧感度');
+    ok(/表示例/.test(src), '例であることを示す');
+    for (const page of ['index.html', 'about.html', 'contact.html', 'privacy.html', 'terms.html']) {
+        const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
+        ok(html.includes('https://longcapenotieri.jp/ogp-image.png?v=2'), page + ' の参照先');
+        ok(!html.includes('ogp-image.png?v=1'), page + ' に古い参照');
+    }
+    const png = fs.readFileSync(path.join(ROOT, 'ogp-image.png'));
+    eq([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 630], '画像の大きさ');
+    // 画像に出している表示例は、既定の入力での実際の診断結果と同じ値
+    const m = src.match(/class="val">([\d.]+)</);
+    const r = run({ game: 'valo', height: '173', neuro: '5', currentDpi: '800' });
+    eq(m[1], r.result.finalSens, '表示例の値');
 });
 
 // ------------------------------------------------------------- 実行

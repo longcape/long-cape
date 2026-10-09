@@ -38,7 +38,7 @@
     //
     var YAW = {
         valo: { yaw: 0.07, basis: 'VALORANT。1カウントあたり 0.07 度。games.json の基準（scale 1）。' },
-        cs2: { yaw: 0.022, basis: 'Source 系の m_yaw 0.022。games.json の scale 3.18 と一致。' },
+        cs2: { yaw: 0.022, basis: 'Source 系の m_yaw 0.022。games.json の scale は 0.07 ÷ 0.022 を丸めずに持つ。' },
         apex: { yaw: 0.022, basis: 'Source 系の 0.022。games.json の scale 3.18 と一致。' },
         ow: { yaw: 0.0066, basis: '1カウントあたり 0.0066 度。games.json の scale 10.6 と一致。' },
         fn: { yaw: 0.005555, basis: '感度%で 1カウントあたり 0.005555 度。games.json の scale 12.6 と一致。' },
@@ -47,6 +47,13 @@
     var SCALE_TOLERANCE = 0.005;
 
     function isNum(v) { return typeof v === 'number' && isFinite(v); }
+    /**
+     * 記録の感度の「内部値」。画面に出す桁へ丸める前の値（raw）があればそれを、
+     * 無ければ（古い記録）表示用の値を使う。比較と換算はこの値で行い、丸めは表示のときだけ。
+     */
+    function exactOf(e) {
+        return (e && isNum(e.raw) && e.raw > 0) ? e.raw : parseFloat(e && e.sens);
+    }
     function round(v, d) { var p = Math.pow(10, d); return Math.round(v * p) / p; }
     function hasYaw(key) { return Object.prototype.hasOwnProperty.call(YAW, key); }
 
@@ -227,6 +234,9 @@
             inputs: pickInputs(r.inputs),
             coef: r.coef || null
         };
+        // 丸める前の値。sens は「ゲームに入力する値」、raw は比較・換算に使う値
+        var exact = Number(r.sensExact);
+        if (isNum(exact) && exact > 0) e.raw = exact;
         var cur = parseFloat(r.currentSens);
         if (isNum(cur) && cur > 0) e.cur = String(r.currentSens);
         return e;
@@ -274,12 +284,13 @@
         var a = null, b = null;
         if (from.game === to.game) {
             if (!(integerScaleOf && integerScaleOf(to.game))) {
-                a = edpi(from.dpi, parseFloat(from.sens)); b = edpi(to.dpi, parseFloat(to.sens));
+                // 表示用に丸めた eDPI ではなく、丸める前の積で比べる（低い eDPI で差が歪まないように）
+                a = from.dpi * exactOf(from); b = to.dpi * exactOf(to);
                 res.basis = 'edpi';
             }
         } else {
-            a = rotation(from.game, parseFloat(from.sens), from.dpi);
-            b = rotation(to.game, parseFloat(to.sens), to.dpi);
+            a = rotation(from.game, exactOf(from), from.dpi);
+            b = rotation(to.game, exactOf(to), to.dpi);
             res.basis = (a !== null && b !== null) ? 'rotation' : null;
         }
         if (res.basis && isNum(a) && isNum(b) && a > 0) {
@@ -300,7 +311,7 @@
         if (!viewGame || viewGame === e.game) {
             return { available: true, converted: false, game: e.game, sens: s, edpi: edpi(e.dpi, s) };
         }
-        var c = convertSens(e.game, viewGame, s, e.dpi, e.dpi);
+        var c = convertSens(e.game, viewGame, exactOf(e), e.dpi, e.dpi);
         if (!c.available) return { available: false, converted: true, game: viewGame };
         return { available: true, converted: true, game: viewGame, sens: c.value, edpi: edpi(e.dpi, c.value) };
     }
@@ -469,7 +480,7 @@
         if (!h.prev) {
             out.push(section(esc(T('drPrevTitle')), '<p>' + esc(T('drPrevNone')) + '</p>'));
         } else {
-            var now = { game: r.game, dpi: r.dpi, sens: String(r.sens),
+            var now = { game: r.game, dpi: r.dpi, sens: String(r.sens), raw: r.sensExact,
                         inputs: pickInputs(r.inputs), coef: coefFingerprint(r.config) };
             var d = compareEntries(h.prev, now, function (k) { return k === r.game ? r.integerScale : false; });
             var ps = parseFloat(h.prev.sens);
@@ -484,7 +495,7 @@
         // --- 他タイトルで同じ回転量になる設定値（倍率が確認済みのときだけ）
         if (hasYaw(r.game)) {
             var conv = (r.games || []).filter(function (g) { return g.key !== r.game; }).map(function (g) {
-                var s = convertSens(r.game, g.key, r.sens, r.dpi, r.dpi);
+                var s = convertSens(r.game, g.key, isNum(r.sensExact) && r.sensExact > 0 ? r.sensExact : r.sens, r.dpi, r.dpi);
                 return '<tr><th scope="row">' + esc(g.name) + '</th><td>'
                     + (s.available ? esc(fmt(s.value, g.key)) : esc(T('drConvNA'))) + '</td><td>'
                     + (s.available ? esc(fmtEdpi(edpi(r.dpi, s.value))) : '—') + '</td></tr>';
@@ -510,9 +521,12 @@
         var out = ['<p class="dr-note">' + esc(T('dhIntro')) + '</p>'];
         if (h.storageBlocked) out.push('<p class="dr-note dr-warn" role="alert">' + esc(T('dhLoadFail')) + '</p>');
         if (h.unreadable) out.push('<p class="dr-note dr-warn" role="alert">' + esc(T('dhUnreadable')) + '</p>');
+        // 読める記録が無くても、保存領域に何か残っている（壊れたデータ・退避コピー）なら消せるようにする
+        var clearButton = '<button type="button" class="dh-clear" data-dh-clear="1">' + esc(T('dhClear')) + '</button>';
         if (list.length === 0) {
             if (h.storageBlocked) return out.join('');
-            out.push('<p class="dh-empty">' + esc(T('dhEmpty')) + '</p>');
+            if (!h.hasStored) out.push('<p class="dh-empty">' + esc(T('dhEmpty')) + '</p>');
+            else out.push(clearButton);
             return out.join('');
         }
         var viewGame = h.viewGame || list[list.length - 1].game;
@@ -560,7 +574,7 @@
             }
             return '<div class="dh-item">' + head + main + orig + cur + diff + '</div>';
         }).join(''));
-        out.push('<button type="button" class="dh-clear" data-dh-clear="1">' + esc(T('dhClear')) + '</button>');
+        out.push(clearButton);
         return out.join('');
     }
 
@@ -615,7 +629,7 @@
             drRecordFail: '記録できませんでした（ブラウザの保存領域が使えないか、容量が不足しています）。',
             drOpenHistory: '診断履歴を見る',
             dhIntro: '診断履歴は、いま使っているブラウザの中にだけ保存されます（サーバーには送信されません）。別の端末や別のブラウザとは同期されません。ブラウザのデータを削除すると、履歴も消えることがあります。「マイ感度ログ」の保存枠（5件）とは別で、件数の上限はありません。',
-            dhUnreadable: '保存されていた履歴の一部または全部を読み込めませんでした（データが壊れています）。読めた記録だけを表示しています。',
+            dhUnreadable: '保存されていた履歴の一部または全部を読み込めませんでした（データが壊れています）。読めた記録だけを表示しています。読めなかったデータは、記録の追加や1件ずつの削除では消さず、このブラウザの中に退避して残します。「診断履歴をすべて削除」を押すと、退避したデータも一緒に削除します。',
             dhDeleteFail: '削除を保存できませんでした（ブラウザの保存領域が使えません）。履歴は変わっていません。',
             dhEmpty: 'まだ記録がありません。診断結果の「診断履歴に記録する」から追加できます。',
             dhOne: '記録は1件です。次回の診断を記録すると、前回との比較と推移が表示されます。',
@@ -632,7 +646,7 @@
             dhDelete: 'この記録を削除',
             dhDeleteConfirm: 'この記録を診断履歴から削除しますか？',
             dhClear: '診断履歴をすべて削除',
-            dhClearConfirm: 'この端末の診断履歴をすべて削除しますか？元に戻せません。',
+            dhClearConfirm: 'このブラウザの診断履歴をすべて削除しますか？（読めずに退避してあるデータも削除します）元に戻せません。',
             dhRediag: '再診断する',
             dhLoadFail: '診断履歴を読み込めませんでした（ブラウザの保存領域が使えません）。'
         },
@@ -684,7 +698,7 @@
             drRecordFail: 'Could not record (browser storage is unavailable or full).',
             drOpenHistory: 'View history',
             dhIntro: 'Your diagnosis history is stored only inside the browser you are using now (it is never sent to the server). It is not synced with other devices or other browsers. If you clear your browser data, the history may be lost. It is separate from the 5-entry limit of My Sensitivity Logs and has no limit on the number of records.',
-            dhUnreadable: 'Some or all of the saved history could not be read (the data is damaged). Only the records that could be read are shown.',
+            dhUnreadable: 'Some or all of the saved history could not be read (the data is damaged). Only the records that could be read are shown. The unreadable data is not removed when you add a record or delete a single record; it is kept aside inside this browser. "Delete all history" also deletes that kept-aside data.',
             dhDeleteFail: 'The deletion could not be saved (browser storage is unavailable). Your history has not changed.',
             dhEmpty: 'No records yet. Add one with "Record this result in your history" on a diagnosis result.',
             dhOne: 'You have 1 record. Record your next diagnosis to see a comparison and a trend.',
@@ -701,7 +715,7 @@
             dhDelete: 'Delete this record',
             dhDeleteConfirm: 'Delete this record from your history?',
             dhClear: 'Delete all history',
-            dhClearConfirm: 'Delete all diagnosis history on this device? This cannot be undone.',
+            dhClearConfirm: 'Delete all diagnosis history in this browser (including any unreadable data that was kept aside)? This cannot be undone.',
             dhRediag: 'Run the diagnosis again',
             dhLoadFail: 'Could not load your history (browser storage is unavailable).'
         },
@@ -753,7 +767,7 @@
             drRecordFail: '기록하지 못했습니다 (브라우저 저장 공간을 사용할 수 없거나 용량이 부족합니다).',
             drOpenHistory: '진단 기록 보기',
             dhIntro: '진단 기록은 지금 사용 중인 브라우저 안에만 저장됩니다 (서버로 전송되지 않습니다). 다른 기기나 다른 브라우저와 동기화되지 않습니다. 브라우저 데이터를 삭제하면 기록도 사라질 수 있습니다. 「마이 감도 로그」의 저장 한도(5건)와는 별개이며 건수 제한이 없습니다.',
-            dhUnreadable: '저장된 기록의 일부 또는 전부를 읽지 못했습니다 (데이터가 손상되었습니다). 읽을 수 있는 기록만 표시합니다.',
+            dhUnreadable: '저장된 기록의 일부 또는 전부를 읽지 못했습니다 (데이터가 손상되었습니다). 읽을 수 있는 기록만 표시합니다. 읽지 못한 데이터는 기록 추가나 1건 삭제로는 지우지 않고 이 브라우저 안에 따로 보관합니다. 「진단 기록 모두 삭제」를 누르면 보관한 데이터도 함께 삭제합니다.',
             dhDeleteFail: '삭제를 저장하지 못했습니다 (브라우저 저장 공간을 사용할 수 없습니다). 기록은 바뀌지 않았습니다.',
             dhEmpty: '아직 기록이 없습니다. 진단 결과의 「진단 기록에 남기기」로 추가할 수 있습니다.',
             dhOne: '기록이 1건입니다. 다음 진단을 기록하면 이전과의 비교와 추이가 표시됩니다.',
@@ -770,7 +784,7 @@
             dhDelete: '이 기록 삭제',
             dhDeleteConfirm: '이 기록을 진단 기록에서 삭제할까요?',
             dhClear: '진단 기록 모두 삭제',
-            dhClearConfirm: '이 기기의 진단 기록을 모두 삭제할까요? 되돌릴 수 없습니다.',
+            dhClearConfirm: '이 브라우저의 진단 기록을 모두 삭제할까요? (읽지 못해 따로 보관한 데이터도 삭제합니다) 되돌릴 수 없습니다.',
             dhRediag: '다시 진단하기',
             dhLoadFail: '진단 기록을 불러오지 못했습니다 (브라우저 저장 공간을 사용할 수 없습니다).'
         }
@@ -781,7 +795,7 @@
         YAW: YAW, INPUT_KEYS: INPUT_KEYS, I18N: I18N,
         edpi: edpi, rotation: rotation, convertSens: convertSens, auditYaw: auditYaw,
         breakdown: breakdown, coefFingerprint: coefFingerprint, compareCurrent: compareCurrent,
-        parseHistory: parseHistory, inspectHistory: inspectHistory, serializeHistory: serializeHistory, makeEntry: makeEntry,
+        exactOf: exactOf, parseHistory: parseHistory, inspectHistory: inspectHistory, serializeHistory: serializeHistory, makeEntry: makeEntry,
         addEntry: addEntry, removeEntry: removeEntry, compareEntries: compareEntries,
         viewEntry: viewEntry, historyRows: historyRows, chartSvg: chartSvg, fmtDate: fmtDate,
         renderReport: renderReport, renderHistory: renderHistory

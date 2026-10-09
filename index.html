@@ -20,7 +20,7 @@
     <!-- OGP 設定 -->
     <meta property="og:title" content="ロングケープの定理 | 最適インゲーム感度診断">
     <meta property="og:description" content="生物学的・神経的パラメータに基づく最適インゲーム感度診断＆マイ感度トラッカー">
-    <meta property="og:image" content="https://longcapenotieri.jp/ogp-image.png?v=1">
+    <meta property="og:image" content="https://longcapenotieri.jp/ogp-image.png?v=2">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="ロングケープの定理 — 身体パラメータから最適インゲーム感度を算出">
@@ -489,6 +489,9 @@ const translations = {
         confirmDeleteLog: "この感度ログをマイページから削除しますか？",
         alertDeleteErr: "削除できませんでした: ",
         alertSaveErr: "保存できませんでした: ",
+        alertSaveCheckFail: "いまの保存件数を確認できなかったため、保存を中止しました。記録は変わっていません。通信状況を確認して、もう一度お試しください。",
+        alertRestoreFail: "保存に失敗し、枠を空けるために非表示にした古い記録を元へ戻せませんでした。記録は消えていません。通信が回復してからこのページを開き直すと、自動で元へ戻します。",
+        alertRestorePending: "前回の保存の失敗で非表示のままになっている記録があります。記録は消えていません。元へ戻せるまで、新しい保存は行いません。通信状況を確認して、ページを再読み込みしてください。",
         lockTitleOn: "ロックを解除する", lockTitleOff: "保護する（自動更新・削除の対象から外す）",
         deleteTitle: "削除する", deleteTitleLocked: "ロックされているため削除できません",
         logsLoadFail: "保存履歴を読み込めませんでした。通信状況を確認して、ページを再読み込みしてください。",
@@ -558,6 +561,9 @@ const translations = {
         confirmDeleteLog: "Delete this sensitivity log from My Page?",
         alertDeleteErr: "Could not delete: ",
         alertSaveErr: "Could not save: ",
+        alertSaveCheckFail: "Saving was cancelled because the current number of saved logs could not be checked. Nothing was changed. Check your connection and try again.",
+        alertRestoreFail: "Saving failed, and the older log that was hidden to make room could not be restored. The log has not been deleted. Reopen this page once your connection is back and it will be restored automatically.",
+        alertRestorePending: "A log is still hidden because of an earlier failed save. It has not been deleted. No new log will be saved until it can be restored. Check your connection and reload the page.",
         lockTitleOn: "Unlock", lockTitleOff: "Lock (keep it from being replaced or deleted)",
         deleteTitle: "Delete", deleteTitleLocked: "Locked, so it cannot be deleted",
         logsLoadFail: "Could not load your saved logs. Check your connection and reload the page.",
@@ -614,6 +620,9 @@ const translations = {
         confirmDeleteLog: "이 감도 로그를 마이페이지에서 삭제할까요?",
         alertDeleteErr: "삭제하지 못했습니다: ",
         alertSaveErr: "저장하지 못했습니다: ",
+        alertSaveCheckFail: "현재 저장 건수를 확인할 수 없어 저장을 중단했습니다. 기록은 바뀌지 않았습니다. 연결 상태를 확인하고 다시 시도해 주세요.",
+        alertRestoreFail: "저장에 실패했고, 자리를 만들기 위해 숨긴 이전 기록을 되돌리지 못했습니다. 기록은 삭제되지 않았습니다. 연결이 복구된 뒤 이 페이지를 다시 열면 자동으로 되돌립니다.",
+        alertRestorePending: "이전 저장 실패로 숨겨진 채 남아 있는 기록이 있습니다. 기록은 삭제되지 않았습니다. 되돌릴 수 있을 때까지 새로 저장하지 않습니다. 연결 상태를 확인하고 페이지를 새로 고쳐 주세요.",
         lockTitleOn: "잠금 해제", lockTitleOff: "보호하기 (자동 갱신・삭제 대상에서 제외)",
         deleteTitle: "삭제", deleteTitleLocked: "잠겨 있어 삭제할 수 없습니다",
         logsLoadFail: "저장 기록을 불러오지 못했습니다. 연결 상태를 확인하고 페이지를 새로 고쳐 주세요.",
@@ -759,7 +768,7 @@ let currentDiagResult = null;
 /* GAMES:BEGIN */
 const GAMES = [
     { "key": "valo", "name": "VALORANT", "formLabel": "VALORANT", "scale": 1, "curve": { "type": "constant", "value": 1 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "" }, "inputRange": [0.05, 3] },
-    { "key": "cs2", "name": "CS2", "formLabel": "CS2 (Counter-Strike 2)", "scale": 3.18, "curve": { "type": "constant", "value": 1 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "" }, "inputRange": [0.15, 10] },
+    { "key": "cs2", "name": "CS2", "formLabel": "CS2 (Counter-Strike 2)", "scale": 3.1818181818181817, "curve": { "type": "constant", "value": 1 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "" }, "inputRange": [0.15, 10] },
     { "key": "apex", "name": "Apex Legends", "formLabel": "Apex Legends", "scale": 3.18, "curve": { "type": "atan", "base": 1.48, "coef": -0.25 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "" }, "inputRange": [0.2, 10] },
     { "key": "ow", "name": "Overwatch 2", "formLabel": "Overwatch 2", "scale": 10.6, "curve": { "type": "atan", "base": 1.35, "coef": 0.45 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "%" }, "inputRange": [0.5, 30] },
     { "key": "fn", "name": "Fortnite", "formLabel": "Fortnite / フォートナイト", "scale": 12.6, "curve": { "type": "atan", "base": 1.3, "coef": 0.4 }, "sensTransform": "linear", "display": { "integer": false, "suffix": "%" }, "inputRange": [1, 40] },
@@ -1047,6 +1056,9 @@ function diagHelpers() {
     };
 }
 
+// 読めなかった元データの退避先。記録の追加・1件削除では残し、全削除のときだけ一緒に消す
+const DIAG_BACKUP_KEY = () => LC_DIAG.HISTORY_KEY + '_unreadable_backup';
+
 function loadDiagHistory() {
     return hasDiagReport ? LC_DIAG.parseHistory(lstore.get(LC_DIAG.HISTORY_KEY)) : [];
 }
@@ -1060,7 +1072,7 @@ function saveDiagHistory(list) {
     const raw = lstore.get(LC_DIAG.HISTORY_KEY);
     const state = LC_DIAG.inspectHistory(raw);
     if (raw && (state.broken || state.dropped > 0)) {
-        if (!lstore.set(LC_DIAG.HISTORY_KEY + '_unreadable_backup', raw)) return false;
+        if (!lstore.set(DIAG_BACKUP_KEY(), raw)) return false;
     }
     if (!lstore.set(LC_DIAG.HISTORY_KEY, LC_DIAG.serializeHistory(list))) return false;
     const back = loadDiagHistory();
@@ -1083,7 +1095,9 @@ function renderDiagHistory() {
     const h = diagHelpers();
     const state = LC_DIAG.inspectHistory(lstore.get(LC_DIAG.HISTORY_KEY));
     h.storageBlocked = !storageWritable();
-    h.unreadable = state.broken || state.dropped > 0;
+    const hasBackup = lstore.get(DIAG_BACKUP_KEY()) !== null;
+    h.unreadable = state.broken || state.dropped > 0 || hasBackup;
+    h.hasStored = lstore.get(LC_DIAG.HISTORY_KEY) !== null || hasBackup;
     document.getElementById('diagHistoryList').innerHTML = LC_DIAG.renderHistory(state.entries, h);
 }
 
@@ -1091,7 +1105,7 @@ function recordDiagHistory() {
     if (!hasDiagReport || !lastDiagContext || !currentDiagResult) return;
     const c = lastDiagContext;
     const entry = LC_DIAG.makeEntry({
-        game: c.game, dpi: c.dpi, sens: currentDiagResult.finalSens, inputs: c.inputs,
+        game: c.game, dpi: c.dpi, sens: currentDiagResult.finalSens, sensExact: c.sensExact, inputs: c.inputs,
         currentSens: c.currentSens, coef: LC_DIAG.coefFingerprint(c.config)
     });
     const res = LC_DIAG.addEntry(loadDiagHistory(), entry);
@@ -1112,7 +1126,10 @@ function onDiagHistoryClick(e) {
     if (!target || !hasDiagReport) return;
     if (target.hasAttribute('data-dh-clear')) {
         if (!confirm(T('dhClearConfirm'))) return;
-        if (!lstore.remove(LC_DIAG.HISTORY_KEY) || lstore.get(LC_DIAG.HISTORY_KEY) !== null) alert(T('dhDeleteFail'));
+        // 全削除: 履歴本体と、読めずに退避してあったデータの両方を消し、消えたことまで確かめる
+        lstore.remove(LC_DIAG.HISTORY_KEY);
+        lstore.remove(DIAG_BACKUP_KEY());
+        if (lstore.get(LC_DIAG.HISTORY_KEY) !== null || lstore.get(DIAG_BACKUP_KEY()) !== null || !storageWritable()) alert(T('dhDeleteFail'));
     } else {
         if (!confirm(T('dhDeleteConfirm'))) return;
         const next = LC_DIAG.removeEntry(loadDiagHistory(), target.getAttribute('data-dh-del'));
@@ -1214,6 +1231,8 @@ function calculateEDPI() {
         game: gameVal, gameName: def.name, dpi: currentDpi, dpiAssumed: !dpiGiven,
         // 表示・保存と同じ丸めの値で比べる
         sens: parseFloat(currentDiagResult.finalSens), integerScale: !!def.display.integer,
+        // 丸める前の値。タイトル間の換算と履歴の比較にはこちらを使う（表示は sens）
+        sensExact: rawSens,
         baseEdpi: baseEDPI, gameFactor: gameFactor,
         inputs: { height: height, dexterity: neuroVal, armThickness: armVal, mouseWeight: weightVal, aimPart: pivotVal },
         config: dynamicConfig,
@@ -1352,56 +1371,158 @@ async function saveCustomSens() {
     });
 }
 
-async function saveResultToSupabase(logData) {
-    if (!isBackendAvailable() || !currentUser) return;
-    let hiddenForLimit = null;   // 5件枠を空けるために隠した行。保存に失敗したら元へ戻す
-    if (currentUser.email !== ADMIN_EMAIL) {
-        const { data: existingLogs } = await supabaseClient
+// ---------------------------------------------------------------------
+// マイ感度ログ（calc_logs）の保存と、無料5件枠。
+//
+// 守ること:
+//   - いまの件数を確認できないときは保存しない（0件とみなして進めない）
+//   - 枠を空けるために隠した行は、保存に失敗したら必ず元へ戻す。
+//     戻せなかったときは「戻せていない」と伝え、次に一覧を開いたときにもう一度戻す
+//   - 別のタブと同時に保存して5件を超えたら、保存の直後に古い未ロックの行を隠して5件へ戻す
+//
+// 5件に数えるのは「保存した診断結果」と「感度メモ」。診断時の「現在の感度」から
+// 自動で送られる学習用の行（AUTO_COLLECT_MEMOS）は、一覧にも件数にも入れない。
+// ---------------------------------------------------------------------
+const FREE_LOG_LIMIT = 5;
+const AUTO_COLLECT_MEMOS = ['自動学習収集データ', '自動収集データ'];
+const isAutoCollected = (row) => AUTO_COLLECT_MEMOS.includes(row && row.memo);
+const pendingRestoreKey = () => 'lc_pending_restore_' + (currentUser ? currentUser.id : '');
+let saveInFlight = false;
+
+/** 自分の、表示対象の行（新しい順 or 古い順）。確認できなければ { ok:false }。 */
+async function fetchUserLogs(ascending) {
+    try {
+        const { data, error } = await supabaseClient
             .from('calc_logs')
-            .select('id, is_locked')
+            .select('*')
             .eq('user_id', currentUser.id)
             .eq('is_deleted_by_user', false)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: !!ascending });
+        if (error || !Array.isArray(data)) return { ok: false, error: error || null };
+        return { ok: true, logs: data.filter(row => !isAutoCollected(row)) };
+    } catch (e) {
+        return { ok: false, error: e };
+    }
+}
 
-        if (existingLogs && existingLogs.length >= 5) {
-            const oldestUnlocked = existingLogs.find(log => !log.is_locked);
+/** 1行の表示・非表示を切り替え、実際に1行が変わったことまで確かめる。 */
+async function setLogHidden(id, hidden) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('calc_logs')
+            .update({ is_deleted_by_user: hidden })
+            .eq('id', id)
+            .eq('user_id', currentUser.id)
+            .select('id');
+        return !error && Array.isArray(data) && data.length === 1;
+    } catch (e) {
+        return false;
+    }
+}
 
-            if (!oldestUnlocked) {
-                alert(T('alertAllLocked'));
-                return;
+/** 前回戻せなかった行があれば戻す。戻せたものだけ控えから外す。 */
+async function retryPendingRestore() {
+    if (!currentUser) return true;
+    const raw = lstore.get(pendingRestoreKey());
+    if (!raw) return true;
+    let ids = [];
+    try { ids = JSON.parse(raw); } catch (e) { ids = []; }
+    if (!Array.isArray(ids)) ids = [];
+    const still = [];
+    for (const id of ids) { if (!(await setLogHidden(id, false))) still.push(id); }
+    if (still.length === 0) { lstore.remove(pendingRestoreKey()); return true; }
+    lstore.set(pendingRestoreKey(), JSON.stringify(still));
+    return false;
+}
+
+/** 隠した行を戻す。戻せなかった行は控えておき、false を返す。 */
+async function restoreHidden(ids) {
+    const failed = [];
+    for (const id of ids) { if (!(await setLogHidden(id, false))) failed.push(id); }
+    if (failed.length === 0) return true;
+    let prev = [];
+    try { prev = JSON.parse(lstore.get(pendingRestoreKey()) || '[]'); } catch (e) { prev = []; }
+    if (!Array.isArray(prev)) prev = [];
+    lstore.set(pendingRestoreKey(), JSON.stringify(prev.concat(failed.filter(id => !prev.includes(id)))));
+    return false;
+}
+
+async function saveResultToSupabase(logData) {
+    if (!isBackendAvailable() || !currentUser) return false;
+    if (saveInFlight) return false;          // 連打で二重に保存しない
+    saveInFlight = true;
+    try {
+        return await saveResultInner(logData);
+    } finally {
+        saveInFlight = false;
+        loadLogs();
+    }
+}
+
+async function saveResultInner(logData) {
+    const limited = currentUser.email !== ADMIN_EMAIL;
+    const hidden = [];   // 枠を空けるために隠した行
+
+    if (limited) {
+        // 前回の失敗で隠れたままの行があるなら、数える前に戻す。戻せないうちは保存しない
+        if (!(await retryPendingRestore())) { alert(T('alertRestorePending')); return false; }
+
+        const current = await fetchUserLogs(true);
+        if (!current.ok) { alert(T('alertSaveCheckFail')); return false; }
+
+        const over = current.logs.length - (FREE_LOG_LIMIT - 1);   // 1件入れる余地を作るのに隠す数
+        if (over > 0) {
+            const unlocked = current.logs.filter(log => !log.is_locked);
+            if (unlocked.length < over) { alert(T('alertAllLocked')); return false; }
+            for (const log of unlocked.slice(0, over)) {
+                if (await setLogHidden(log.id, true)) { hidden.push(log.id); continue; }
+                // 途中で失敗したら、ここまでに隠した分を戻してやめる
+                const restored = await restoreHidden(hidden);
+                alert(T(restored ? 'alertSaveCheckFail' : 'alertRestoreFail'));
+                return false;
             }
-
-            const hide = await supabaseClient.from('calc_logs').update({ is_deleted_by_user: true }).eq('id', oldestUnlocked.id);
-            if (hide && hide.error) { alert(T('alertSaveErr') + hide.error.message); return; }
-            hiddenForLimit = oldestUnlocked.id;
         }
     }
 
-    const { error } = await supabaseClient.from('calc_logs').insert([{
-        user_id: currentUser.id,
-        game: logData.game,
-        dpi: logData.dpi,
-        final_sens: logData.finalSens,
-        height: logData.height || null,
-        dexterity: logData.dexterity || null,
-        play_style: logData.armThickness || null,
-        mouse_weight: logData.mouseWeight || null,
-        aim_part: logData.aimPart || null,
-        is_custom: logData.isCustom,
-        memo: logData.memo,
-        rating: logData.rating || 'good',
-        is_locked: false,
-        is_deleted_by_user: false
-    }]);
+    let insertError = null;
+    try {
+        const { error } = await supabaseClient.from('calc_logs').insert([{
+            user_id: currentUser.id,
+            game: logData.game,
+            dpi: logData.dpi,
+            final_sens: logData.finalSens,
+            height: logData.height || null,
+            dexterity: logData.dexterity || null,
+            play_style: logData.armThickness || null,
+            mouse_weight: logData.mouseWeight || null,
+            aim_part: logData.aimPart || null,
+            is_custom: logData.isCustom,
+            memo: logData.memo,
+            rating: logData.rating || 'good',
+            is_locked: false,
+            is_deleted_by_user: false
+        }]);
+        insertError = error || null;
+    } catch (e) {
+        insertError = e;
+    }
 
-    if (error) {
+    if (insertError) {
         // 新しい行が入らなかったのに古い行だけ消えた、という状態を残さない
-        if (hiddenForLimit) {
-            await supabaseClient.from('calc_logs').update({ is_deleted_by_user: false }).eq('id', hiddenForLimit);
-        }
-        alert(T('alertSaveErr') + error.message);
+        const restored = await restoreHidden(hidden);
+        alert(restored ? (T('alertSaveErr') + ((insertError && insertError.message) || '')) : T('alertRestoreFail'));
+        return false;
     }
-    loadLogs();
+
+    if (limited) {
+        // 別のタブと同時に保存した場合の後始末。5件を超えていたら古い未ロックの行を隠す
+        const after = await fetchUserLogs(true);
+        if (after.ok && after.logs.length > FREE_LOG_LIMIT) {
+            const extra = after.logs.filter(log => !log.is_locked).slice(0, after.logs.length - FREE_LOG_LIMIT);
+            for (const log of extra) await setLogHidden(log.id, true);
+        }
+    }
+    return true;
 }
 
 async function loadLogs() {
@@ -1424,14 +1545,11 @@ async function loadLogs() {
         return;
     }
 
-    const { data: logs, error } = await supabaseClient
-        .from('calc_logs')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .eq('is_deleted_by_user', false)
-        .order('created_at', { ascending: false });
+    const restoredAll = await retryPendingRestore();
+    const fetched = await fetchUserLogs(false);
+    const logs = fetched.ok ? fetched.logs : null;
 
-    if (error || !logs) {
+    if (!logs) {
         // 読み込めなかったことを黙って流さない（Supabase 停止中・通信断など）
         logsList.innerHTML = `<div style="font-size:0.85rem; color:var(--text-sub); text-align:center; padding:12px;" role="alert">${escapeHtml(t.logsLoadFail)}</div>`;
         logCountText.innerText = '-';
@@ -1441,14 +1559,15 @@ async function loadLogs() {
 
     const isDev = currentUser.email === ADMIN_EMAIL;
     logCountText.innerText = isDev ? `DEV MODE` : `${logs.length} / 5`;
-    proBanner.style.display = (!isDev && logs.length >= 5) ? 'block' : 'none';
+    proBanner.style.display = (!isDev && logs.length >= FREE_LOG_LIMIT) ? 'block' : 'none';
+    const restoreNote = restoredAll ? '' : `<div style="font-size:0.82rem; color:#fcd34d; padding:8px 4px;" role="alert">${escapeHtml(t.alertRestorePending)}</div>`;
 
     if (logs.length === 0) {
-        logsList.innerHTML = `<div style="font-size:0.85rem; color:var(--text-sub); text-align:center; padding:12px;">${t.logsEmpty}</div>`;
+        logsList.innerHTML = restoreNote + `<div style="font-size:0.85rem; color:var(--text-sub); text-align:center; padding:12px;">${t.logsEmpty}</div>`;
         return;
     }
 
-    logsList.innerHTML = logs.map(log => {
+    logsList.innerHTML = restoreNote + logs.map(log => {
         let ratingBadge = '';
         if (log.rating === 'god') ratingBadge = ' 🏆';
         else if (log.rating === 'bad') ratingBadge = ' ❌';

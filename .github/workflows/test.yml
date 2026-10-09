@@ -37,6 +37,9 @@ jobs:
       - name: 診断レポート Ver.2 / 診断履歴 / eDPI とタイトル間換算のテスト
         run: node tests/diag-report.mjs
 
+      - name: 保存・無料5件枠・ロック・削除のテスト（模擬DB。一覧取得失敗・復元失敗・競合を含む）
+        run: node tests/save-limit.mjs
+
       - name: Importer のテスト（KovaaK Adapter プロトタイプ）
         run: node tests/importers.mjs
 
