@@ -40,7 +40,7 @@
     <meta property="og:title" content="プライバシーポリシー | ロングケープの定理">
     <meta property="og:description" content="ロングケープの定理における個人情報の取り扱い、Cookie および広告配信について。">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="https://longcapenotieri.jp/ogp-image.png?v=1">
+    <meta property="og:image" content="https://longcapenotieri.jp/ogp-image.png?v=2">
     <meta name="twitter:card" content="summary_large_image">
 </head>
 <body>
@@ -62,6 +62,9 @@
             <tr><td>診断パラメータ</td><td>身長、腕の太さ、手先の器用さ、マウス重量、エイムの支点、マウス DPI</td><td>感度診断の実行時</td></tr>
             <tr><td>感度データ</td><td>対象ゲームタイトル、現在使用中のインゲーム感度、感度メモおよびその評価</td><td>診断の実行時・感度メモの保存時（いずれも入力は任意）</td></tr>
             <tr><td>端末内保存データ</td><td>入力パラメータの記憶、選択中の表示言語（Cookie ではなく localStorage を使用）</td><td>入力・言語切替時</td></tr>
+            <tr><td>診断履歴（端末内のみ）</td><td>記録した日時、対象ゲームタイトル、マウス DPI、診断結果のゲーム内感度、診断時の入力（身長・腕の太さ・手先の器用さ・マウス重量・エイムの支点）、入力した場合は現在使用中のインゲーム感度</td><td>診断結果の「診断履歴に記録する」を押したとき。<strong>利用者のブラウザ内（localStorage）にのみ保存し、当サイトのサーバーへは送信しません</strong></td></tr>
+            <tr><td>測定ラボ（β）の測定データ</td><td>取り込んだ Aim テストの記録から読み取った値（シナリオ名、実施日時、スコア・命中数などの成績、感度設定など）、利用者が確認したマウス DPI、取り込んだファイルの内容から計算した照合用の値（ハッシュ値）、保存への同意の記録</td><td>ログインしたうえで保存に同意し、保存を実行したとき。<strong>ログインしていない場合・同意していない場合は、ブラウザ内で処理するだけでサーバーへは送信しません。</strong>取り込んだファイルそのものは保存しません</td></tr>
+            <tr><td>アクセス解析</td><td>ページが表示されたこと（表示されたページの URL など）</td><td>各ページの表示時（Vercel Web Analytics の計測スクリプトによる）</td></tr>
         </table>
         </div>
         <p>パスワードは認証基盤（後述の Supabase）側でハッシュ化されて保管され、運営者が平文のパスワードを閲覧することはできません。</p>
@@ -69,6 +72,8 @@
         <h2>3. 利用目的</h2>
         <ul>
             <li>会員向けの感度ログ保存機能（マイページ）の提供および本人確認のため</li>
+            <li>測定ラボ（β）で、保存した測定データを次回以降も表示・更新できるようにするため（保存に同意した場合のみ。匿名の集計統計・モデルの改善への利用は、それぞれ個別に同意した場合のみ）</li>
+            <li>どのページがどの程度閲覧されているかを把握し、サービスを改善するため（アクセス解析）</li>
             <li>入力内容を統計的に集計し、感度算出アルゴリズムの係数を継続的に補正するため</li>
             <li>不正利用・いたずら投稿の検知および対策のため</li>
             <li>サービスの改善、不具合の原因調査のため</li>
@@ -78,8 +83,8 @@
         <h2>4. 第三者提供および委託</h2>
         <p>当サイトは、法令に基づく場合を除き、取得した個人情報を本人の同意なく第三者へ提供することはありません。ただし、サービスの運営にあたり、以下の事業者へデータの保管・処理を委託しています。</p>
         <ul>
-            <li><strong>Supabase Inc.</strong> — 認証基盤およびデータベース（アカウント情報・感度ログの保管）</li>
-            <li><strong>Vercel Inc.</strong> — ウェブサイトの配信基盤（アクセスログの一時的な記録を含む）</li>
+            <li><strong>Supabase Inc.</strong> — 認証基盤およびデータベース（アカウント情報・感度ログ・測定ラボで保存した測定データと同意の記録の保管）</li>
+            <li><strong>Vercel Inc.</strong> — ウェブサイトの配信基盤（アクセスログの一時的な記録を含む）およびアクセス解析（Vercel Web Analytics）。当サイトの全ページに同社の計測スクリプトを設置しており、ページの表示が同社へ送信されます。当サイトから、メールアドレス・診断パラメータ・感度の値・診断履歴を解析へ送ることはしておらず、独自の行動イベントも送信していません。計測の仕組みと同社でのデータの扱いは <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener noreferrer">Vercel Web Analytics のプライバシーに関する説明</a> をご確認ください。</li>
         </ul>
 
         <h2>5. 広告配信について（Google AdSense）</h2>
@@ -93,10 +98,12 @@
         <p>当サイトは、広告配信事業者に対して、利用者のメールアドレス・診断パラメータ・感度ログを提供することはありません。</p>
 
         <h2>6. Cookie および localStorage の利用</h2>
-        <p>当サイトは、ログイン状態の維持のために認証基盤が発行するトークンを、また入力パラメータおよび表示言語の記憶のために localStorage を使用します。これらはブラウザの設定から削除できますが、削除した場合はログイン状態および入力内容の記憶が失われます。広告に関する Cookie の扱いは前項のとおりです。</p>
+        <p>当サイトは、ログイン状態の維持のために認証基盤が発行するトークンを、また入力パラメータおよび表示言語の記憶のために localStorage を使用します。診断履歴（「診断履歴に記録する」で記録したもの）も localStorage に保存します。測定ラボでは、取り込んだ記録を画面間で受け渡すために sessionStorage（タブを閉じると消える一時的な保存領域）を使用します。これらはブラウザの設定から削除できますが、削除した場合はログイン状態・入力内容の記憶・診断履歴が失われます。診断履歴は別の端末や別のブラウザとは同期されません。広告に関する Cookie の扱いは前項のとおりです。</p>
 
         <h2>7. データの保存期間と削除</h2>
         <p>保存された感度ログは、マイページのゴミ箱アイコンからいつでも非表示にできます。アカウントおよび保存データそのものの完全な削除をご希望の場合は、<a href="/contact.html">お問い合わせ窓口</a> よりご登録のメールアドレスを添えてご連絡ください。本人確認のうえ、原則として 2 週間以内に削除いたします。</p>
+        <p>診断履歴は利用者のブラウザ内にのみ保存されており、運営者は内容を閲覧・削除できません。保存期間の定めはなく、利用者が削除するまでそのブラウザに残ります。「診断履歴」画面の削除ボタン（1件ずつ、またはすべて）か、ブラウザのサイトデータの削除によって、いつでも消去できます。保存されていた履歴が壊れていて読み込めなかった場合、そのデータは同じブラウザ内に退避して残します（1件ずつの削除では消えません）。「診断履歴をすべて削除」を実行すると、退避したデータも含めて削除します。</p>
+        <p>測定ラボ（β）で保存した測定データは、プロフィール画面の「データを削除」からいつでも削除できます（保存への同意の記録は残ります）。</p>
 
         <h2>8. 未成年者の利用について</h2>
         <p>当サイトは 13 歳未満の方を対象としていません。13 歳未満の方は会員登録を行わないでください。未成年者が会員登録を行う場合は、保護者の同意を得たうえでご利用ください。</p>
@@ -107,7 +114,7 @@
         <h2>10. 本ポリシーの変更</h2>
         <p>本ポリシーは、法令の改正やサービス内容の変更に応じて予告なく改定することがあります。改定後の内容は本ページに掲載した時点から適用されます。</p>
 
-        <p class="updated">制定日：2026年1月1日 ／ 最終更新日：2026年8月25日</p>
+        <p class="updated">制定日：2026年1月1日 ／ 最終更新日：2026年10月10日</p>
         <a class="backlink" href="/">← 感度診断ツールに戻る</a>
     </div>
 
@@ -115,11 +122,13 @@
         <h2 style="margin-top:0;">Privacy Policy (English Summary)</h2>
         <p>Long Cape Theorem (longcapenotieri.jp) collects an email address and nickname only when you voluntarily create an account, together with the parameters you enter (height, arm thickness, dexterity, mouse weight, aiming pivot, DPI and sensitivity). This data is used to provide the log-saving feature and to statistically calibrate the sensitivity algorithm. It is never analysed or published in a personally identifiable form, and never shared with advertisers.</p>
         <p>Authentication and storage are handled by Supabase Inc.; hosting is provided by Vercel Inc. This site serves third-party advertising through Google AdSense, which may use cookies to serve ads based on your prior visits to this and other websites. You may opt out of personalised advertising at <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer">Google Ad Settings</a> or at <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer">www.aboutads.info</a>.</p>
+        <p>Diagnosis history (recorded with "Record this result in your history") is stored only in your browser's localStorage and is never sent to our server. It is not synced across devices or browsers, has no retention period, and can be deleted at any time from the History tab or by clearing your browser's site data. If saved history is damaged and cannot be read, that data is kept aside in the same browser; "Delete all history" removes it as well. In the Measurement Lab (beta), imported aim-test records are processed inside your browser; they are stored on our database (Supabase) only if you sign in, consent to saving and press save. The imported files themselves are not stored, and saved measurement data can be deleted from the profile page. All pages include the Vercel Web Analytics script, which reports page views to Vercel Inc.; we do not send your email address, diagnosis parameters, sensitivity values or diagnosis history to analytics, and we send no custom behavioural events. See <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener noreferrer">Vercel's explanation</a> for how the measurement works.</p>
         <p>To request deletion of your account and stored data, contact us through the <a href="/contact.html">contact page</a>. The site is not intended for children under 13.</p>
 
         <h2>개인정보 처리방침 (한국어 요약)</h2>
         <p>롱케이프의 정리(longcapenotieri.jp)는 이용자가 자발적으로 회원가입한 경우에 한해 이메일 주소와 닉네임을 수집하며, 그 외에 입력하신 파라미터(신장, 팔 두께, 손재주, 마우스 무게, 에임 지점, DPI 및 감도)를 수집합니다. 이 데이터는 감도 로그 저장 기능의 제공과 알고리즘 계수의 통계적 보정에만 사용되며, 개인을 식별할 수 있는 형태로 분석·공개되거나 광고 사업자에게 제공되지 않습니다.</p>
         <p>인증 및 데이터 보관은 Supabase Inc., 사이트 배포는 Vercel Inc. 에 위탁하고 있습니다. 본 사이트는 Google AdSense 를 통한 제3자 광고를 게재하며, 쿠키를 사용하여 이용자의 이전 방문 정보를 바탕으로 광고가 표시될 수 있습니다. 맞춤 광고는 <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer">Google 광고 설정</a> 에서 해제할 수 있습니다.</p>
+        <p>진단 기록(「진단 기록에 남기기」로 기록한 것)은 이용자의 브라우저 localStorage 에만 저장되며 본 사이트의 서버로 전송되지 않습니다. 다른 기기나 브라우저와 동기화되지 않고, 보관 기간의 정함이 없으며, 「진단 기록」 화면이나 브라우저의 사이트 데이터 삭제로 언제든지 지울 수 있습니다. 저장된 기록이 손상되어 읽지 못한 경우 그 데이터는 같은 브라우저 안에 따로 보관하며, 「진단 기록 모두 삭제」를 실행하면 함께 삭제합니다. 측정 랩(베타)에서 가져온 에임 테스트 기록은 브라우저 안에서 처리되며, 로그인한 뒤 저장에 동의하고 저장을 실행한 경우에만 데이터베이스(Supabase)에 저장됩니다. 가져온 파일 자체는 저장하지 않으며, 저장한 측정 데이터는 프로필 화면에서 삭제할 수 있습니다. 모든 페이지에는 Vercel Web Analytics 측정 스크립트가 포함되어 있어 페이지 표시가 Vercel Inc. 로 전송됩니다. 이메일 주소・진단 파라미터・감도 값・진단 기록을 분석으로 보내지 않으며, 별도의 행동 이벤트도 전송하지 않습니다. 측정 방식은 <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener noreferrer">Vercel 의 설명</a> 을 확인해 주세요.</p>
         <p>계정 및 저장 데이터의 삭제를 원하시는 경우 <a href="/contact.html">문의 페이지</a> 를 통해 연락해 주시기 바랍니다. 본 사이트는 만 13세 미만을 대상으로 하지 않습니다.</p>
     </div>
 </div>

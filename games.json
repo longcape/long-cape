@@ -8,13 +8,24 @@
   "games": [
     {
       "key": "valo",
-      "name": "VALORANT / CS2",
-      "formLabel": "VALORANT / CS2",
+      "name": "VALORANT",
+      "formLabel": "VALORANT",
       "scale": 1.0,
       "curve": { "type": "constant", "value": 1.0 },
       "sensTransform": "linear",
       "display": { "integer": false, "suffix": "" },
       "inputRange": [0.05, 3.0]
+    },
+    {
+      "_note": "診断の中身は VALORANT と同じ（curve 1.0）。ゲーム内感度の単位だけが違う。scale は 0.07 ÷ 0.022 を丸めずに持つ（VALORANT 1カウント 0.07 度 / CS2 0.022 度）。Apex の 3.18 は既存の診断結果を変えないため据え置き。2026-10-10 に VALORANT / CS2 の共通選択肢から分離。",
+      "key": "cs2",
+      "name": "CS2",
+      "formLabel": "CS2 (Counter-Strike 2)",
+      "scale": 3.1818181818181817,
+      "curve": { "type": "constant", "value": 1.0 },
+      "sensTransform": "linear",
+      "display": { "integer": false, "suffix": "" },
+      "inputRange": [0.15, 10.0]
     },
     {
       "key": "apex",
