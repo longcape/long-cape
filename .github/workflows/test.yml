@@ -34,6 +34,9 @@ jobs:
       - name: 感度計算の回帰テスト（JS / 8064 パターン）
         run: node tests/regression.mjs
 
+      - name: 診断レポート Ver.2 / 診断履歴 / eDPI とタイトル間換算のテスト
+        run: node tests/diag-report.mjs
+
       - name: Importer のテスト（KovaaK Adapter プロトタイプ）
         run: node tests/importers.mjs
 

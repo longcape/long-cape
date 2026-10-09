@@ -126,6 +126,9 @@ export function loadApp(htmlPath = path.join(REPO_ROOT, 'index.html')) {
         sensToNumericString,
         dynamicConfig,
         SENS_INPUT_RANGE,
+        translations,
+        T,
+        changeLanguage,
         get currentDiagResult() { return currentDiagResult; },
     };`;
 
@@ -164,5 +167,6 @@ export function loadApp(htmlPath = path.join(REPO_ROOT, 'index.html')) {
         };
     }
 
-    return { ...app, diagnose, getElementById, elements };
+    // currentDiagResult は getter なので、展開した写しではなく元の app から読む
+    return { ...app, diagnose, getElementById, elements, getDiagResult: () => app.currentDiagResult };
 }

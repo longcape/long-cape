@@ -53,6 +53,8 @@
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 診断結果レポート Ver.2 と診断履歴。読み込めなくても診断そのものは従来どおり動く -->
+    <script src="ui/diag-report.js"></script>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -90,8 +92,43 @@
         .optional-label { font-weight: normal; font-size: 0.8rem; color: var(--accent-color); margin-left: 6px; }
         input[type="text"], input[type="number"], input[type="password"], select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-size: 0.95rem; }
         input:focus, select:focus { outline: none; border-color: var(--accent-color); }
-        .row { display: flex; gap: 12px; }
+        .row { display: flex; gap: 12px; align-items: flex-end; }
         .row .form-group { flex: 1; }
+        .form-error { display: none; margin-top: 12px; padding: 10px 12px; border: 1px solid #f87171; border-radius: 8px; color: #fecaca; background: #2a1215; font-size: 0.88rem; }
+
+        /* 診断結果レポート Ver.2 / 診断履歴（ui/diag-report.js が中身を作る） */
+        .diag-report { text-align: left; margin-top: 16px; font-size: 0.88rem; }
+        .dr-sec { border-top: 1px solid var(--border-color); padding: 12px 0; }
+        .dr-h { font-weight: bold; color: var(--text-main); margin-bottom: 6px; font-size: 0.9rem; }
+        summary.dr-h { cursor: pointer; color: var(--accent-color); }
+        .dr-sec p { color: var(--text-sub); margin-top: 4px; overflow-wrap: anywhere; }
+        .dr-kv { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; color: var(--text-sub); }
+        .dr-kv b { color: var(--text-main); font-variant-numeric: tabular-nums; }
+        .dr-note { font-size: 0.8rem; }
+        .dr-warn { color: #fcd34d !important; }
+        .dr-big { font-size: 1.3rem; color: var(--accent-color); font-variant-numeric: tabular-nums; }
+        .dr-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+        .dr-table th, .dr-table td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--border-color); font-weight: normal; color: var(--text-sub); }
+        .dr-table td { font-variant-numeric: tabular-nums; color: var(--text-main); }
+        .diag-status { min-height: 1.2em; margin-top: 8px; font-size: 0.82rem; color: var(--text-sub); text-align: center; }
+        .btn-link { background: none; border: none; color: var(--accent-color); text-decoration: underline; cursor: pointer; font-size: 0.85rem; padding: 6px; }
+        .dh-item { background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+        .dh-head { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-sub); }
+        .dh-head .dh-del { margin-left: auto; background: none; border: none; cursor: pointer; font-size: 1rem; opacity: 0.7; padding: 4px 6px; }
+        .dh-main { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: bold; }
+        .dh-meta, .dh-diff { font-size: 0.8rem; color: var(--text-sub); overflow-wrap: anywhere; }
+        .dh-diff { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-color); }
+        .dh-diff b { color: var(--text-main); }
+        .dh-empty { text-align: center; color: var(--text-sub); font-size: 0.88rem; padding: 16px 8px; }
+        .dh-view { margin: 12px 0; }
+        .dh-view label { font-size: 0.82rem; color: var(--text-sub); }
+        .dh-clear { display: block; margin: 12px auto 0; background: none; border: 1px solid var(--border-color); color: var(--text-sub); border-radius: 6px; padding: 8px 12px; font-size: 0.8rem; cursor: pointer; }
+        button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+        @media (max-width: 480px) {
+            body { padding: 12px; }
+            .container { padding: 20px 16px; }
+            .result-value { font-size: 2.3rem; }
+        }
         
         .btn-primary { width: 100%; padding: 14px; background: var(--accent-color); color: #0b0f19; font-weight: bold; font-size: 1.05rem; border: none; border-radius: 8px; cursor: pointer; margin-top: 8px; transition: background 0.2s; }
         .btn-primary:hover { background: var(--accent-hover); }
@@ -155,6 +192,7 @@
     <div class="mode-tabs">
         <button class="tab-btn active" onclick="switchTab('diag')" data-i18n="tabDiag">感度診断</button>
         <button class="tab-btn" onclick="switchTab('custom')" data-i18n="tabCustom">感度メモ</button>
+        <button class="tab-btn" id="historyTabBtn" style="display:none;" onclick="switchTab('history')" data-i18n="tabHistory">診断履歴</button>
         <button class="tab-btn admin-tab" id="adminTabBtn" style="display:none;" onclick="switchTab('admin')" data-i18n="tabAdmin">👑 全データ閲覧(開発者)</button>
     </div>
 
@@ -196,12 +234,13 @@
 
         <div class="row">
             <div class="form-group">
-                <label for="currentDpi" data-i18n="labelDpi">2-A. マウスDPI <span class="optional-label" data-i18n="labelDpiOpt" style="color:var(--text-sub);">(未入力時は800DPIで計算)</span></label>
-                <input type="number" id="currentDpi" value="800" placeholder="800" min="100" max="12800" onchange="saveUserParams()">
+                <!-- 見出しと補足は兄弟にする。入れ子にすると言語切替が補足ごと上書きして消える -->
+                <label for="currentDpi"><span data-i18n="labelDpi">2-A. マウスDPI</span> <span class="optional-label" data-i18n="labelDpiOpt" style="color:var(--text-sub);">(未入力時は800DPIで計算)</span></label>
+                <input type="number" id="currentDpi" value="800" placeholder="800" min="100" max="25600" inputmode="numeric" onchange="saveUserParams()">
             </div>
             <div class="form-group">
-                <label for="currentSens" data-i18n="labelSens">2-B. 現在のインゲーム感度 <span class="optional-label" data-i18n="labelSensOpt">(※現在の感度入力でAIが学習し精度が上がります)</span></label>
-                <input type="number" id="currentSens" placeholder="例: 0.215" step="0.001">
+                <label for="currentSens"><span data-i18n="labelSens">2-B. 現在のインゲーム感度</span> <span class="optional-label" data-i18n="labelSensOpt">(※現在の感度入力でAIが学習し精度が上がります)</span></label>
+                <input type="number" id="currentSens" placeholder="例: 0.215" step="0.001" inputmode="decimal">
             </div>
         </div>
 
@@ -251,13 +290,20 @@
         </div>
 
         <button class="btn-primary" onclick="calculateEDPI()" data-i18n="calcBtn">最適インゲーム感度を算出する</button>
+        <div id="diagError" class="form-error" role="alert"></div>
 
         <div id="resultBox" class="result-box">
             <div class="subtitle" style="margin:0;" data-i18n="resultSubtitle">あなたの理論上の最適感度</div>
             <div id="resultGameTitle" style="font-weight:bold; color:var(--accent-color);"></div>
             <div id="resultValue" class="result-value">0.00</div>
-            
+
             <div id="resultDesc" class="result-desc"></div>
+
+            <!-- 診断結果レポート Ver.2（推奨値 / 現在の設定 / 候補範囲 / 次に試す候補 / 根拠 / 不確かさ / 前回比） -->
+            <div id="diagReport" class="diag-report"></div>
+
+            <button class="btn-save-log" id="recordHistoryBtn" style="display:none;" onclick="recordDiagHistory()" data-i18n="drRecordBtn">📈 この結果を診断履歴に記録する（この端末に保存）</button>
+            <div id="diagRecordStatus" class="diag-status" role="status" aria-live="polite"></div>
 
             <button class="btn-save-log" onclick="handleSaveClick()" data-i18n="saveBtn">💾 この診断結果をマイページに保存する</button>
 
@@ -341,6 +387,12 @@
         <button class="btn-primary" onclick="saveCustomSens()" data-i18n="btnCustomSave">感度メモを直接保存する</button>
     </div>
 
+    <!-- TAB: 診断履歴（この端末の localStorage のみ。サーバー・calc_logs の5件枠とは無関係） -->
+    <div id="tabHistory" class="tab-content">
+        <div id="diagHistoryList"></div>
+        <button class="btn-primary" onclick="switchTab('diag'); window.scrollTo(0, 0);" data-i18n="dhRediag">再診断する</button>
+    </div>
+
     <!-- TAB 3: ADMIN専用 -->
     <div id="tabAdmin" class="tab-content">
         <div style="padding:16px; background:#1e1b4b; border:1px solid #6366f1; border-radius:8px; margin-bottom:20px;">
@@ -389,7 +441,7 @@
 </div>
 
 <div class="modal-overlay" id="authModal">
-    <div class="modal-body">
+    <div class="modal-body" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <h3 style="margin-bottom:12px;" id="modalTitle" data-i18n="modalTitle">アカウントログイン / 会員登録</h3>
         <p style="font-size:0.8rem; color:var(--text-sub); margin-bottom:16px;" data-i18n="modalSub">保存機能のご利用には無料会員登録が必要です。</p>
 
@@ -402,20 +454,20 @@
         </div>
 
         <div class="form-group">
-            <label><span data-i18n="modalUsername">ユーザー名（ニックネーム）</span> <span class="optional-label" data-i18n="modalOpt" style="color:var(--text-sub);">(新規登録時)</span></label>
-            <input type="text" id="authUsername" placeholder="例: エイムマスター">
+            <label for="authUsername"><span data-i18n="modalUsername">ユーザー名（ニックネーム）</span> <span class="optional-label" data-i18n="modalOpt" style="color:var(--text-sub);">(新規登録時)</span></label>
+            <input type="text" id="authUsername" placeholder="例: エイムマスター" autocomplete="nickname">
         </div>
         <div class="form-group">
-            <label data-i18n="modalEmail">メールアドレス</label>
-            <input type="text" id="authEmail" placeholder="example@email.com">
+            <label for="authEmail" data-i18n="modalEmail">メールアドレス</label>
+            <input type="text" id="authEmail" placeholder="example@email.com" inputmode="email" autocomplete="email" autocapitalize="off">
         </div>
         <div class="form-group">
-            <label><span data-i18n="modalPassword">パスワード</span> <span class="optional-label" data-i18n="modalPassOpt" style="color:var(--text-sub);">(半角6文字以上)</span></label>
-            <input type="password" id="authPassword" placeholder="******">
+            <label for="authPassword"><span data-i18n="modalPassword">パスワード</span> <span class="optional-label" data-i18n="modalPassOpt" style="color:var(--text-sub);">(半角6文字以上)</span></label>
+            <input type="password" id="authPassword" placeholder="******" autocomplete="current-password">
         </div>
         <button class="btn-primary" style="margin-bottom:8px;" onclick="handleAuth('login')" data-i18n="modalBtnLogin">ログイン</button>
         <button class="btn-save-log" style="margin-top:0; width:100%;" onclick="handleAuth('signup')" data-i18n="modalBtnSignup">新規会員登録</button>
-        <button style="background:transparent; border:none; color:var(--text-sub); width:100%; margin-top:12px; cursor:pointer;" onclick="closeAuthModal()" data-i18n="modalBtnCancel">キャンセル</button>
+        <button style="background:transparent; border:none; color:var(--text-sub); width:100%; margin-top:12px; cursor:pointer;" onclick="cancelAuthModal()" data-i18n="modalBtnCancel">キャンセル</button>
     </div>
 </div>
 
@@ -424,6 +476,20 @@
 const translations = {
     ja: {
         seoExpand: "詳しい解説を読む（eDPI・身体特性・タイトル別の違い・使い方）",
+        errHeight: "身長は 130〜220 cm の範囲で入力してください。",
+        errDpi: "DPI は 100〜25600 の範囲で入力してください（空欄の場合は 800 として計算します）。",
+        alertOfflineSave: "現在サーバーに接続できないため、保存機能は利用できません。診断結果の表示はそのままご利用いただけます。",
+        alertOfflineAuth: "現在サーバーに接続できないため、ログイン・登録は利用できません。時間をおいて再度お試しください。",
+        alertSensRange: "入力された感度が対象タイトルの想定レンジ外です。値をご確認ください。",
+        alertAllLocked: "5件すべてがロックされています。新しいログを保存するには、いずれかのロックを解除してください。",
+        alertLockErr: "ロックを変更できませんでした: ",
+        alertLockedDelete: "🔒 ロック（保護）されているログは削除できません。\n削除する場合は先にロックを解除（🔓）してください。",
+        confirmDeleteLog: "この感度ログをマイページから削除しますか？",
+        alertDeleteErr: "削除できませんでした: ",
+        alertSaveErr: "保存できませんでした: ",
+        lockTitleOn: "ロックを解除する", lockTitleOff: "保護する（自動更新・削除の対象から外す）",
+        deleteTitle: "削除する", deleteTitleLocked: "ロックされているため削除できません",
+        logsLoadFail: "保存履歴を読み込めませんでした。通信状況を確認して、ページを再読み込みしてください。",
         backendOffline: "サーバーに接続できないため、保存機能は現在ご利用いただけません（感度診断はそのままご利用いただけます）",
         adminPanelTitle: "👑 開発者コントロールパネル",
         adminPanelSub: "全ユーザーの蓄積データがリアルタイムで一覧表示されています。",
@@ -479,6 +545,20 @@ const translations = {
     },
     en: {
         seoExpand: "Read the detailed explanation (eDPI, physique, per-title differences, how to apply)",
+        errHeight: "Enter a height between 130 and 220 cm.",
+        errDpi: "Enter a DPI between 100 and 25600 (leave it blank to calculate with 800).",
+        alertOfflineSave: "Cannot reach the server, so saving is unavailable right now. You can still view your result.",
+        alertOfflineAuth: "Cannot reach the server, so login and sign-up are unavailable right now. Please try again later.",
+        alertSensRange: "That sensitivity is outside the expected range for this title. Please check the value.",
+        alertAllLocked: "All 5 logs are locked. Unlock one of them to save a new log.",
+        alertLockErr: "Could not change the lock: ",
+        alertLockedDelete: "🔒 Locked logs cannot be deleted.\nUnlock it (🔓) first if you want to delete it.",
+        confirmDeleteLog: "Delete this sensitivity log from My Page?",
+        alertDeleteErr: "Could not delete: ",
+        alertSaveErr: "Could not save: ",
+        lockTitleOn: "Unlock", lockTitleOff: "Lock (keep it from being replaced or deleted)",
+        deleteTitle: "Delete", deleteTitleLocked: "Locked, so it cannot be deleted",
+        logsLoadFail: "Could not load your saved logs. Check your connection and reload the page.",
         backendOffline: "Cannot reach the server, so saving is currently unavailable. The calculator itself still works.",
         adminPanelTitle: "👑 Developer Control Panel",
         adminPanelSub: "All accumulated user data is listed here in real time.",
@@ -521,6 +601,20 @@ const translations = {
     },
     ko: {
         seoExpand: "자세한 해설 보기 (eDPI・신체 특성・타이틀별 차이・사용법)",
+        errHeight: "신장은 130~220 cm 범위로 입력해 주세요.",
+        errDpi: "DPI 는 100~25600 범위로 입력해 주세요 (비워 두면 800 으로 계산합니다).",
+        alertOfflineSave: "현재 서버에 연결할 수 없어 저장 기능을 이용할 수 없습니다. 진단 결과는 그대로 확인할 수 있습니다.",
+        alertOfflineAuth: "현재 서버에 연결할 수 없어 로그인・가입을 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        alertSensRange: "입력한 감도가 해당 타이틀의 예상 범위를 벗어났습니다. 값을 확인해 주세요.",
+        alertAllLocked: "5건이 모두 잠겨 있습니다. 새 로그를 저장하려면 잠금을 하나 해제해 주세요.",
+        alertLockErr: "잠금을 변경하지 못했습니다: ",
+        alertLockedDelete: "🔒 잠긴 로그는 삭제할 수 없습니다.\n삭제하려면 먼저 잠금을 해제(🔓)해 주세요.",
+        confirmDeleteLog: "이 감도 로그를 마이페이지에서 삭제할까요?",
+        alertDeleteErr: "삭제하지 못했습니다: ",
+        alertSaveErr: "저장하지 못했습니다: ",
+        lockTitleOn: "잠금 해제", lockTitleOff: "보호하기 (자동 갱신・삭제 대상에서 제외)",
+        deleteTitle: "삭제", deleteTitleLocked: "잠겨 있어 삭제할 수 없습니다",
+        logsLoadFail: "저장 기록을 불러오지 못했습니다. 연결 상태를 확인하고 페이지를 새로 고쳐 주세요.",
         backendOffline: "서버에 연결할 수 없어 저장 기능은 현재 이용할 수 없습니다. 감도 진단은 그대로 이용하실 수 있습니다.",
         adminPanelTitle: "👑 개발자 컨트롤 패널",
         adminPanelSub: "전체 사용자의 축적 데이터가 실시간으로 표시됩니다.",
@@ -534,12 +628,12 @@ const translations = {
         armHeavy: "두꺼움",
         labelNeuro: "5. 손재주",
         neuro1: "매우 뛰어남", neuro2: "뛰어남", neuro3: "보통", neuro4: "서툶", neuro5: "매우 서툶",
-        labelWeight: "6. 현재 사용하는 마우스 무게", weightUltra: "초경량 (40g~55g)", weightStandard: "표준 경량 (58g~65g)", weightMid: "미디엄 (70g~85g)", weightHeavy: "헤비웨イト (90g~105g)", weightUltraheavy: "울트라 헤비 (110g 이상)",
+        labelWeight: "6. 현재 사용하는 마우스 무게", weightUltra: "초경량 (40g~55g)", weightStandard: "표준 경량 (58g~65g)", weightMid: "미디엄 (70g~85g)", weightHeavy: "헤비웨이트 (90g~105g)", weightUltraheavy: "울트라 헤비 (110g 이상)",
         labelPivot: "7. 에임의 지점", pivotWrist: "손목", pivotArm: "팔꿈치", pivotShoulder: "어깨",
         calcBtn: "최적 인게임 감도 계산하기", resultSubtitle: "당신의 이론상 최적 감도", saveBtn: "💾 이 진단 결과를 마이페이지에 저장하기", shareBtn: "𝕏 포스트로 연구에 협력하기",
         labelCustomGame: "대상 타이틀", labelCustomSens: "인게임 감도", labelCustomMemo: "메모 (선택)",
         labelCustomRating: "감도 만족도 / 평가",
-        ratingGod: "🏆 인생 감도 (주요 감도)", ratingGood: "🧪 테스트 중 / 미세調整", ratingBad: "❌ 맞지 않음 / 폐기 (학습 제외)",
+        ratingGod: "🏆 인생 감도 (주요 감도)", ratingGood: "🧪 테스트 중 / 미세 조정", ratingBad: "❌ 맞지 않음 / 폐기 (학습 제외)",
         btnCustomSave: "감도 메모 직접 저장하기", logsTitle: "📋 마이 감도 로그",
         logsEmptyGuest: "저장된 감도 데이터가 없습니다 (로그인 필요)", logsEmpty: "저장된 데이터가 없습니다.", proBanner: "🔒 저장 한도(5건)에 도달했습니다. 새 로그 저장 시 잠금 해제된 오래된 데이터부터 자동 갱신됩니다.",
         labEntryTitle: "측정 랩 (베타) — KovaaK 기록 가져오기", labEntryDesc: "에임 테스트 기록으로 자신에게 맞는 감도를 측정하며 좁혀 갑니다. 로그인 없이 사용해 볼 수 있습니다.",
@@ -563,16 +657,44 @@ const translations = {
     }
 };
 
+// 診断結果レポート Ver.2 / 診断履歴の文言は ui/diag-report.js が持つ。読み込めたときだけ足す。
+const hasDiagReport = (typeof LC_DIAG !== 'undefined') && !!LC_DIAG;
+if (hasDiagReport) {
+    Object.keys(translations).forEach(lang => Object.assign(translations[lang], LC_DIAG.I18N[lang] || {}));
+}
+
+/** 辞書を引いて {名前} を差し替える。訳が無ければ日本語、それも無ければ鍵をそのまま返す。 */
+function T(key, vars) {
+    const dict = translations[currentLang] || translations.ja;
+    let s = (dict[key] !== undefined) ? dict[key] : (translations.ja[key] !== undefined ? translations.ja[key] : key);
+    if (vars) Object.keys(vars).forEach(k => { s = s.split('{' + k + '}').join(String(vars[k])); });
+    return s;
+}
+
+// ブラウザの保存領域が止められている環境（サイトデータを全面ブロック等）でも、
+// 例外でスクリプト全体が止まらないようにする。保存できないだけで診断は動く。
+function makeSafeStore(getStore) {
+    return {
+        get(key) { try { return getStore().getItem(key); } catch (e) { return null; } },
+        set(key, value) { try { getStore().setItem(key, value); return true; } catch (e) { return false; } },
+        remove(key) { try { getStore().removeItem(key); return true; } catch (e) { return false; } }
+    };
+}
+const lstore = makeSafeStore(() => localStorage);
+const sstore = makeSafeStore(() => sessionStorage);
+
 let defaultLang = 'ja';
 const userLang = (navigator.language || navigator.userLanguage || '').toLowerCase();
 if (userLang.startsWith('ko')) { defaultLang = 'ko'; }
 else if (userLang.startsWith('en')) { defaultLang = 'en'; }
 
-let currentLang = localStorage.getItem('appLang') || defaultLang;
+let currentLang = lstore.get('appLang') || defaultLang;
+if (!translations[currentLang]) currentLang = defaultLang;
 
 function changeLanguage(lang) {
+    if (!translations[lang]) lang = defaultLang;
     currentLang = lang;
-    localStorage.setItem('appLang', lang);
+    lstore.set('appLang', lang);
     document.getElementById('langSelect').value = lang;
 
     document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -594,6 +716,7 @@ function changeLanguage(lang) {
     updateUserStatusUI();
     loadLogs();
     if (currentDiagResult) { calculateEDPI(); }
+    renderDiagHistory();
 }
 
 // --- 1. Supabase Client & Dynamic Config ---
@@ -710,12 +833,12 @@ function saveUserParams() {
         game: document.getElementById('game').value
     };
     const key = currentUser ? `user_params_${currentUser.id}` : 'user_params_guest';
-    localStorage.setItem(key, JSON.stringify(params));
+    lstore.set(key, JSON.stringify(params));
 }
 
 function loadUserParams() {
     const key = currentUser ? `user_params_${currentUser.id}` : 'user_params_guest';
-    const saved = localStorage.getItem(key);
+    const saved = lstore.get(key);
     if (saved) {
         try {
             const params = JSON.parse(saved);
@@ -816,16 +939,20 @@ function labReturnTarget() {
     return LAB_RETURN_ALLOWED.includes(page) ? page : null;
 }
 
-if (isBackendAvailable()) supabaseClient.auth.onAuthStateChange(async (event, session) => {
+if (isBackendAvailable()) supabaseClient.auth.onAuthStateChange((event, session) => {
     currentUser = session ? session.user : null;
     updateUserStatusUI();
-    if (currentUser) {
-        await syncPendingResult();
-        // ログインできたら、来た画面へ戻す
-        const back = labReturnTarget();
-        if (back) { location.replace(back); return; }
-    }
-    loadLogs();
+    // この通知の中で Supabase への問い合わせを待つと、処理が固まることがある（公式の注意書き）。
+    // 一拍おいてから、保留していた保存と一覧の更新を行う。
+    setTimeout(async () => {
+        if (currentUser) {
+            await syncPendingResult();
+            // ログインできたら、来た画面へ戻す
+            const back = labReturnTarget();
+            if (back) { location.replace(back); return; }
+        }
+        loadLogs();
+    }, 0);
 });
 
 async function changeUsername() {
@@ -850,6 +977,10 @@ function switchTab(tabName) {
     } else if(tabName === 'custom') {
         document.querySelectorAll('.tab-btn')[1].classList.add('active');
         document.getElementById('tabCustom').classList.add('active');
+    } else if(tabName === 'history') {
+        document.getElementById('historyTabBtn').classList.add('active');
+        document.getElementById('tabHistory').classList.add('active');
+        renderDiagHistory();
     } else if(tabName === 'admin') {
         document.getElementById('adminTabBtn').classList.add('active');
         document.getElementById('tabAdmin').classList.add('active');
@@ -857,8 +988,114 @@ function switchTab(tabName) {
     }
 }
 
-function openAuthModal() { document.getElementById('authModal').style.display = 'flex'; }
+function openAuthModal() {
+    document.getElementById('authModal').style.display = 'flex';
+    const first = document.getElementById('authEmail');
+    if (first && first.focus) first.focus();
+}
 function closeAuthModal() { document.getElementById('authModal').style.display = 'none'; }
+// 利用者が自分でやめたときは、保留中の「診断結果の保存」も取り消す。
+// 残したままだと、後で別の目的でログインした瞬間に古い結果が保存されてしまう。
+function cancelAuthModal() {
+    sstore.remove('pendingDiagResult');
+    closeAuthModal();
+}
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('authModal').style.display === 'flex') cancelAuthModal();
+});
+
+function showDiagError(message) {
+    const box = document.getElementById('diagError');
+    box.innerText = message || '';
+    box.style.display = message ? 'block' : 'none';
+}
+
+// 直近の診断の内訳。レポートの表示と診断履歴への記録に使う（計算には使わない）。
+let lastDiagContext = null;
+
+// ---------------------------------------------------------------------
+// 診断結果レポート Ver.2 / 診断履歴（中身は ui/diag-report.js）
+//
+// 履歴は **この端末の localStorage だけ** に置く。サーバーへは送らず、
+// calc_logs（マイ感度ログ・5件枠）にも学習データにも一切関わらない。
+// ---------------------------------------------------------------------
+let diagHistoryView = null;   // 履歴画面で表示するタイトル（null = 最新の記録のタイトル）
+
+/** 換算表・履歴で扱うタイトル。診断の選択肢に、換算専用のタイトル（CS2）を足したもの。 */
+function diagTitles() {
+    const list = GAMES.map(g => ({ key: g.key, name: g.key === 'valo' ? 'VALORANT' : g.name }));
+    return hasDiagReport ? list.concat(LC_DIAG.EXTRA_TITLES) : list;
+}
+
+function diagHelpers() {
+    return {
+        T: T, esc: escapeHtml,
+        fmt: (val, gameKey) => getSensDisplayString(val, gameKey),
+        titles: diagTitles(),
+        integerScaleOf: (key) => !!(GAME_BY_KEY[key] && GAME_BY_KEY[key].display.integer),
+        viewGame: diagHistoryView
+    };
+}
+
+function loadDiagHistory() {
+    return hasDiagReport ? LC_DIAG.parseHistory(lstore.get(LC_DIAG.HISTORY_KEY)) : [];
+}
+
+function renderDiagReport() {
+    if (!hasDiagReport || !lastDiagContext) return;
+    const list = loadDiagHistory();
+    const h = diagHelpers();
+    h.prev = list.length ? list[list.length - 1] : null;
+    document.getElementById('diagReport').innerHTML = LC_DIAG.renderReport(lastDiagContext, h);
+    document.getElementById('recordHistoryBtn').style.display = 'block';
+    document.getElementById('diagRecordStatus').innerText = '';
+}
+
+function renderDiagHistory() {
+    if (!hasDiagReport) return;
+    document.getElementById('historyTabBtn').style.display = '';
+    document.getElementById('diagHistoryList').innerHTML = LC_DIAG.renderHistory(loadDiagHistory(), diagHelpers());
+}
+
+function recordDiagHistory() {
+    if (!hasDiagReport || !lastDiagContext || !currentDiagResult) return;
+    const c = lastDiagContext;
+    const entry = LC_DIAG.makeEntry({
+        game: c.game, dpi: c.dpi, sens: currentDiagResult.finalSens, inputs: c.inputs,
+        currentSens: c.currentSens, coef: LC_DIAG.coefFingerprint(c.config)
+    });
+    const res = LC_DIAG.addEntry(loadDiagHistory(), entry);
+    const status = document.getElementById('diagRecordStatus');
+    if (!res.added) { status.innerText = T(res.reason === 'duplicate' ? 'drRecordDup' : 'drRecordFail'); return; }
+    if (!lstore.set(LC_DIAG.HISTORY_KEY, LC_DIAG.serializeHistory(res.list))) {
+        status.innerText = T('drRecordFail');
+        return;
+    }
+    renderDiagReport();
+    renderDiagHistory();
+    status.innerHTML = `${escapeHtml(T('drRecorded'))} <button type="button" class="btn-link" onclick="switchTab('history'); window.scrollTo(0, 0);">${escapeHtml(T('drOpenHistory'))}</button>`;
+}
+
+// 履歴一覧の操作（削除・全削除・表示タイトルの切替）。一覧は作り直されるので親で受ける。
+function onDiagHistoryClick(e) {
+    const target = e.target && e.target.closest ? e.target.closest('[data-dh-del],[data-dh-clear]') : null;
+    if (!target || !hasDiagReport) return;
+    if (target.hasAttribute('data-dh-clear')) {
+        if (!confirm(T('dhClearConfirm'))) return;
+        lstore.remove(LC_DIAG.HISTORY_KEY);
+    } else {
+        if (!confirm(T('dhDeleteConfirm'))) return;
+        const next = LC_DIAG.removeEntry(loadDiagHistory(), target.getAttribute('data-dh-del'));
+        lstore.set(LC_DIAG.HISTORY_KEY, LC_DIAG.serializeHistory(next));
+    }
+    renderDiagHistory();
+    renderDiagReport();
+}
+function onDiagHistoryChange(e) {
+    if (!e.target || !e.target.hasAttribute || !e.target.hasAttribute('data-dh-view')) return;
+    diagHistoryView = e.target.value;
+    renderDiagHistory();
+}
 
 function calculateEDPI() {
     saveUserParams();
@@ -866,6 +1103,22 @@ function calculateEDPI() {
     const baseEDPI = dynamicConfig.base_edpi;
 
     const height = parseFloat(document.getElementById('height').value);
+
+    // 範囲外の入力では計算しない（マイナスの感度や「-」をそのまま出さない）。
+    // DPI の空欄・0 は従来どおり 800 として計算する。
+    const dpiRaw = parseFloat(document.getElementById('currentDpi').value);
+    const dpiGiven = isFinite(dpiRaw) && dpiRaw > 0;
+    const inputError = !(height >= 130 && height <= 220) ? T('errHeight')
+        : (dpiGiven && (dpiRaw < 100 || dpiRaw > 25600)) ? T('errDpi') : null;
+    if (inputError) {
+        currentDiagResult = null;
+        lastDiagContext = null;
+        document.getElementById('resultBox').style.display = 'none';
+        showDiagError(inputError);
+        return;
+    }
+    showDiagError('');
+
     const bodyFactor = (170 - height) * dynamicConfig.height_factor;
 
     const neuroVal = document.getElementById('neuro').value;
@@ -922,7 +1175,24 @@ function calculateEDPI() {
     document.getElementById('resultGameTitle').innerText = def.name;
     document.getElementById('resultValue').innerText = finalSensStr;
     document.getElementById('resultDesc').innerHTML = `${t.calcDpiText} ${currentDpi} DPI`;
-    
+
+    // 「現在の感度」は任意。入力があり、タイトルの想定レンジ内のときだけ比較に使う。
+    const curRaw = parseFloat(String(document.getElementById('currentSens').value || '').trim());
+    const curRange = SENS_INPUT_RANGE[gameVal];
+    const curValid = isFinite(curRaw) && curRaw > 0 && (!curRange || (curRaw >= curRange[0] && curRaw <= curRange[1]));
+    lastDiagContext = {
+        game: gameVal, gameName: gameVal === 'valo' ? 'VALORANT' : def.name, dpi: currentDpi, dpiAssumed: !dpiGiven,
+        // 表示・保存と同じ丸めの値で比べる
+        sens: parseFloat(currentDiagResult.finalSens), integerScale: !!def.display.integer,
+        baseEdpi: baseEDPI, gameFactor: gameFactor,
+        inputs: { height: height, dexterity: neuroVal, armThickness: armVal, mouseWeight: weightVal, aimPart: pivotVal },
+        config: dynamicConfig,
+        currentSens: curValid ? curRaw : null,
+        currentSensRejected: isFinite(curRaw) && !curValid,
+        games: diagTitles()
+    };
+    renderDiagReport();
+
     let shareText = "";
     if (currentLang === 'ja') {
         shareText = `【ロングケープの定理】\n${def.name}の最適インゲーム感度は「${finalSensStr}」と診断されました！\n（計算基準DPI: ${currentDpi}）\n\n自分の身体特性から最適感度を診断👇\n${SITE_URL}\n\n#ロングケープの定理 #${gameVal.toUpperCase()}`;
@@ -962,7 +1232,7 @@ function collectLearningSample(params) {
     // 同じ内容で計算ボタンを連打しても行が量産されないようにする
     const fingerprint = [params.game, params.dpi, sensStr, params.height,
         params.dexterity, params.armThickness, params.mouseWeight, params.aimPart].join('|');
-    if (sessionStorage.getItem('lastLearningSample') === fingerprint) return;
+    if (sstore.get('lastLearningSample') === fingerprint) return;
 
     supabaseClient
         .from('calc_logs')
@@ -982,7 +1252,7 @@ function collectLearningSample(params) {
         }])
         .then(response => {
             if (response.error) console.error('データ送信エラー:', response.error.message);
-            else sessionStorage.setItem('lastLearningSample', fingerprint);
+            else sstore.set('lastLearningSample', fingerprint);
         })
         .catch(err => console.error('通信エラー:', err));
 }
@@ -990,11 +1260,11 @@ function collectLearningSample(params) {
 function handleSaveClick() {
     if (!currentDiagResult) return;
     if (!isBackendAvailable()) {
-        alert('現在サーバーに接続できないため、保存機能は利用できません。診断結果の表示はそのままご利用いただけます。');
+        alert(T('alertOfflineSave'));
         return;
     }
     if (!currentUser) {
-        sessionStorage.setItem('pendingDiagResult', JSON.stringify(currentDiagResult));
+        sstore.set('pendingDiagResult', JSON.stringify(currentDiagResult));
         openAuthModal();
     } else {
         saveResultToSupabase(currentDiagResult);
@@ -1002,17 +1272,19 @@ function handleSaveClick() {
 }
 
 async function syncPendingResult() {
-    const pending = sessionStorage.getItem('pendingDiagResult');
+    const pending = sstore.get('pendingDiagResult');
     if (pending && currentUser) {
-        const data = JSON.parse(pending);
-        await saveResultToSupabase(data);
-        sessionStorage.removeItem('pendingDiagResult');
+        // 先に消す。保存が失敗しても、次のログインで同じ結果が勝手に保存されないようにする
+        sstore.remove('pendingDiagResult');
+        let data = null;
+        try { data = JSON.parse(pending); } catch (e) { data = null; }
+        if (data) await saveResultToSupabase(data);
     }
 }
 
 async function saveCustomSens() {
     if (!isBackendAvailable()) {
-        alert('現在サーバーに接続できないため、保存機能は利用できません。');
+        alert(T('alertOfflineSave'));
         return;
     }
     if (!currentUser) {
@@ -1029,7 +1301,7 @@ async function saveCustomSens() {
 
     const range = SENS_INPUT_RANGE[game];
     if (range && (rawSens < range[0] || rawSens > range[1])) {
-        alert('入力された感度が対象タイトルの想定レンジ外です。値をご確認ください。');
+        alert(T('alertSensRange'));
         return;
     }
 
@@ -1052,6 +1324,7 @@ async function saveCustomSens() {
 
 async function saveResultToSupabase(logData) {
     if (!isBackendAvailable() || !currentUser) return;
+    let hiddenForLimit = null;   // 5件枠を空けるために隠した行。保存に失敗したら元へ戻す
     if (currentUser.email !== ADMIN_EMAIL) {
         const { data: existingLogs } = await supabaseClient
             .from('calc_logs')
@@ -1064,11 +1337,13 @@ async function saveResultToSupabase(logData) {
             const oldestUnlocked = existingLogs.find(log => !log.is_locked);
 
             if (!oldestUnlocked) {
-                alert('5件すべてがロックされています。新しいログを保存するには、いずれかのロックを解除してください。');
+                alert(T('alertAllLocked'));
                 return;
             }
 
-            await supabaseClient.from('calc_logs').update({ is_deleted_by_user: true }).eq('id', oldestUnlocked.id);
+            const hide = await supabaseClient.from('calc_logs').update({ is_deleted_by_user: true }).eq('id', oldestUnlocked.id);
+            if (hide && hide.error) { alert(T('alertSaveErr') + hide.error.message); return; }
+            hiddenForLimit = oldestUnlocked.id;
         }
     }
 
@@ -1090,10 +1365,13 @@ async function saveResultToSupabase(logData) {
     }]);
 
     if (error) {
-        alert('Error: ' + error.message);
-    } else {
-        loadLogs();
+        // 新しい行が入らなかったのに古い行だけ消えた、という状態を残さない
+        if (hiddenForLimit) {
+            await supabaseClient.from('calc_logs').update({ is_deleted_by_user: false }).eq('id', hiddenForLimit);
+        }
+        alert(T('alertSaveErr') + error.message);
     }
+    loadLogs();
 }
 
 async function loadLogs() {
@@ -1123,7 +1401,13 @@ async function loadLogs() {
         .eq('is_deleted_by_user', false)
         .order('created_at', { ascending: false });
 
-    if (error || !logs) return;
+    if (error || !logs) {
+        // 読み込めなかったことを黙って流さない（Supabase 停止中・通信断など）
+        logsList.innerHTML = `<div style="font-size:0.85rem; color:var(--text-sub); text-align:center; padding:12px;" role="alert">${escapeHtml(t.logsLoadFail)}</div>`;
+        logCountText.innerText = '-';
+        proBanner.style.display = 'none';
+        return;
+    }
 
     const isDev = currentUser.email === ADMIN_EMAIL;
     logCountText.innerText = isDev ? `DEV MODE` : `${logs.length} / 5`;
@@ -1141,7 +1425,8 @@ async function loadLogs() {
 
         const isLocked = !!log.is_locked;
         const lockIcon = isLocked ? '🔒' : '🔓';
-        const lockTitle = isLocked ? 'ロック解除' : '保護する';
+        const lockTitle = escapeHtml(isLocked ? t.lockTitleOn : t.lockTitleOff);
+        const deleteTitle = escapeHtml(isLocked ? t.deleteTitleLocked : t.deleteTitle);
 
         // メモ・ゲーム名はユーザー入力なので必ずエスケープする（保存型XSS対策）
         const gameLabel = escapeHtml(String(log.game || '').toUpperCase());
@@ -1159,8 +1444,8 @@ async function loadLogs() {
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <div style="font-size:1.4rem; font-weight:bold; color:var(--accent-color);">${sensLabel}</div>
-                    <button onclick="toggleLock('${log.id}', ${isLocked})" title="${lockTitle}" style="background:none; border:none; cursor:pointer; font-size:1.1rem;">${lockIcon}</button>
-                    <button onclick="deleteLog('${log.id}', ${isLocked})" title="${isLocked ? 'ロックされているため削除できません' : '削除'}" style="background:none; border:none; cursor:${isLocked ? 'not-allowed' : 'pointer'}; font-size:1rem; opacity:${isLocked ? '0.2' : '0.6'};">🗑️</button>
+                    <button onclick="toggleLock('${log.id}', ${isLocked})" title="${lockTitle}" aria-label="${lockTitle}" style="background:none; border:none; cursor:pointer; font-size:1.1rem;">${lockIcon}</button>
+                    <button onclick="deleteLog('${log.id}', ${isLocked})" title="${deleteTitle}" aria-label="${deleteTitle}" style="background:none; border:none; cursor:${isLocked ? 'not-allowed' : 'pointer'}; font-size:1rem; opacity:${isLocked ? '0.2' : '0.6'};">🗑️</button>
                 </div>
             </div>
         `;
@@ -1177,7 +1462,7 @@ async function toggleLock(logId, currentStatus) {
         .eq('user_id', currentUser.id);
 
     if (error) {
-        alert('ロック変更エラー: ' + error.message);
+        alert(T('alertLockErr') + error.message);
     } else {
         loadLogs();
     }
@@ -1187,11 +1472,11 @@ async function deleteLog(logId, isLocked) {
     if (!currentUser || !isBackendAvailable()) return;
 
     if (isLocked) {
-        alert('🔒 ロック（保護）されているログは削除できません。\n削除する場合は先にロックを解除（🔓）してください。');
+        alert(T('alertLockedDelete'));
         return;
     }
 
-    if (!confirm('この感度ログをマイページから削除しますか？')) return;
+    if (!confirm(T('confirmDeleteLog'))) return;
     const { error } = await supabaseClient
         .from('calc_logs')
         .update({ is_deleted_by_user: true })
@@ -1199,7 +1484,7 @@ async function deleteLog(logId, isLocked) {
         .eq('user_id', currentUser.id);
 
     if (error) {
-        alert('削除エラー: ' + error.message);
+        alert(T('alertDeleteErr') + error.message);
     } else {
         loadLogs();
     }
@@ -1236,9 +1521,15 @@ async function loadAdminData() {
     `).join('');
 }
 
+// 通信できないとき（Supabase 停止中など）の英語の技術的な文を、利用者向けの文言に置き換える
+function authErrorText(error) {
+    const msg = String((error && error.message) || '');
+    return /failed to fetch|networkerror|load failed/i.test(msg) ? T('alertOfflineAuth') : ('Error: ' + msg);
+}
+
 async function handleAuth(type) {
     if (!isBackendAvailable()) {
-        alert('現在サーバーに接続できないため、ログイン・登録は利用できません。時間をおいて再度お試しください。');
+        alert(T('alertOfflineAuth'));
         return;
     }
     const email = document.getElementById('authEmail').value;
@@ -1252,16 +1543,19 @@ async function handleAuth(type) {
         const { error } = await supabaseClient.auth.signUp({ 
             email, password, options: { data: { display_name: displayName } }
         });
-        if (error) alert('Error: ' + error.message);
+        if (error) alert(authErrorText(error));
         else closeAuthModal();
     } else {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) alert('Error: ' + error.message);
+        if (error) alert(authErrorText(error));
         else closeAuthModal();
     }
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
+    const historyList = document.getElementById('diagHistoryList');
+    historyList.addEventListener('click', onDiagHistoryClick);
+    historyList.addEventListener('change', onDiagHistoryChange);
     loadUserParams();
     changeLanguage(currentLang);
     fetchLatestConfig();
