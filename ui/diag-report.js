@@ -36,18 +36,14 @@
     // Delta Force と PUBG は、突き合わせる既知の値を確認できていないため載せていない
     // （PUBG は設定値が対数スケールで、倍率ひとつでは表せない）。この2つは他タイトルと換算しない。
     //
-    // CS2 は診断の選択肢では「VALORANT / CS2」と1つにまとめられているが、
-    // 倍率は VALORANT と約 3.18 倍違う。換算のためだけに別の行として持つ。
     var YAW = {
         valo: { yaw: 0.07, basis: 'VALORANT。1カウントあたり 0.07 度。games.json の基準（scale 1）。' },
-        cs2: { yaw: 0.022, name: 'CS2', conversionOnly: true, expectScale: 3.18,
-               basis: 'Source 系の m_yaw 0.022。VALORANT の感度 × 3.18 が広く使われる換算。' },
+        cs2: { yaw: 0.022, basis: 'Source 系の m_yaw 0.022。games.json の scale 3.18 と一致。' },
         apex: { yaw: 0.022, basis: 'Source 系の 0.022。games.json の scale 3.18 と一致。' },
         ow: { yaw: 0.0066, basis: '1カウントあたり 0.0066 度。games.json の scale 10.6 と一致。' },
         fn: { yaw: 0.005555, basis: '感度%で 1カウントあたり 0.005555 度。games.json の scale 12.6 と一致。' },
         cod: { yaw: 0.0066, basis: '1カウントあたり 0.0066 度。games.json の scale 10.6 と一致。' }
     };
-    var EXTRA_TITLES = [{ key: 'cs2', name: 'CS2' }];
     var SCALE_TOLERANCE = 0.005;
 
     function isNum(v) { return typeof v === 'number' && isFinite(v); }
@@ -93,9 +89,9 @@
             var d = YAW[k];
             if (!isNum(d.yaw) || d.yaw <= 0) problems.push(k + ': yaw が不正です');
             if (!d.basis) problems.push(k + ': basis がありません');
-            var scale = d.conversionOnly ? d.expectScale : (byKey[k] ? byKey[k].scale : null);
-            if (!d.conversionOnly && !byKey[k]) { problems.push(k + ': games.json にありません'); return; }
-            if (byKey[k] && byKey[k].sensTransform !== 'linear') problems.push(k + ': 線形でないタイトルは載せられません');
+            if (!byKey[k]) { problems.push(k + ': games.json にありません'); return; }
+            var scale = byKey[k].scale;
+            if (byKey[k].sensTransform !== 'linear') problems.push(k + ': 線形でないタイトルは載せられません');
             var implied = YAW.valo.yaw / d.yaw;
             if (!isNum(scale) || Math.abs(implied - scale) / scale > SCALE_TOLERANCE) {
                 problems.push(k + ': 倍率 ' + round(implied, 4) + ' が scale ' + scale + ' と一致しません');
@@ -186,6 +182,20 @@
         return list.filter(validEntry).slice().sort(function (a, b) {
             return Date.parse(a.at) - Date.parse(b.at);
         });
+    }
+
+    /**
+     * 保存内容の状態を調べる。broken = 全体が読めない / dropped = 読めずに捨てた行数。
+     * 読めなかったことを黙って流さないために使う。
+     */
+    function inspectHistory(raw) {
+        var entries = parseHistory(raw);
+        if (!raw) return { entries: entries, broken: false, dropped: 0 };
+        var data = null, broken = false;
+        try { data = JSON.parse(raw); } catch (e) { broken = true; }
+        var list = data && Array.isArray(data.entries) ? data.entries : (Array.isArray(data) ? data : null);
+        if (!broken && list === null) broken = true;
+        return { entries: entries, broken: broken, dropped: list ? list.length - entries.length : 0 };
     }
 
     function serializeHistory(list) {
@@ -409,7 +419,6 @@
             + kv(esc(T('drEdpi', { game: r.gameName })), esc(fmtEdpi(edpi(r.dpi, r.sens))))
             + kv('DPI', esc(String(r.dpi)))
             + '<p class="dr-note">' + esc(T('drEdpiNote')) + '</p>';
-        if (r.game === 'valo') rec += '<p class="dr-note">' + esc(T('drValoOnly')) + '</p>';
         if (r.dpiAssumed) rec += '<p class="dr-note dr-warn">' + esc(T('drDpiAssumed')) + '</p>';
         out.push(section(esc(T('drRecTitle')), rec));
 
@@ -499,7 +508,10 @@
             return g ? g.name : k;
         };
         var out = ['<p class="dr-note">' + esc(T('dhIntro')) + '</p>'];
+        if (h.storageBlocked) out.push('<p class="dr-note dr-warn" role="alert">' + esc(T('dhLoadFail')) + '</p>');
+        if (h.unreadable) out.push('<p class="dr-note dr-warn" role="alert">' + esc(T('dhUnreadable')) + '</p>');
         if (list.length === 0) {
+            if (h.storageBlocked) return out.join('');
             out.push('<p class="dh-empty">' + esc(T('dhEmpty')) + '</p>');
             return out.join('');
         }
@@ -561,7 +573,6 @@
             drRecSens: '{game} の推奨ゲーム内感度',
             drEdpi: '{game} の eDPI',
             drEdpiNote: 'eDPI = マウスDPI × ゲーム内感度。同じ eDPI でも、タイトルが違えば視点の回る速さは違います。',
-            drValoOnly: 'この値は VALORANT の設定値です。CS2 で使う場合は、下の「他のタイトルで同じ速さになる設定値」の CS2 の行を見てください。',
             drDpiAssumed: 'DPI が未入力のため 800 と仮定して計算しました。実際の DPI が違う場合、ゲーム内感度は変わります。',
             drCurTitle: '現在の設定',
             drCurSens: '入力された現在のゲーム内感度',
@@ -603,7 +614,9 @@
             drRecordDup: '直前の記録と同じ内容のため、追加しませんでした。',
             drRecordFail: '記録できませんでした（ブラウザの保存領域が使えないか、容量が不足しています）。',
             drOpenHistory: '診断履歴を見る',
-            dhIntro: '診断履歴はこの端末のブラウザにだけ保存され、サーバーには送信されません。「マイ感度ログ」の保存枠（5件）とは別です。',
+            dhIntro: '診断履歴は、いま使っているブラウザの中にだけ保存されます（サーバーには送信されません）。別の端末や別のブラウザとは同期されません。ブラウザのデータを削除すると、履歴も消えることがあります。「マイ感度ログ」の保存枠（5件）とは別で、件数の上限はありません。',
+            dhUnreadable: '保存されていた履歴の一部または全部を読み込めませんでした（データが壊れています）。読めた記録だけを表示しています。',
+            dhDeleteFail: '削除を保存できませんでした（ブラウザの保存領域が使えません）。履歴は変わっていません。',
             dhEmpty: 'まだ記録がありません。診断結果の「診断履歴に記録する」から追加できます。',
             dhOne: '記録は1件です。次回の診断を記録すると、前回との比較と推移が表示されます。',
             dhFew: '記録が少ないため、推移は参考程度にご覧ください。',
@@ -629,7 +642,6 @@
             drRecSens: 'Recommended in-game sensitivity for {game}',
             drEdpi: 'eDPI in {game}',
             drEdpiNote: 'eDPI = mouse DPI × in-game sensitivity. The same eDPI turns the view at a different speed in a different title.',
-            drValoOnly: 'This is a VALORANT setting. For CS2, see the CS2 row under "Settings with the same speed in other titles" below.',
             drDpiAssumed: 'No DPI was entered, so 800 was assumed. If your real DPI differs, the in-game sensitivity will change.',
             drCurTitle: 'Your current setting',
             drCurSens: 'Current in-game sensitivity you entered',
@@ -671,7 +683,9 @@
             drRecordDup: 'Not added, because it is identical to the latest record.',
             drRecordFail: 'Could not record (browser storage is unavailable or full).',
             drOpenHistory: 'View history',
-            dhIntro: 'Your diagnosis history is stored only in this browser on this device and is never sent to the server. It is separate from the 5-entry limit of My Sensitivity Logs.',
+            dhIntro: 'Your diagnosis history is stored only inside the browser you are using now (it is never sent to the server). It is not synced with other devices or other browsers. If you clear your browser data, the history may be lost. It is separate from the 5-entry limit of My Sensitivity Logs and has no limit on the number of records.',
+            dhUnreadable: 'Some or all of the saved history could not be read (the data is damaged). Only the records that could be read are shown.',
+            dhDeleteFail: 'The deletion could not be saved (browser storage is unavailable). Your history has not changed.',
             dhEmpty: 'No records yet. Add one with "Record this result in your history" on a diagnosis result.',
             dhOne: 'You have 1 record. Record your next diagnosis to see a comparison and a trend.',
             dhFew: 'There are only a few records, so treat the trend as a rough guide.',
@@ -697,7 +711,6 @@
             drRecSens: '{game} 추천 인게임 감도',
             drEdpi: '{game} 의 eDPI',
             drEdpiNote: 'eDPI = 마우스 DPI × 인게임 감도. eDPI 가 같아도 타이틀이 다르면 시점이 도는 속도는 다릅니다.',
-            drValoOnly: '이 값은 발로란트 설정값입니다. CS2 에서 쓰려면 아래 「다른 타이틀에서 같은 속도가 되는 설정값」의 CS2 행을 확인해 주세요.',
             drDpiAssumed: 'DPI 가 입력되지 않아 800 으로 가정해 계산했습니다. 실제 DPI 가 다르면 인게임 감도가 달라집니다.',
             drCurTitle: '현재 설정',
             drCurSens: '입력한 현재 인게임 감도',
@@ -739,7 +752,9 @@
             drRecordDup: '직전 기록과 내용이 같아 추가하지 않았습니다.',
             drRecordFail: '기록하지 못했습니다 (브라우저 저장 공간을 사용할 수 없거나 용량이 부족합니다).',
             drOpenHistory: '진단 기록 보기',
-            dhIntro: '진단 기록은 이 기기의 브라우저에만 저장되며 서버로 전송되지 않습니다. 「마이 감도 로그」의 저장 한도(5건)와는 별개입니다.',
+            dhIntro: '진단 기록은 지금 사용 중인 브라우저 안에만 저장됩니다 (서버로 전송되지 않습니다). 다른 기기나 다른 브라우저와 동기화되지 않습니다. 브라우저 데이터를 삭제하면 기록도 사라질 수 있습니다. 「마이 감도 로그」의 저장 한도(5건)와는 별개이며 건수 제한이 없습니다.',
+            dhUnreadable: '저장된 기록의 일부 또는 전부를 읽지 못했습니다 (데이터가 손상되었습니다). 읽을 수 있는 기록만 표시합니다.',
+            dhDeleteFail: '삭제를 저장하지 못했습니다 (브라우저 저장 공간을 사용할 수 없습니다). 기록은 바뀌지 않았습니다.',
             dhEmpty: '아직 기록이 없습니다. 진단 결과의 「진단 기록에 남기기」로 추가할 수 있습니다.',
             dhOne: '기록이 1건입니다. 다음 진단을 기록하면 이전과의 비교와 추이가 표시됩니다.',
             dhFew: '기록이 적으므로 추이는 참고 정도로만 봐 주세요.',
@@ -763,10 +778,10 @@
 
     root.LC_DIAG = {
         VERSION: VERSION, HISTORY_KEY: HISTORY_KEY, HISTORY_SCHEMA: HISTORY_SCHEMA,
-        YAW: YAW, EXTRA_TITLES: EXTRA_TITLES, INPUT_KEYS: INPUT_KEYS, I18N: I18N,
+        YAW: YAW, INPUT_KEYS: INPUT_KEYS, I18N: I18N,
         edpi: edpi, rotation: rotation, convertSens: convertSens, auditYaw: auditYaw,
         breakdown: breakdown, coefFingerprint: coefFingerprint, compareCurrent: compareCurrent,
-        parseHistory: parseHistory, serializeHistory: serializeHistory, makeEntry: makeEntry,
+        parseHistory: parseHistory, inspectHistory: inspectHistory, serializeHistory: serializeHistory, makeEntry: makeEntry,
         addEntry: addEntry, removeEntry: removeEntry, compareEntries: compareEntries,
         viewEntry: viewEntry, historyRows: historyRows, chartSvg: chartSvg, fmtDate: fmtDate,
         renderReport: renderReport, renderHistory: renderHistory

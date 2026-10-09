@@ -50,7 +50,7 @@ const fmt = (v, key) => {
     if (g && g.display.integer) return String(Math.round(v));
     return (Math.round(v * 1000) / 1000).toString() + (g ? g.display.suffix : '');
 };
-const titles = GAMES.map((g) => ({ key: g.key, name: g.name })).concat(D.EXTRA_TITLES);
+const titles = GAMES.map((g) => ({ key: g.key, name: g.name }));
 const integerScaleOf = (k) => !!GAMES.find((g) => g.key === k)?.display.integer;
 const helpers = (lang = 'ja', extra = {}) => ({ T: makeT(lang), esc, fmt, titles, integerScaleOf, ...extra });
 
@@ -70,6 +70,7 @@ check('DPI 800・VALORANT 感度 0.4 → eDPI 320', () => eq(D.edpi(800, 0.4), 3
 check('DPI 800・CS2 感度 0.4 → eDPI 320（定義はタイトルによらない）', () => {
     eq(D.edpi(800, 0.4), 320);
     eq(D.viewEntry(entry({ game: 'cs2' }), 'cs2').edpi, 320);
+    ok(GAMES.some((g) => g.key === 'cs2') && GAMES.some((g) => g.key === 'valo'), 'どちらも選択肢にある');
     eq(D.viewEntry(entry({ game: 'valo' }), 'valo').edpi, 320);
 });
 check('不正な入力では eDPI を出さない（0 や負・非数）', () => {
@@ -448,6 +449,151 @@ check('エラー文言が3言語にある', () => {
         eq(r.error, app.translations[lang].errHeight, lang);
     }
     app.changeLanguage('ja');
+});
+
+
+// ============================================================ VALORANT と CS2 の分離（公開前修正）
+
+check('VALORANT と CS2 が別々の選択肢になっている（games.json・診断フォーム・感度メモ）', () => {
+    const valo = GAMES.find((g) => g.key === 'valo'), cs2 = GAMES.find((g) => g.key === 'cs2');
+    eq([valo.name, valo.formLabel], ['VALORANT', 'VALORANT']);
+    eq(cs2.name, 'CS2');
+    ok(!GAMES.some((g) => /VALORANT\s*\/\s*CS2/.test(g.name + g.formLabel)), '共通の選択肢が残っている');
+    eq((indexHtml.match(/<option value="cs2"/g) || []).length, 2, '診断フォームと感度メモの両方');
+    eq((indexHtml.match(/<option value="valo"/g) || []).length, 2);
+    ok(!/<option[^>]*>VALORANT \/ CS2</.test(indexHtml), '共通の選択肢が画面に残っている');
+});
+check('CS2 の診断は VALORANT と同じ中身で、単位だけが違う（係数・カーブを足していない）', () => {
+    const valo = GAMES.find((g) => g.key === 'valo'), cs2 = GAMES.find((g) => g.key === 'cs2');
+    eq(cs2.curve, valo.curve, 'カーブは同じ');
+    eq(cs2.sensTransform, 'linear'); eq(cs2.scale, 3.18);
+    const base = { height: 173, dexterity: '3', armThickness: 'normal', mouseWeight: 'standard', aimPart: 'wrist', dpi: 800 };
+    const v = app.diagnose({ ...base, game: 'valo' }), c = app.diagnose({ ...base, game: 'cs2' });
+    near(parseFloat(c.finalSens), parseFloat(v.finalSens) * 3.18, 0.0025, 'CS2 = VALORANT × 3.18');
+    // 回転量は同じ（同じ診断を別の単位で見せているだけ）
+    const rv = D.rotation('valo', parseFloat(v.finalSens), 800), rc = D.rotation('cs2', parseFloat(c.finalSens), 800);
+    ok(Math.abs(rv - rc) / rv < 0.005, '回転量が一致: ' + rv + ' / ' + rc);
+    // eDPI は違う数字になる
+    ok(D.edpi(800, parseFloat(c.finalSens)) > D.edpi(800, parseFloat(v.finalSens)) * 3);
+});
+check('既存の記録（game = valo）は VALORANT のまま読める', () => {
+    const list = D.parseHistory(JSON.stringify([entry({ id: 'old', game: 'valo', sens: '0.353' })]));
+    eq(list[0].game, 'valo');
+    eq(D.viewEntry(list[0], 'valo').sens, 0.353, 'VALORANT として表示');
+    near(D.viewEntry(list[0], 'cs2').sens, 0.353 * 0.07 / 0.022, 1e-9, 'CS2 へは換算して表示');
+    ok(app.SENS_INPUT_RANGE.valo && app.SENS_INPUT_RANGE.cs2, '入力範囲が両方にある');
+});
+check('換算の倍率を、実装とは独立に書いた既知の値と照合する', () => {
+    // 1カウントあたりの回転角（度）。各タイトルで広く使われている値を、実装の表を参照せずにここへ書く。
+    const KNOWN = { valo: 0.07, cs2: 0.022, apex: 0.022, ow: 0.0066, cod: 0.0066, fn: 0.005555 };
+    eq(Object.keys(D.YAW).sort(), Object.keys(KNOWN).sort(), '対象タイトル');
+    for (const [k, yaw] of Object.entries(KNOWN)) near(D.YAW[k].yaw, yaw, 1e-12, k);
+    // 既知の換算例（感度換算でよく使われる組）
+    near(D.convertSens('cs2', 'valo', 2.0, 800).value, 0.6286, 0.0005, 'CS2 2.0 → VALORANT 0.629');
+    near(D.convertSens('cs2', 'valo', 1.0, 800).value, 0.3143, 0.0005, 'CS2 1.0 → VALORANT 0.314');
+    near(D.convertSens('cs2', 'apex', 1.5, 800).value, 1.5, 1e-9, 'CS2 と Apex は同じ値');
+    near(D.convertSens('ow', 'valo', 5.0, 800).value, 0.4714, 0.0005, 'OW 5.0 → VALORANT 0.471');
+    near(D.convertSens('ow', 'cs2', 5.0, 800).value, 1.5, 0.0005, 'OW 5.0 → CS2 1.5');
+    near(D.convertSens('ow', 'cod', 7.0, 800).value, 7.0, 1e-9, 'OW と CoD は同じ値');
+    // 360 度に必要なカウント数（内部の検算。画面には出さない）: CS2 1.0 → 16363.6 / VALORANT 0.5 → 10285.7
+    near(360 / (1.0 * KNOWN.cs2), 16363.6, 0.1); near(360 / D.rotation('cs2', 1.0, 1), 16363.6, 0.1);
+    near(360 / D.rotation('valo', 0.5, 1), 10285.7, 0.1);
+});
+
+// ============================================================ 保存の失敗・破損
+
+check('保存内容の状態を見分ける（正常・全体が壊れている・一部が読めない）', () => {
+    eq(D.inspectHistory(null), { entries: [], broken: false, dropped: 0 });
+    const good = D.serializeHistory([entry({ id: 'a' })]);
+    eq([D.inspectHistory(good).broken, D.inspectHistory(good).dropped], [false, 0]);
+    eq(D.inspectHistory('{{{').broken, true); eq(D.inspectHistory('"x"').broken, true);
+    eq(D.inspectHistory('{"entries":5}').broken, true);
+    const part = D.inspectHistory(JSON.stringify([entry({ id: 'a' }), { id: 'bad' }]));
+    eq([part.broken, part.dropped, part.entries.length], [false, 1, 1]);
+});
+check('履歴に件数の上限が無い（1,000 件を足して全部読み戻せる）', () => {
+    let list = [];
+    for (let i = 0; i < 1000; i++) {
+        list = D.addEntry(list, entry({ id: 'e' + i, sens: String(0.2 + i / 10000), at: new Date(Date.UTC(2026, 0, 1) + i * 60000).toISOString() })).list;
+    }
+    eq(list.length, 1000);
+    eq(D.parseHistory(D.serializeHistory(list)).length, 1000);
+});
+check('読み込めない・壊れているときは画面で伝える（空の履歴に見せかけない）', () => {
+    const T = makeT('ja');
+    const blocked = D.renderHistory([], helpers('ja', { storageBlocked: true }));
+    ok(blocked.includes(esc(T('dhLoadFail'))) && !blocked.includes(esc(T('dhEmpty'))), '保存領域が使えない');
+    ok(D.renderHistory([entry()], helpers('ja', { unreadable: true })).includes(esc(T('dhUnreadable'))), '破損');
+    ok(!D.renderHistory([entry()], helpers('ja')).includes(esc(T('dhUnreadable'))), '正常時は出さない');
+});
+check('履歴の保存先について3点を明示している（このブラウザ・同期されない・消えることがある）', () => {
+    for (const lang of ['ja', 'en', 'ko']) {
+        const html = D.renderHistory([], helpers(lang));
+        ok(html.includes(esc(D.I18N[lang].dhIntro)), lang);
+    }
+    ok(/ブラウザの中にだけ保存/.test(D.I18N.ja.dhIntro) && /同期されません/.test(D.I18N.ja.dhIntro) && /消えることがあります/.test(D.I18N.ja.dhIntro));
+    ok(/not synced/.test(D.I18N.en.dhIntro) && /may be lost/.test(D.I18N.en.dhIntro));
+    ok(/동기화되지 않습니다/.test(D.I18N.ko.dhIntro) && /사라질 수 있습니다/.test(D.I18N.ko.dhIntro));
+});
+check('index.html は書き込みを読み戻して確かめてから成功と表示する', () => {
+    ok(/function saveDiagHistory\(list\)[\s\S]*?back\.length === list\.length/.test(indexHtml), '読み戻しの確認');
+    ok(/if \(!saveDiagHistory\(res\.list\)\) \{\s*status\.innerText = T\('drRecordFail'\)/.test(indexHtml), '失敗時は失敗と表示');
+    ok(indexHtml.indexOf("T('drRecorded')") > indexHtml.indexOf('if (!saveDiagHistory(res.list))'), '成功表示は確認の後');
+    ok(/_unreadable_backup/.test(indexHtml), '読めなかった元データを退避する');
+});
+
+// ============================================================ サイト全体の表記
+
+const LAB = { import: fs.readFileSync(path.join(ROOT, 'import.html'), 'utf8'), profile: fs.readFileSync(path.join(ROOT, 'profile.html'), 'utf8') };
+const labI18n = (() => {
+    const ctx = { console, Math, JSON, Date, Number, String, Boolean, Array, Object, isFinite, isNaN, Promise, Error };
+    ctx.globalThis = ctx; vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(ROOT, 'ui/i18n.js'), 'utf8'), ctx);
+    return ctx.LC_I18N;
+})();
+
+check('測定ラボの推奨・次に試す感度は cm ではなくゲーム内感度と eDPI で出す', () => {
+    ok(!/recommended_cm360 \+ ' cm'/.test(LAB.profile), '推奨を cm で表示している');
+    ok(!/nextSensitivity\) \+ ' cm/.test(LAB.profile), '次の感度を cm で表示している');
+    ok(/sensOf\(rec\.recommended_cm360\)/.test(LAB.profile) && /T\('recEdpi'\)/.test(LAB.profile));
+    for (const lang of ['ja', 'en', 'ko']) {
+        for (const k of ['recCm360', 'recRange', 'nextSentence', 'nextNoSens', 'coverageRange', 'nextChipSens']) {
+            ok(!/cm|振り向き|360/i.test(labI18n.dict[lang][k]), lang + '.' + k + ': ' + labI18n.dict[lang][k]);
+        }
+        ok(/\{sens\}/.test(labI18n.dict[lang].nextSentence) && /\{edpi\}/.test(labI18n.dict[lang].nextSentence), lang);
+    }
+});
+check('解説で cm/360 に触れる箇所は、診断結果の単位ではないと明記している', () => {
+    const about = fs.readFileSync(path.join(ROOT, 'about.html'), 'utf8');
+    ok(/診断結果・診断履歴は、cm\/360 ではなく/.test(about), 'about.html');
+    for (const lang of ['ja', 'en', 'ko']) {
+        const body = app.translations[lang].seoBody2;
+        ok(/cm\/360/.test(body) && /eDPI/.test(body), lang);
+    }
+    ok(/cm\/360 ではなく、ゲーム内感度と eDPI で表示/.test(app.translations.ja.seoBody2));
+    ok(/not as cm\/360/.test(app.translations.en.seoBody2));
+    ok(/cm\/360 이 아니라/.test(app.translations.ko.seoBody2));
+});
+check('プライバシーポリシーが実装と対応している（端末内履歴・測定ラボ・アクセス解析）', () => {
+    const p = fs.readFileSync(path.join(ROOT, 'privacy.html'), 'utf8');
+    for (const w of ['診断履歴', 'localStorage', 'サーバーへは送信しません', '測定ラボ', 'Vercel Web Analytics', '同期されません', 'sessionStorage',
+        'Diagnosis history', 'Measurement Lab', '진단 기록', '측정 랩']) ok(p.includes(w), w);
+    ok(/最終更新日：2026年10月10日/.test(p), '更新日');
+    // 記載と実装の対応: 解析スクリプトは全ページにあり、独自イベントは送っていない
+    for (const page of ['index.html', 'about.html', 'privacy.html', 'terms.html', 'contact.html', 'import.html', 'profile.html']) {
+        const src = fs.readFileSync(path.join(ROOT, page), 'utf8');
+        ok(src.includes('/_vercel/insights/script.js'), page + ' に計測スクリプト');
+        ok(!/\bva\s*\(|va\.track|window\.va\b/.test(src), page + ' が独自イベントを送っている');
+    }
+    // 診断履歴をサーバーへ送る経路が無い
+    const diag = fs.readFileSync(path.join(ROOT, 'ui/diag-report.js'), 'utf8');
+    ok(!/fetch\(|XMLHttpRequest|supabase|sendBeacon/.test(diag), 'diag-report.js に外部送信がある');
+    ok(!/HISTORY_KEY[^\n]*supabaseClient|supabaseClient[^\n]*HISTORY_KEY/.test(indexHtml));
+});
+check('初回診断で「現在の感度」を必須にしていない', () => {
+    ok(!/<input[^>]*id="currentSens"[^>]*required/.test(indexHtml));
+    const r = run({ currentSens: '' });
+    ok(r.result && parseFloat(r.result.finalSens) > 0);
 });
 
 // ------------------------------------------------------------- 実行

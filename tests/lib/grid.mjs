@@ -6,7 +6,8 @@
 // games.json からは読まず、あえてここに固定する。
 // レジストリ側の事故（タイトルの消失など）でテスト範囲が黙って縮まないようにするため。
 // タイトルを増やしたらここへ追記し、baseline を --update で作り直す。
-export const GAME_KEYS = ['valo', 'apex', 'ow', 'fn', 'delta', 'cod', 'pubg'];
+// cs2 は 2026-10-10 に追加。既存タイトルの行の中身を変えないよう、末尾へ足している。
+export const GAME_KEYS = ['valo', 'apex', 'ow', 'fn', 'delta', 'cod', 'pubg', 'cs2'];
 
 const HEIGHTS = [150, 160, 170, 180, 190];
 const DEXTERITY = ['1', '2', '3', '4', '5'];

@@ -299,6 +299,7 @@
         var view = U.buildProfileView(aim, sessions, reest);
         var rec = U.buildRecommendationView(reest, dpi, { evidence: ev });
 
+        setSensContext(sessions, dpi, !!d.synthetic);
         renderRec(rec, d);
         renderNext(rec.nextBestTest);
         renderInventory(view);
@@ -367,12 +368,16 @@
         }
 
         var c = rec.composition;
+        var recSens = sensOf(rec.recommended_cm360);
         $('recCard').innerHTML = banner
             + '<h2 id="h-rec">' + esc(T('recNow')) + '</h2>'
             + scopeNote(rec)
             + '<div class="kpis" style="margin-bottom:8px">'
-            + kpi(rec.recommended_cm360 + ' cm', T('recCm360'), true)
-            + kpi(rec.recommended_range ? rec.recommended_range[0] + '–' + rec.recommended_range[1] : '—', T('recRange'))
+            + kpi(recSens ? recSens.sens : '—', T('recCm360', { scale: scaleName() }), true)
+            + kpi(recSens ? recSens.edpi : '—', T('recEdpi'))
+            + kpi(sensRangeText(rec.recommended_range) || '—', T('recRange'))
+            // KPI の下に、換算の前提（DPI）か、数字を出せない理由を必ず添える
+            + kpi(sensContext ? sensContext.dpi : '—', T('recDpiBasis'))
             + kpi(pct(rec.confidence ? rec.confidence.value : null), T('recConfidence'))
             + kpi(rec.evidenceCount, T('recEvidence'))
             + '</div>'
@@ -404,9 +409,46 @@
         distinguish_close_levels: 'reasonDistinguish', reinforce_thin_level: 'reasonReinforce'
     };
 
+    // ---------------------------------------------------------
+    // 推奨は「ゲーム内感度と eDPI」で見せる。
+    // 内部の水準（cm/360）は測定条件を揃えるための値で、推奨の表示単位には使わない。
+    // 換算は検証済みの感度スケールと、確認済みの DPI があるときだけ（無ければ数字を出さない）。
+    var sensContext = null;
+    var SYNTHETIC_SCALE = 'Valorant';
+    function setSensContext(sessions, dpi, synthetic) {
+        var scale = null;
+        (sessions || []).forEach(function (s) {
+            var name = s && s.context && s.context.sensScale;
+            if (!scale && name && U.sensFromCm360(name, 30, 800).available) scale = name;
+        });
+        // 人工データ（表示確認用）は感度スケールを持たない。検証済みの VALORANT の換算で見せる。
+        // 実データでは、ファイルに検証済みのスケールが無ければ換算しない（推測しない）。
+        if (!scale && synthetic) scale = SYNTHETIC_SCALE;
+        var d = dpi && Number(dpi.confirmedDpi);
+        sensContext = (scale && d > 0) ? { scale: scale, dpi: d } : null;
+    }
+    function sensOf(cm) {
+        var v = Number(cm);
+        if (!sensContext || !(v > 0)) return null;
+        var r = U.sensFromCm360(sensContext.scale, v, sensContext.dpi);
+        if (!r.available) return null;
+        var sens = Math.round(r.value * 1000) / 1000;
+        return { sens: sens, edpi: Math.round(sens * sensContext.dpi * 10) / 10 };
+    }
+    /** cm の範囲 [短い, 長い] を、ゲーム内感度の範囲（小さい〜大きい）へ直す。 */
+    function sensRangeText(range) {
+        if (!range) return null;
+        var a = sensOf(range[1]), b = sensOf(range[0]);
+        return (a && b) ? a.sens + '–' + b.sens : null;
+    }
+    function scaleName() { return sensContext ? sensContext.scale : '—'; }
+
     function renderNext(nbt) {
         if (!nbt) { $('nextCard').innerHTML = ''; return; }
-        var sentence = T('nextSentence', { cm: nbt.nextSensitivity, n: nbt.sessionCount })
+        var nextSens = sensOf(nbt.nextSensitivity);
+        var sentence = (nextSens
+            ? T('nextSentence', { scale: scaleName(), sens: nextSens.sens, edpi: nextSens.edpi, n: nbt.sessionCount })
+            : T('nextNoSens'))
             + (nbt.scenarioConcept ? ' ' + T('nextScenario', { name: nbt.scenarioConcept }) : '');
         var reason = REASON_KEY[nbt.reasonCode] ? T(REASON_KEY[nbt.reasonCode]) : (nbt.detail || '');
 
@@ -415,7 +457,7 @@
             + '<div class="headline">' + esc(sentence) + '</div>'
             + '<div class="why">' + esc(reason) + '</div>'
             + '<div class="chips">'
-            + '<span class="chip"><b>' + esc(nbt.nextSensitivity) + ' cm</b> ' + esc(T('nextChipSens')) + '</span>'
+            + '<span class="chip"><b>' + esc(nextSens ? nextSens.sens : '—') + '</b> ' + esc(T('nextChipSens')) + '</span>'
             + '<span class="chip"><b>' + esc(nbt.sessionCount) + '</b> ' + esc(T('nextChipCount')) + '</span>'
             + (nbt.scenarioConcept ? '<span class="chip"><b>' + esc(nbt.scenarioConcept) + '</b> ' + esc(T('nextChipScenario')) + '</span>' : '')
             + '</div>'
@@ -437,7 +479,7 @@
         var c = v.sensitivityCoverage;
         $('coverage').innerHTML = !c ? '<p class="hint">' + esc(T('coverageNone')) + '</p>'
             : '<h3>' + esc(T('coverageTitle')) + '</h3><div class="hint">'
-            + esc(T('coverageRange')) + ': ' + esc(c.testedRange ? c.testedRange[0] + '–' + c.testedRange[1] + ' cm' : '—')
+            + esc(T('coverageRange')) + ': ' + esc(sensRangeText(c.testedRange) || '—')
             + ' / ' + esc(T('coverageLevels')) + ': ' + esc(c.levelCount)
             + (c.balanceAroundBest && c.balanceAroundBest.skewed
                 ? ' / <span style="color:var(--warn)">' + esc(T('coverageSkewed')) + '</span>' : '')
