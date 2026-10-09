@@ -1297,7 +1297,9 @@ function collectLearningSample(params) {
             aim_part: params.aimPart,
             is_custom: false,
             memo: '自動学習収集データ',
-            rating: 'good'
+            rating: 'good',
+            // 学習用の印。5件枠に数えない行であることを、memo の文言ではなく専用の列で示す
+            source: LEARNING_SOURCE
         }])
         .then(response => {
             if (response.error) console.error('データ送信エラー:', response.error.message);
@@ -1385,7 +1387,13 @@ async function saveCustomSens() {
 // ---------------------------------------------------------------------
 const FREE_LOG_LIMIT = 5;
 const AUTO_COLLECT_MEMOS = ['自動学習収集データ', '自動収集データ'];
-const isAutoCollected = (row) => AUTO_COLLECT_MEMOS.includes(row && row.memo);
+// 学習用の行の見分け方。DB 側（supabase/migrations/pending/0006）と同じ定義にしてある。
+//   - source が 'diagnosis_auto' の行
+//   - source が空の古い行のうち、memo が自動収集の文言で、感度メモ（is_custom）でない行
+// memo だけを学習用の文言にした感度メモは、学習用とはみなさない（一覧に出し、件数にも数える）。
+const LEARNING_SOURCE = 'diagnosis_auto';
+const isAutoCollected = (row) => !!row && (row.source === LEARNING_SOURCE
+    || ((row.source === null || row.source === undefined) && AUTO_COLLECT_MEMOS.includes(row.memo) && !row.is_custom));
 const pendingRestoreKey = () => 'lc_pending_restore_' + (currentUser ? currentUser.id : '');
 let saveInFlight = false;
 
@@ -1405,8 +1413,13 @@ async function fetchUserLogs(ascending) {
     }
 }
 
-/** 1行の表示・非表示を切り替え、実際に1行が変わったことまで確かめる。 */
-async function setLogHidden(id, hidden) {
+const isQuotaError = (error) => /calc_logs_quota_exceeded/.test(String((error && error.message) || ''));
+
+/**
+ * 1行の表示・非表示を切り替え、実際に1行が変わったことまで確かめる。
+ * 戻り値: 'ok' / 'quota'（DB 側の5件枠に断られた）/ 'fail'
+ */
+async function setLogHiddenResult(id, hidden) {
     try {
         const { data, error } = await supabaseClient
             .from('calc_logs')
@@ -1414,10 +1427,20 @@ async function setLogHidden(id, hidden) {
             .eq('id', id)
             .eq('user_id', currentUser.id)
             .select('id');
-        return !error && Array.isArray(data) && data.length === 1;
+        if (error) return isQuotaError(error) ? 'quota' : 'fail';
+        return (Array.isArray(data) && data.length === 1) ? 'ok' : 'fail';
     } catch (e) {
-        return false;
+        return 'fail';
     }
+}
+async function setLogHidden(id, hidden) { return (await setLogHiddenResult(id, hidden)) === 'ok'; }
+/**
+ * 隠した行を戻す。DB 側の5件枠に断られた場合は、別の端末が先に枠を埋めたということなので、
+ * 「戻す必要がなくなった」として成功扱いにする（行は消えておらず、非表示のまま残る）。
+ */
+async function unhideLog(id) {
+    const r = await setLogHiddenResult(id, false);
+    return r === 'ok' || r === 'quota';
 }
 
 /** 前回戻せなかった行があれば戻す。戻せたものだけ控えから外す。 */
@@ -1429,7 +1452,7 @@ async function retryPendingRestore() {
     try { ids = JSON.parse(raw); } catch (e) { ids = []; }
     if (!Array.isArray(ids)) ids = [];
     const still = [];
-    for (const id of ids) { if (!(await setLogHidden(id, false))) still.push(id); }
+    for (const id of ids) { if (!(await unhideLog(id))) still.push(id); }
     if (still.length === 0) { lstore.remove(pendingRestoreKey()); return true; }
     lstore.set(pendingRestoreKey(), JSON.stringify(still));
     return false;
@@ -1438,7 +1461,7 @@ async function retryPendingRestore() {
 /** 隠した行を戻す。戻せなかった行は控えておき、false を返す。 */
 async function restoreHidden(ids) {
     const failed = [];
-    for (const id of ids) { if (!(await setLogHidden(id, false))) failed.push(id); }
+    for (const id of ids) { if (!(await unhideLog(id))) failed.push(id); }
     if (failed.length === 0) return true;
     let prev = [];
     try { prev = JSON.parse(lstore.get(pendingRestoreKey()) || '[]'); } catch (e) { prev = []; }
@@ -1459,14 +1482,62 @@ async function saveResultToSupabase(logData) {
     }
 }
 
+// ---------------------------------------------------------------------
+// 原子的な保存（DB の関数 save_calc_log）。
+// 「上限なら古い未ロックの行を隠す → 追加する」を DB 側の1つの処理で行うので、
+// 途中で失敗しても「古い行だけ隠れた」状態にならず、別の端末と同時に保存しても5件を超えない。
+//
+// この関数は DB への適用（supabase/migrations/pending/0006）の後にだけ存在する。
+// 無いあいだ（適用前・取り消し後）は 'absent' を返し、呼び出し側が従来の手順へ戻る。
+// ---------------------------------------------------------------------
+let saveRpcAbsent = false;   // 一度「無い」と分かったら、このページでは毎回たずねない
+const isMissingFunction = (error) => !!error && (error.code === 'PGRST202' || error.code === '42883'
+    || /could not find the function/i.test(String(error.message || '')));
+
+async function saveViaRpc(logData) {
+    if (saveRpcAbsent || typeof supabaseClient.rpc !== 'function') return { status: 'absent' };
+    try {
+        // user_id は送らない（DB 側がログイン中の本人を使う）
+        const { error } = await supabaseClient.rpc('save_calc_log', { p: {
+            game: logData.game,
+            dpi: logData.dpi,
+            final_sens: logData.finalSens,
+            height: logData.height || null,
+            dexterity: logData.dexterity || null,
+            play_style: logData.armThickness || null,
+            mouse_weight: logData.mouseWeight || null,
+            aim_part: logData.aimPart || null,
+            is_custom: !!logData.isCustom,
+            memo: logData.memo,
+            rating: logData.rating || 'good'
+        } });
+        if (!error) return { status: 'ok' };
+        if (isMissingFunction(error)) { saveRpcAbsent = true; return { status: 'absent' }; }
+        if (/calc_logs_all_locked/.test(String(error.message || ''))) return { status: 'all_locked' };
+        return { status: 'error', error: error };
+    } catch (e) {
+        return { status: 'error', error: e };
+    }
+}
+
 async function saveResultInner(logData) {
     const limited = currentUser.email !== ADMIN_EMAIL;
-    const hidden = [];   // 枠を空けるために隠した行
+    const hidden = [];   // 枠を空けるために隠した行（従来の手順でだけ使う）
+
+    // 前回の失敗で隠れたままの行があるなら、先に戻す。戻せないうちは保存しない
+    if (limited && !(await retryPendingRestore())) { alert(T('alertRestorePending')); return false; }
+
+    const viaRpc = await saveViaRpc(logData);
+    if (viaRpc.status === 'ok') return true;
+    if (viaRpc.status === 'all_locked') { alert(T('alertAllLocked')); return false; }
+    if (viaRpc.status === 'error') {
+        // 結果が分からない失敗（通信断など）。従来の手順へは進まない（二重に保存しないため）
+        alert(T('alertSaveErr') + ((viaRpc.error && viaRpc.error.message) || ''));
+        return false;
+    }
+    // ここから下は、関数が無いあいだの従来の手順
 
     if (limited) {
-        // 前回の失敗で隠れたままの行があるなら、数える前に戻す。戻せないうちは保存しない
-        if (!(await retryPendingRestore())) { alert(T('alertRestorePending')); return false; }
-
         const current = await fetchUserLogs(true);
         if (!current.ok) { alert(T('alertSaveCheckFail')); return false; }
 
@@ -1500,7 +1571,8 @@ async function saveResultInner(logData) {
             memo: logData.memo,
             rating: logData.rating || 'good',
             is_locked: false,
-            is_deleted_by_user: false
+            is_deleted_by_user: false,
+            source: logData.isCustom ? 'memo' : 'diagnosis_result'
         }]);
         insertError = error || null;
     } catch (e) {
