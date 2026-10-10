@@ -33,7 +33,14 @@ function createFake() {
         fail: [],          // [{ op, when(ctx), mode: 'error' | 'throw' | 'noop', times }]
         calls: [],         // 実行された操作の記録
         afterSelect: null, // 一覧取得の直後に割り込む処理（別タブの再現）
+        rpc: 'absent',     // 'absent' = DB に save_calc_log が無い（適用前） / 'present' = ある（適用後）
+        trigger: false,    // true = DB 側の5件枠（0006 の trigger）がある
     };
+    // DB 側（0006）と同じ定義
+    const countable = (r) => !!r.user_id && !r.is_deleted_by_user && r.source !== 'diagnosis_auto';
+    const quotaError = { data: null, error: { code: 'P0001', message: 'calc_logs_quota_exceeded' } };
+    const isAdminUid = () => db.uid === 'admin-1';
+    const overLimit = (uid, exceptId) => db.rows.filter((r) => r.user_id === uid && r.id !== exceptId && countable(r)).length >= 5;
     function takeFailure(op, ctx) {
         const i = db.fail.findIndex((f) => f.op === op && f.times > 0 && (!f.when || f.when(ctx)));
         if (i < 0) return null;
@@ -70,19 +77,56 @@ function createFake() {
                     if ((db.uid && row.user_id !== db.uid) || (!db.uid && row.user_id !== null)) {
                         return { data: null, error: { message: 'new row violates row-level security policy' } };
                     }
-                    db.rows.push({ is_locked: false, is_deleted_by_user: false, rating: 'good', is_custom: false,
-                        ...row, id: 'r' + (++db.seq), created_at: db.seq });
+                    const fresh = { is_locked: false, is_deleted_by_user: false, rating: 'good', is_custom: false, source: null,
+                        ...row, id: 'r' + (++db.seq), created_at: db.seq };
+                    if (db.trigger && db.uid && !isAdminUid() && countable(fresh) && overLimit(fresh.user_id, fresh.id)) return quotaError;
+                    db.rows.push(fresh);
                 }
                 return { data: null, error: null };
             }
             // update。RLS: 自分の行だけ。mode 'noop' は「エラーは出ないが1行も変わらない」
             const hit = mode === 'noop' ? [] : db.rows.filter((r) => db.uid && r.user_id === db.uid && match(r));
+            if (db.trigger && !isAdminUid()) {
+                for (const r of hit) {
+                    const next = { ...r, ...st.payload };
+                    if (!countable(r) && countable(next) && overLimit(r.user_id, r.id)) return quotaError;
+                }
+            }
             hit.forEach((r) => Object.assign(r, st.payload));
             return { data: st.returning ? hit.map((r) => ({ id: r.id })) : null, error: null };
         }
         return api;
     }
-    const client = { from, auth: { onAuthStateChange() {}, getUser: async () => ({ data: {} }), signOut() {} } };
+    /** save_calc_log の模擬。DB 側と同じく、全体が成功するか、何も変わらないかのどちらか。 */
+    async function rpc(name, args) {
+        const mode = takeFailure('rpc', { name, args });
+        db.calls.push({ op: 'rpc', name, args, failed: mode });
+        if (mode === 'throw') throw new Error('Failed to fetch');
+        if (mode === 'error') return { data: null, error: { message: 'boom' } };
+        if (db.rpc !== 'present' || name !== 'save_calc_log') {
+            return { data: null, error: { code: 'PGRST202', message: 'Could not find the function public.' + name + '(p) in the schema cache' } };
+        }
+        if (!db.uid) return { data: null, error: { code: '42501', message: 'permission denied for function save_calc_log' } };
+        const p = args.p;
+        if (!p.game) return { data: null, error: { code: '23502', message: 'null value in column "game"' } };
+        const mine = () => db.rows.filter((r) => r.user_id === db.uid && countable(r)).sort((a, b) => a.created_at - b.created_at);
+        const toHide = [];
+        if (!isAdminUid()) {
+            const rows = mine();
+            const over = rows.length - 4;
+            if (over > 0) {
+                const unlocked = rows.filter((r) => !r.is_locked);
+                if (unlocked.length < over) return { data: null, error: { code: 'P0001', message: 'calc_logs_all_locked' } };
+                toHide.push(...unlocked.slice(0, over));
+            }
+        }
+        toHide.forEach((r) => { r.is_deleted_by_user = true; });
+        const row = { is_locked: false, is_deleted_by_user: false, rating: 'good', ...p, user_id: db.uid,
+            source: p.is_custom ? 'memo' : 'diagnosis_result', id: 'r' + (++db.seq), created_at: db.seq };
+        db.rows.push(row);
+        return { data: row.id, error: null };
+    }
+    const client = { from, rpc, auth: { onAuthStateChange() {}, getUser: async () => ({ data: {} }), signOut() {} } };
     return { db, supabase: { createClient: () => client } };
 }
 
@@ -104,7 +148,8 @@ function setup(user = USER) {
         }
     };
     const mine = () => fake.db.rows.filter((r) => r.user_id === (user && user.id));
-    const visible = () => mine().filter((r) => !r.is_deleted_by_user && r.memo !== AUTO_MEMO);
+    const visible = () => mine().filter((r) => !r.is_deleted_by_user && r.source !== 'diagnosis_auto'
+        && !(r.source == null && r.memo === AUTO_MEMO && !r.is_custom));
     const inserts = () => fake.db.calls.filter((c) => c.op === 'insert' && !c.failed).length;
     const save = async (memo = 'new') => {
         const r = await app.saveResultToSupabase({ game: 'valo', dpi: 800, finalSens: '0.353', height: 173,
@@ -173,7 +218,7 @@ check('一覧の中身が配列でないとき（data が null）も保存しな
         const then = q.then.bind(q);
         q.then = (res, rej) => then((v) => { if (first && Array.isArray(v.data)) { first = false; return res({ data: null, error: null }); } return res(v); }, rej);
         return q;
-    }, auth: orig().auth });
+    }, rpc: orig().rpc, auth: orig().auth });
     eq(await s.save(), false);
     eq(s.inserts(), 0); eq(s.visible().length, 5);
 });
@@ -342,9 +387,128 @@ check('ロックは無料の記録保護であって、課金の制御ではな�
     ok(/is_locked/.test(html));
 });
 
+
+// ============================================================ 原子的な保存（save_calc_log）と、無い期間の互換
+
+check('DB に save_calc_log が無いあいだ（適用前・取り消し後）は、従来の手順で保存できる', async () => {
+    const s = setup(); s.seed(5);
+    eq(s.db.rpc, 'absent');
+    eq(await s.save(), true);
+    eq(s.visible().length, 5);
+    eq(s.db.calls.filter((c) => c.op === 'rpc').length, 1, '最初に一度だけたずねる');
+    eq(await s.save('second'), true);
+    eq(s.db.calls.filter((c) => c.op === 'rpc').length, 1, '無いと分かったら、このページでは毎回たずねない');
+    eq(s.alerts, []);
+});
+check('save_calc_log があれば、それ1回で保存する（従来の「隠す → 追加」の通信をしない）', async () => {
+    const s = setup(); s.seed(5); s.db.rpc = 'present';
+    const oldest = s.db.rows[0].id;
+    eq(await s.save(), true);
+    const duringSave = s.db.calls.filter((c) => c.op === 'insert' || c.op === 'update');
+    eq(duringSave.length, 0, '直接の追加・更新をしていない');
+    eq(s.visible().length, 5); eq(s.mine().length, 6);
+    eq(s.db.rows.find((r) => r.id === oldest).is_deleted_by_user, true);
+    const call = s.db.calls.find((c) => c.op === 'rpc');
+    eq(call.name, 'save_calc_log');
+    ok(!('user_id' in call.args.p), 'user_id を送っていない');
+    eq([call.args.p.game, call.args.p.final_sens, call.args.p.is_custom], ['valo', '0.353', false]);
+});
+check('save_calc_log: すべてロックなら断られ、その旨を表示する（従来の手順へは進まない）', async () => {
+    const s = setup(); s.seed(5, { is_locked: true }); s.db.rpc = 'present';
+    eq(await s.save(), false);
+    eq(s.alerts, [s.T('alertAllLocked')]);
+    eq(s.inserts(), 0); eq(s.mine().length, 5);
+});
+check('save_calc_log が結果の分からない失敗（通信断・サーバーのエラー）をしたら、従来の手順へ進まない（二重保存しない）', async () => {
+    for (const mode of ['throw', 'error']) {
+        const s = setup(); s.seed(5); s.db.rpc = 'present';
+        s.db.fail.push({ op: 'rpc', mode, times: 1 });
+        eq(await s.save(), false, mode);
+        eq(s.db.calls.filter((c) => c.op === 'insert' || c.op === 'update').length, 0, mode + ': 従来の手順を実行していない');
+        eq(s.visible().length, 5, mode); eq(s.mine().length, 5, mode);
+        ok(s.alerts[0].startsWith(s.T('alertSaveErr')), mode);
+        eq(await s.save('retry'), true, mode + ': 次は保存できる');
+    }
+});
+check('save_calc_log: 連打・くり返しでも5件を超えない。管理者は無制限', async () => {
+    const s = setup(); s.db.rpc = 'present';
+    for (let i = 0; i < 12; i++) { await s.save('m' + i); ok(s.visible().length <= 5); }
+    eq(s.visible().length, 5); eq(s.mine().length, 12);
+    const r = await Promise.all([s.save('x'), s.save('x'), s.save('x')]);
+    eq(r.filter(Boolean).length, 1, '連打');
+    const a = setup(ADMIN); a.db.rpc = 'present'; a.seed(7);
+    eq(await a.save(), true); eq(a.visible().length, 8);
+});
+check('途中で DB に適用されても動く: 古い手順で始めた保存が DB の5件枠に断られたら、戻せない行を「戻す必要なし」として片付ける', async () => {
+    // このページは「関数が無い」と覚えている。その後で DB に 0006 が適用された、という場面
+    const s = setup(); s.seed(5);
+    eq(await s.save('before'), true);                 // 関数が無いことを覚える
+    s.db.trigger = true;                              // DB 側の5件枠が入る
+    // 別の端末が、こちらが古い行を隠した直後に1件保存する
+    let stolen = false;
+    const realFrom = s.fake.supabase.createClient().from;
+    s.app.setClient({ from(t) {
+        const q = realFrom(t);
+        const insert = q.insert.bind(q);
+        q.insert = (rows) => { if (!stolen) { stolen = true; s.db.trigger = false; s.seed(1, { memo: 'other-device' }); s.db.trigger = true; } return insert(rows); };
+        return q;
+    }, rpc: s.fake.supabase.createClient().rpc, auth: s.fake.supabase.createClient().auth });
+    eq(await s.save('mine'), false, 'DB に断られる');
+    ok(s.alerts.some((m) => m.startsWith(s.T('alertSaveErr'))), '保存できなかったことを伝える');
+    ok(!s.alerts.includes(s.T('alertRestoreFail')), '「戻せていない」という警告は出さない');
+    eq(s.app.localStorage.getItem('lc_pending_restore_' + USER.id), null, '控えを残さない');
+    eq(s.visible().length, 5, '5件を超えていない');
+    s.alerts.length = 0;
+    await s.app.loadLogs();
+    ok(!s.app.getElementById('logsList').innerHTML.includes(s.T('alertRestorePending')), '一覧にも警告を出さない');
+});
+check('以前の失敗で控えていた行が、DB の5件枠で戻せなくなっていても、控えを片付けて保存できる', async () => {
+    const s = setup(); s.seed(5); s.db.rpc = 'present'; s.db.trigger = true;
+    s.seed(1, { is_deleted_by_user: true, memo: 'hidden-old' });
+    const hiddenId = s.db.rows[s.db.rows.length - 1].id;
+    s.app.localStorage.setItem('lc_pending_restore_' + USER.id, JSON.stringify([hiddenId]));
+    eq(await s.save(), true);
+    eq(s.app.localStorage.getItem('lc_pending_restore_' + USER.id), null);
+    eq(s.visible().length, 5);
+    ok(s.db.rows.some((r) => r.id === hiddenId), '行は消えていない');
+});
+
+// ============================================================ 学習用の印
+
+check('学習用の行の見分け方は DB 側と同じ（印つき・古い形・memo だけ偽装した感度メモ）', async () => {
+    const s = setup(); s.seed(3);
+    s.seed(2, { memo: AUTO_MEMO, is_custom: false, source: 'diagnosis_auto' });   // 新しいアプリの学習用の行
+    s.seed(2, { memo: AUTO_MEMO, is_custom: false, source: null });               // 古いアプリの学習用の行
+    s.seed(1, { memo: AUTO_MEMO, is_custom: true, source: null });                // memo だけ学習用の文言にした感度メモ
+    await s.app.loadLogs();
+    eq(s.app.getElementById('logCountText').innerText, '4 / 5', '偽装した感度メモは数える');
+    eq((s.app.getElementById('logsList').innerHTML.match(/class="log-item"/g) || []).length, 4);
+});
+check('index.html は学習用の行に印（source）を付けて送り、通常の保存にも印を付ける', async () => {
+    const html = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+    const collect = html.slice(html.indexOf('function collectLearningSample'), html.indexOf('function handleSaveClick'));
+    ok(/source: LEARNING_SOURCE/.test(collect), '学習用の行');
+    ok(/memo: '自動学習収集データ'/.test(collect) && /is_custom: false/.test(collect), 'DB 側が求める形（memo・is_custom）');
+    const s = setup(); s.seed(1);
+    await s.save();
+    eq(s.mine().find((r) => r.memo === 'new').source, 'diagnosis_result', '従来の手順での保存');
+});
+check('DB 側の SQL と画面側で、上限と学習用の文言が食い違っていない', async () => {
+    const html = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+    const sql = fs.readFileSync(path.join(REPO_ROOT, 'supabase/migrations/pending/0006_calc_logs_quota.sql'), 'utf8');
+    ok(/const FREE_LOG_LIMIT = 5;/.test(html) && /select 5;/.test(sql), '上限');
+    for (const memo of ['自動学習収集データ', '自動収集データ']) ok(html.includes("'" + memo + "'") && sql.includes("'" + memo + "'"), memo);
+    ok(html.includes("const LEARNING_SOURCE = 'diagnosis_auto';") && sql.includes("'diagnosis_auto'"));
+    ok(html.includes("rpc('save_calc_log'") && /create or replace function public\.save_calc_log\(p jsonb\)/.test(sql), '関数名と引数名');
+    for (const key of ['game', 'dpi', 'final_sens', 'height', 'dexterity', 'play_style', 'mouse_weight', 'aim_part', 'is_custom', 'memo', 'rating']) {
+        ok(new RegExp("p->>'" + key + "'").test(sql), 'SQL が ' + key + ' を読む');
+        ok(new RegExp('\\b' + key + ': ').test(html.slice(html.indexOf('async function saveViaRpc'), html.indexOf('async function saveResultInner'))), '画面が ' + key + ' を送る');
+    }
+});
+
 // ============================================================ サーバー側（既知の制約の記録）
 
-check('【既知の制約】5件枠はサーバー側では強制されていない（schema.sql に件数の検査が無い）', async () => {
+check('【適用前の現状】本番と同じ定義（schema.sql）には件数の検査が無い。DB 側の5件枠は pending の 0006 を適用して初めて効く', async () => {
     const sql = fs.readFileSync(path.join(REPO_ROOT, 'supabase/schema.sql'), 'utf8');
     const calc = sql.slice(sql.indexOf('2. calc_logs'), sql.indexOf('Aim 系（G-4'));
     ok(!/create\s+(or\s+replace\s+)?trigger/i.test(calc), 'calc_logs に trigger が追加された。この検査を見直すこと');
